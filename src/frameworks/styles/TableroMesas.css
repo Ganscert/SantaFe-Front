@@ -1,0 +1,235 @@
+.tablero-mesas {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tablero-mesas h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2rem;
+  color: #333;
+}
+
+.grid-mesas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.tarjeta-mesa {
+  display: block;
+  width: 100%;
+  max-width: none;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.tablero-mesas--con-panel .tablero-grid-contenedor {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.tablero-header p {
+  margin: 0;
+  color: #5a5a6d;
+  max-width: 720px;
+}
+
+.tarjeta-mesa.seleccionada {
+  outline: 2px solid #4caf50;
+  box-shadow: 0 10px 24px rgba(76, 175, 80, 0.18);
+}
+
+.tarjeta-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.panel-mesa-seleccionada {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.07);
+}
+
+.panel-mesa-seleccionada h2 {
+  margin-top: 0;
+}
+
+.panel-tarjeta {
+  position: relative;
+}
+
+.panel-tarjeta .btn-cambiar-estado {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: auto;
+  min-width: 140px;
+}
+
+.panel-tarjeta .mesa-info {
+  margin-bottom: 40px;
+}
+
+.panel-pedidos {
+  margin-top: 22px;
+}
+
+.panel-pedidos ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.panel-pedidos li {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f6f7ff;
+}
+
+.panel-pedidos strong {
+  margin-right: 8px;
+}
+
+.detaila-opciones .button,
+.detalle-opciones .button {
+  min-width: 170px;
+}
+
+.tarjeta-mesa:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.tarjeta-mesa.disponible {
+  border: 2px solid #4caf50;
+  background-color: #e8f5e8;
+}
+
+.tarjeta-mesa.ocupada {
+  border: 2px solid #f44336;
+  background-color: #ffebee;
+}
+
+.mesa-info h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.mesa-info p {
+  margin: 5px 0;
+  font-size: 1rem;
+  color: #666;
+}
+
+.btn-cambiar-estado {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 8px 12px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn-cambiar-estado:hover {
+  background-color: #1976d2;
+}
+
+.card-menus {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.menu-links {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.detalle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detalle-mesa .tarjeta-mesa {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.detalle-opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.detalle-opciones .button {
+  min-width: 170px;
+}
+
+/* Responsividad para móviles */
+@media (max-width: 768px) {
+  .grid-mesas {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+
+  .tarjeta-mesa {
+    max-width: 200px;
+    padding: 15px;
+  }
+
+  .tablero-mesas h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Estilos para el menú */
+.imagen-plato {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.ingredientes {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+}
+
+.ingredientes li {
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #555;
+}

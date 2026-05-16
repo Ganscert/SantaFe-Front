@@ -1,0 +1,93 @@
+{
+  "$schema": "Listado maestro de roles del Restaurante Santa Fe. Editable desde /admin/roles.",
+  "version": 1,
+  "permissions": {
+    "dashboard.view":        { "label": "Ver dashboard de supervisión",        "category": "Supervisión" },
+    "dashboard.export":      { "label": "Exportar reportes (CSV)",             "category": "Supervisión" },
+
+    "mesas.view":            { "label": "Ver tablero de mesas",                 "category": "Operación" },
+    "mesas.changeState":     { "label": "Cambiar estado de mesa",              "category": "Operación" },
+    "mesas.openAccount":     { "label": "Abrir cuentas en una mesa",           "category": "Operación" },
+    "mesas.closeAccount":    { "label": "Cerrar cuentas / cobrar",             "category": "Operación" },
+
+    "orders.create":         { "label": "Crear pedidos",                        "category": "Pedidos" },
+    "orders.cancel":         { "label": "Cancelar pedidos",                     "category": "Pedidos" },
+    "orders.discount":       { "label": "Aplicar descuentos",                   "category": "Pedidos" },
+
+    "kitchen.view":          { "label": "Ver cola de cocina",                   "category": "Cocina" },
+    "kitchen.advanceState":  { "label": "Avanzar estado de pedido (preparar/listo)", "category": "Cocina" },
+
+    "menu.view":             { "label": "Ver carta / menú",                     "category": "Catálogo" },
+    "menu.edit":             { "label": "Editar carta y precios",               "category": "Catálogo" },
+
+    "users.manageRoles":     { "label": "Gestionar roles y permisos",           "category": "Administración" },
+    "users.invite":          { "label": "Invitar usuarios al sistema",          "category": "Administración" }
+  },
+  "roles": [
+    {
+      "id": "admin",
+      "label": "Administrador",
+      "description": "Control total del sistema. No puede ser eliminado.",
+      "system": true,
+      "color": "#C1440E",
+      "permissions": [
+        "dashboard.view", "dashboard.export",
+        "mesas.view", "mesas.changeState", "mesas.openAccount", "mesas.closeAccount",
+        "orders.create", "orders.cancel", "orders.discount",
+        "kitchen.view", "kitchen.advanceState",
+        "menu.view", "menu.edit",
+        "users.manageRoles", "users.invite"
+      ]
+    },
+    {
+      "id": "gerente",
+      "label": "Gerente",
+      "description": "Supervisa operación y reportes; no maneja roles del sistema.",
+      "system": false,
+      "color": "#6B7C4F",
+      "permissions": [
+        "dashboard.view", "dashboard.export",
+        "mesas.view", "mesas.changeState", "mesas.closeAccount",
+        "orders.cancel", "orders.discount",
+        "kitchen.view",
+        "menu.view", "menu.edit",
+        "users.invite"
+      ]
+    },
+    {
+      "id": "mesero",
+      "label": "Mesero",
+      "description": "Toma pedidos y administra el tablero de mesas.",
+      "system": false,
+      "color": "#D4A017",
+      "permissions": [
+        "mesas.view", "mesas.changeState", "mesas.openAccount",
+        "orders.create",
+        "kitchen.view",
+        "menu.view"
+      ]
+    },
+    {
+      "id": "cocinero",
+      "label": "Cocinero",
+      "description": "Atiende exclusivamente la cola de cocina.",
+      "system": false,
+      "color": "#3b82f6",
+      "permissions": [
+        "kitchen.view", "kitchen.advanceState"
+      ]
+    },
+    {
+      "id": "cajero",
+      "label": "Cajero",
+      "description": "Cierra cuentas y procesa cobros.",
+      "system": false,
+      "color": "#8b5cf6",
+      "permissions": [
+        "mesas.view", "mesas.closeAccount",
+        "orders.discount",
+        "menu.view"
+      ]
+    }
+  ]
+}

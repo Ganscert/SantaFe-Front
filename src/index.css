@@ -1,0 +1,255 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes routeFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.route-fade {
+  animation: routeFade 140ms ease-out;
+}
+
+/* Respeta usuarios con preferencia reduce-motion */
+@media (prefers-reduced-motion: reduce) {
+  .route-fade { animation: none; }
+}
+
+@theme {
+  --color-terracota:       #C1440E;
+  --color-terracota-dark:  #a33a0c;
+  --color-terracota-light: rgba(193,68,14,0.1);
+  --color-oliva:           #6B7C4F;
+  --color-oliva-dark:      #5a6842;
+  --color-crema:           #FDF6EC;
+  --color-dorado:          #D4A017;
+
+  --color-estado-disponible:    #10b981;
+  --color-estado-disponible-bg: #ecfdf5;
+  --color-estado-ocupada:       #f59e0b;
+  --color-estado-ocupada-bg:    #fffbeb;
+  --color-estado-por-cobrar:    #6366f1;
+  --color-estado-por-cobrar-bg: #eef2ff;
+  --color-estado-listo:         #3b82f6;
+  --color-estado-listo-bg:      #eff6ff;
+  --color-estado-cancelado:     #ef4444;
+  --color-estado-cancelado-bg:  #fef2f2;
+  --color-estado-pendiente:     #f59e0b;
+  --color-estado-pendiente-bg:  #fffbeb;
+  --color-estado-preparacion:   #3b82f6;
+  --color-estado-preparacion-bg:#eff6ff;
+  --color-estado-atrasado:      #f97316;
+  --color-estado-atrasado-bg:   #fff7ed;
+  --color-estado-critico:       #dc2626;
+  --color-estado-critico-bg:    #fee2e2;
+}
+
+/* ── Base ─────────────────────────────────────────── */
+:root {
+  --text:         #5a4d42;
+  --text-h:       #1a0f0a;
+  --bg:           #fff;
+  --border:       #e8e0d8;
+  --accent:       #C1440E;
+  --accent-bg:    rgba(193,68,14,0.1);
+  --accent-border:rgba(193,68,14,0.35);
+  --shadow:       rgba(0,0,0,0.09) 0 10px 15px -3px, rgba(0,0,0,0.05) 0 4px 6px -2px;
+
+  --sans:    system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono:    ui-monospace, Consolas, monospace;
+
+  font: 16px/1.5 var(--sans);
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+body  { margin: 0; }
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 {
+  font-family: var(--heading);
+  color: var(--text-h);
+  margin: 0;
+}
+
+p { margin: 0; }
+
+/* ── Login card ───────────────────────────────────── */
+.page-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(193,68,14,0.13), transparent 32%),
+    radial-gradient(circle at 85% 80%, rgba(107,124,79,0.11), transparent 30%),
+    #FDF6EC;
+}
+
+:where(.dark) .page-shell {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(193,68,14,0.18), transparent 32%),
+    radial-gradient(circle at 85% 80%, rgba(212,160,23,0.12), transparent 30%),
+    #020617;
+}
+
+.card {
+  width: min(460px, 100%);
+  padding: 36px;
+  background: rgba(255,255,255,0.94);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  text-align: left;
+  backdrop-filter: blur(12px);
+}
+
+:where(.dark) .card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgb(30, 41, 59);
+  color: rgb(241, 245, 249);
+}
+
+:where(.dark) .login-title { color: rgb(248, 250, 252); }
+:where(.dark) .subtitle    { color: rgb(148, 163, 184); }
+:where(.dark) .form-label  { color: rgb(226, 232, 240); }
+:where(.dark) .form-input  {
+  background: rgb(2, 6, 23);
+  border-color: rgb(51, 65, 85);
+  color: rgb(241, 245, 249);
+}
+:where(.dark) .form-input:focus {
+  border-color: #D4A017;
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.18);
+}
+:where(.dark) .btn-ghost { color: rgb(148, 163, 184); }
+:where(.dark) .btn-ghost:hover { color: rgb(241, 245, 249); }
+
+.card-head { margin-bottom: 24px; }
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #C1440E;
+  background: rgba(193,68,14,0.09);
+  border: 1px solid rgba(193,68,14,0.22);
+  margin-bottom: 14px;
+}
+
+.login-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text-h);
+}
+
+.subtitle {
+  color: #7a6a5a;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ── Form ─────────────────────────────────────────── */
+.form-grid { display: grid; gap: 16px; }
+
+.form-label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-h);
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.form-input:focus {
+  border-color: #C1440E;
+  box-shadow: 0 0 0 3px rgba(193,68,14,0.12);
+}
+
+/* ── Buttons ──────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 11px;
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+.btn:active { opacity: 1;   transform: translateY(0); }
+
+.btn-primary {
+  width: 100%;
+  color: #fff;
+  background: linear-gradient(135deg, #C1440E 0%, #d4550f 100%);
+  box-shadow: 0 4px 14px rgba(193,68,14,0.28);
+}
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(193,68,14,0.38); }
+
+.btn-ghost {
+  color: #7a6a5a;
+  background: transparent;
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 8px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.btn-ghost:hover { color: var(--text-h); }
+
+/* ── Error ────────────────────────────────────────── */
+.error-msg {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  padding: 10px 13px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 9px;
+}
