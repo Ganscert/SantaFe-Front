@@ -18,10 +18,11 @@ const WAIT_FOR_SYNC_MS = 4000
 export default function Join() {
   const [params] = useSearchParams()
   const tokenStr = params.get('token')
+  const codigoParam = params.get('codigo')
   const navigate = useNavigate()
 
   const { session } = useAuth()
-  const { tokens, buscarPorToken, usarToken } = useTokens()
+  const { tokens, buscarPorToken, buscarPorCodigo, usarToken } = useTokens()
   const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
   const { connected } = useLiveSync() || {}
 
@@ -35,18 +36,24 @@ export default function Join() {
 
   useEffect(() => {
     if (consumidoRef.current) return
-    if (!tokenStr) {
+    if (!tokenStr && !codigoParam) {
       setStatus('error')
       setMessage('Falta el código del enlace.')
       return
     }
     if (!session) {
-      try { localStorage.setItem(PENDING_TOKEN_KEY, tokenStr) } catch {}
-      navigate('/', { replace: true, state: { from: `/join?token=${encodeURIComponent(tokenStr)}` } })
+      // Sólo persistimos el flujo QR (URL con token); el código numérico se
+      // re-ingresa en MesaCliente tras el login, no requiere pendingToken.
+      if (tokenStr) {
+        try { localStorage.setItem(PENDING_TOKEN_KEY, tokenStr) } catch {}
+        navigate('/', { replace: true, state: { from: `/join?token=${encodeURIComponent(tokenStr)}` } })
+      } else {
+        navigate('/', { replace: true })
+      }
       return
     }
 
-    const token = buscarPorToken(tokenStr)
+    const token = tokenStr ? buscarPorToken(tokenStr) : buscarPorCodigo(codigoParam)
 
     // Aún no llegó del WS y todavía hay tiempo de espera → seguir en 'checking'.
     if (!token) {
@@ -83,7 +90,7 @@ export default function Join() {
 
     // ── Aplicar el token (una sola vez) ──
     consumidoRef.current = true
-    const res = usarToken(tokenStr, session.id)
+    const res = usarToken(token.token, session.id)
     if (!res.ok) {
       setStatus('error')
       setMessage(res.error || 'No se pudo aplicar el código.')
@@ -122,7 +129,7 @@ export default function Join() {
     setTimeout(() => navigate(dest, { replace: true }), 900)
     // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenStr, session?.id, tokens, mesas])
+  }, [tokenStr, codigoParam, session?.id, tokens, mesas])
 
   if (!session) return <Navigate to="/" replace />
 

@@ -21,6 +21,21 @@ function uuidv4() {
   })
 }
 
+// Genera código numérico de 6 dígitos único entre tokens 'pendiente'.
+// Espacio: 900k combinaciones → suficiente para colisiones esporádicas.
+function generarCodigo6(existentes) {
+  const ocupados = new Set(
+    existentes
+      .filter((t) => t.estado === 'pendiente' && typeof t.codigo === 'string')
+      .map((t) => t.codigo)
+  )
+  for (let i = 0; i < 50; i++) {
+    const codigo = String(Math.floor(100000 + Math.random() * 900000))
+    if (!ocupados.has(codigo)) return codigo
+  }
+  return String(Date.now()).slice(-6)
+}
+
 function leerTokens() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -70,6 +85,7 @@ export function TokensProvider({ children }) {
       id: `tok-${now.toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       mesa_id: mesaId,
       token: uuidv4(),
+      codigo: generarCodigo6(tokens),
       generado_por: generadoPor || null,
       estado: 'pendiente',
       created_at: now,
@@ -96,6 +112,13 @@ export function TokensProvider({ children }) {
   const buscarPorToken = useCallback((tokenStr) => {
     if (!tokenStr) return null
     return tokens.find((t) => t.token === tokenStr) || null
+  }, [tokens])
+
+  const buscarPorCodigo = useCallback((codigo) => {
+    if (!codigo) return null
+    const norm = String(codigo).trim()
+    if (!/^\d{6}$/.test(norm)) return null
+    return tokens.find((t) => t.codigo === norm) || null
   }, [tokens])
 
   const tokenActivoParaMesa = useCallback((mesaId) => {
@@ -146,10 +169,11 @@ export function TokensProvider({ children }) {
     tokens,
     generarTokenParaMesa,
     buscarPorToken,
+    buscarPorCodigo,
     tokenActivoParaMesa,
     usarToken,
     invalidarTokensDeMesa,
-  }), [tokens, generarTokenParaMesa, buscarPorToken, tokenActivoParaMesa, usarToken, invalidarTokensDeMesa])
+  }), [tokens, generarTokenParaMesa, buscarPorToken, buscarPorCodigo, tokenActivoParaMesa, usarToken, invalidarTokensDeMesa])
 
   return <TokensCtx.Provider value={value}>{children}</TokensCtx.Provider>
 }

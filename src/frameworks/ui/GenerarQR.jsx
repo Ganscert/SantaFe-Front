@@ -129,6 +129,18 @@ export default function GenerarQR({ mesa, onClose }) {
             </button>
           </div>
 
+          {/* Código de 6 dígitos (alternativa al QR) */}
+          {token?.codigo && (
+            <div className="rounded-2xl bg-[#C1440E]/5 dark:bg-[#C1440E]/10 ring-1 ring-[#C1440E]/20 px-4 py-3 mb-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-[#C1440E] dark:text-[#D4A017] mb-1">
+                O ingresa este código
+              </p>
+              <p className="text-3xl font-black tracking-[0.4em] text-slate-900 dark:text-slate-50 font-mono">
+                {token.codigo}
+              </p>
+            </div>
+          )}
+
           {token && (
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate mb-4" title={token.token}>
               token: {token.token}

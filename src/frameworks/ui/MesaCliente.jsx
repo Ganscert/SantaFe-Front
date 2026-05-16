@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Utensils, Plus, Minus, ShoppingBag, Check, X, LogOut, ImageIcon, Clock, ChefHat,
-  Users, Receipt, Loader2,
+  Users, Receipt, Loader2, KeyRound,
 } from 'lucide-react'
 import ingredientes from '../assets/data/ingredientes.js'
 import { useAuth } from '../state/AuthContext.jsx'
@@ -218,26 +218,7 @@ export default function MesaCliente() {
   }
 
   if (!mesa) {
-    return (
-      <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3">
-            <Utensils size={28} />
-          </div>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">Aún no estás en una mesa</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Pídele a recepción que te muestre el código QR de tu mesa.
-          </p>
-          <button
-            type="button"
-            onClick={salir}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            <LogOut size={14} /> Cerrar sesión
-          </button>
-        </div>
-      </main>
-    )
+    return <UnirseConCodigo onSalir={salir} />
   }
 
   return (
@@ -520,6 +501,88 @@ export default function MesaCliente() {
         </div>
       )}
     </div>
+  )
+}
+
+// Pantalla mostrada al cliente que inicia sesión sin tener una mesa
+// asociada (no escaneó QR). Permite ingresar el código de 6 dígitos
+// generado por recepción/mesero junto al QR.
+function UnirseConCodigo({ onSalir }) {
+  const navigate = useNavigate()
+  const [codigo, setCodigo] = useState('')
+  const [error, setError] = useState('')
+
+  function handleChange(e) {
+    const limpio = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setCodigo(limpio)
+    if (error) setError('')
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (codigo.length !== 6) {
+      setError('Ingresa los 6 dígitos del código.')
+      return
+    }
+    navigate(`/join?codigo=${codigo}`, { replace: true })
+  }
+
+  return (
+    <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center"
+      >
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#C1440E]/10 text-[#C1440E] dark:text-[#D4A017] flex items-center justify-center mb-3">
+          <KeyRound size={28} />
+        </div>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">
+          Únete a tu mesa
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Ingresa el código de 6 dígitos que te mostró recepción.
+        </p>
+
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="\d{6}"
+          maxLength={6}
+          value={codigo}
+          onChange={handleChange}
+          placeholder="000000"
+          aria-label="Código de 6 dígitos"
+          className="mt-5 w-full text-center text-3xl font-black tracking-[0.4em] font-mono px-3 py-3 rounded-xl border border-[#e8e0d8] dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E]"
+        />
+
+        {error && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={codigo.length !== 6}
+          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+        >
+          Unirme a la mesa
+        </button>
+
+        <p className="mt-4 text-[11px] text-slate-400 dark:text-slate-500">
+          ¿Tienes un código QR? Pídele a recepción que lo muestre y escanéalo.
+        </p>
+
+        <button
+          type="button"
+          onClick={onSalir}
+          className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+        >
+          <LogOut size={12} /> Cerrar sesión
+        </button>
+      </form>
+    </main>
   )
 }
 
