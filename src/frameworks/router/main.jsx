@@ -24,10 +24,7 @@ import { ThemeProvider } from '../state/ThemeContext.jsx'
 import { PlatosProvider } from '../state/PlatosContext.jsx'
 import { AuthProvider } from '../state/AuthContext.jsx'
 import { TokensProvider } from '../state/TokensContext.jsx'
-
-// Roles que pueden ver el área administrativa/operativa (todo lo que no sea cliente)
-const STAFF = ['recepcionista', 'mesero', 'admin', 'gerente', 'cocinero', 'cajero']
-const ADMIN = ['admin', 'gerente', 'recepcionista']
+import { rolesFor } from '../ui/roleAccess.js'
 
 const router = createBrowserRouter([
   { path: '/',     element: <Login /> },
@@ -35,23 +32,18 @@ const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      // Cliente — vista propia de mesa
-      { path: '/mi-mesa', element: <RequireAuth roles={['cliente']}><MesaCliente /></RequireAuth> },
-
-      // Staff — operación
-      { path: '/menu',              element: <RequireAuth><Menu /></RequireAuth> },
-      { path: '/tablero-mesas',     element: <RequireAuth roles={STAFF}><TableroMesas /></RequireAuth> },
-      { path: '/mesa/:id',          element: <RequireAuth roles={STAFF}><MesaDetalle /></RequireAuth> },
-      { path: '/pedidos/nuevo',     element: <RequireAuth roles={STAFF}><AgregarPedido /></RequireAuth> },
-      { path: '/pedidos/agregar',   element: <RequireAuth roles={STAFF}><AgregarPedido /></RequireAuth> },
-      { path: '/cocina/pendientes', element: <RequireAuth roles={STAFF}><CocinaPendientes /></RequireAuth> },
-      { path: '/cajero/cobros',    element: <RequireAuth roles={['cajero','recepcionista','admin','gerente']}><CajeroCobros /></RequireAuth> },
-
-      // Administración
-      { path: '/admin/dashboard', element: <RequireAuth roles={ADMIN}><Dashboard /></RequireAuth> },
-      { path: '/admin/roles',     element: <RequireAuth roles={ADMIN}><Roles /></RequireAuth> },
-      { path: '/admin/platos',    element: <RequireAuth roles={ADMIN}><AdminPlatos /></RequireAuth> },
-      { path: '/admin/usuarios',  element: <RequireAuth roles={ADMIN}><AdminUsuarios /></RequireAuth> },
+      { path: '/mi-mesa',           element: <RequireAuth roles={rolesFor('/mi-mesa')}><MesaCliente /></RequireAuth> },
+      { path: '/menu',              element: <RequireAuth roles={rolesFor('/menu')}><Menu /></RequireAuth> },
+      { path: '/tablero-mesas',     element: <RequireAuth roles={rolesFor('/tablero-mesas')}><TableroMesas /></RequireAuth> },
+      { path: '/mesa/:id',          element: <RequireAuth roles={rolesFor('/mesa/:id')}><MesaDetalle /></RequireAuth> },
+      { path: '/pedidos/nuevo',     element: <RequireAuth roles={rolesFor('/pedidos/nuevo')}><AgregarPedido /></RequireAuth> },
+      { path: '/pedidos/agregar',   element: <RequireAuth roles={rolesFor('/pedidos/agregar')}><AgregarPedido /></RequireAuth> },
+      { path: '/cocina/pendientes', element: <RequireAuth roles={rolesFor('/cocina/pendientes')}><CocinaPendientes /></RequireAuth> },
+      { path: '/cajero/cobros',     element: <RequireAuth roles={rolesFor('/cajero/cobros')}><CajeroCobros /></RequireAuth> },
+      { path: '/admin/dashboard',   element: <RequireAuth roles={rolesFor('/admin/dashboard')}><Dashboard /></RequireAuth> },
+      { path: '/admin/roles',       element: <RequireAuth roles={rolesFor('/admin/roles')}><Roles /></RequireAuth> },
+      { path: '/admin/platos',      element: <RequireAuth roles={rolesFor('/admin/platos')}><AdminPlatos /></RequireAuth> },
+      { path: '/admin/usuarios',    element: <RequireAuth roles={rolesFor('/admin/usuarios')}><AdminUsuarios /></RequireAuth> },
     ],
   },
 ])

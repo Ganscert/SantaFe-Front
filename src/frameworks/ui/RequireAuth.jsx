@@ -28,6 +28,10 @@ export default function RequireAuth({ children, roles }) {
 export function defaultHomeForRole(role) {
   switch (role) {
     case 'cliente':       return '/mi-mesa'
+    case 'admin':         return '/admin/dashboard'
+    case 'gerente':       return '/admin/dashboard'
+    case 'cocinero':      return '/cocina/pendientes'
+    case 'cajero':        return '/cajero/cobros'
     case 'recepcionista': return '/tablero-mesas'
     case 'mesero':        return '/tablero-mesas'
     default:              return '/tablero-mesas'

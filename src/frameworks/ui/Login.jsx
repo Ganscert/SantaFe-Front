@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LogIn, UserPlus, Eye, EyeOff, QrCode, ShieldCheck, Utensils, Users, CircleDollarSign,
+  Crown, Briefcase, ChefHat,
 } from 'lucide-react'
 import { useAuth, ROLES } from '../state/AuthContext.jsx'
 import { defaultHomeForRole } from './RequireAuth.jsx'
@@ -9,10 +10,13 @@ import { defaultHomeForRole } from './RequireAuth.jsx'
 const PENDING_TOKEN_KEY = 'santa-fe:pending-join-token'
 
 const ROLE_LABEL = {
+  [ROLES.ADMIN]:         'Administrador',
+  [ROLES.GERENTE]:       'Gerente',
   [ROLES.RECEPCIONISTA]: 'Recepcionista',
   [ROLES.MESERO]:        'Mesero',
-  [ROLES.CLIENTE]:       'Cliente',
+  [ROLES.COCINERO]:      'Cocinero',
   [ROLES.CAJERO]:        'Cajero',
+  [ROLES.CLIENTE]:       'Cliente',
 }
 
 export default function Login() {
@@ -142,7 +146,7 @@ export default function Login() {
             {tab === 'register' && (
               <Field label="Rol">
                 <div className="grid grid-cols-3 gap-2">
-                  {Object.values(ROLES).map((r) => (
+                  {[ROLES.CLIENTE, ROLES.MESERO, ROLES.RECEPCIONISTA].map((r) => (
                     <button
                       key={r}
                       type="button"
@@ -187,8 +191,11 @@ export default function Login() {
               Cuentas demo
             </p>
             <div className="grid grid-cols-2 gap-1.5">
+              <DemoBtn icon={Crown}             label="Admin"     onClick={() => loginAs('admin@santafe.pe')} />
+              <DemoBtn icon={Briefcase}         label="Gerente"   onClick={() => loginAs('gerente@santafe.pe')} />
               <DemoBtn icon={ShieldCheck}       label="Recepción" onClick={() => loginAs('recepcion@santafe.pe')} />
               <DemoBtn icon={Utensils}          label="Mesero"    onClick={() => loginAs('mesero@santafe.pe')} />
+              <DemoBtn icon={ChefHat}           label="Cocinero"  onClick={() => loginAs('cocinero@santafe.pe')} />
               <DemoBtn icon={CircleDollarSign}  label="Cajero"    onClick={() => loginAs('cajero@santafe.pe')} />
               <DemoBtn icon={Users}             label="Cliente"   onClick={() => loginAs('cliente@santafe.pe')} />
             </div>

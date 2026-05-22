@@ -7,18 +7,24 @@ const STORAGE_KEY_USERS   = 'santa-fe:auth-users'
 // Los roles administrativos (admin, gerente, cocinero, cajero) coexisten para
 // compatibilidad con el panel de Roles, pero el QR-join sólo usa estos 3.
 export const ROLES = {
+  ADMIN:         'admin',
+  GERENTE:       'gerente',
   RECEPCIONISTA: 'recepcionista',
   MESERO:        'mesero',
-  CLIENTE:       'cliente',
+  COCINERO:      'cocinero',
   CAJERO:        'cajero',
+  CLIENTE:       'cliente',
 }
 
 // Demo users que existen siempre. Password en texto plano — entorno simulado.
 const DEMO_USERS = [
+  { id: 'demo-admin',   name: 'Admin Demo',     email: 'admin@santafe.pe',     password: 'demo1234', role: ROLES.ADMIN },
+  { id: 'demo-gerente', name: 'Gerente Demo',   email: 'gerente@santafe.pe',   password: 'demo1234', role: ROLES.GERENTE },
   { id: 'demo-recep',   name: 'Recepción Demo', email: 'recepcion@santafe.pe', password: 'demo1234', role: ROLES.RECEPCIONISTA },
   { id: 'demo-mesero',  name: 'Mesero Demo',    email: 'mesero@santafe.pe',    password: 'demo1234', role: ROLES.MESERO },
-  { id: 'demo-cli',     name: 'Cliente Demo',   email: 'cliente@santafe.pe',   password: 'demo1234', role: ROLES.CLIENTE },
+  { id: 'demo-cocinero',name: 'Cocinero Demo',  email: 'cocinero@santafe.pe', password: 'demo1234', role: ROLES.COCINERO },
   { id: 'demo-cajero',  name: 'Cajero Demo',    email: 'cajero@santafe.pe',    password: 'demo1234', role: ROLES.CAJERO },
+  { id: 'demo-cli',     name: 'Cliente Demo',   email: 'cliente@santafe.pe',   password: 'demo1234', role: ROLES.CLIENTE },
 ]
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

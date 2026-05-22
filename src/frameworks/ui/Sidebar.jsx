@@ -6,16 +6,18 @@ import {
 import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
+import { rolesFor } from './roleAccess.js'
 
 const ITEMS = [
-  { to: '/admin/dashboard',   label: 'Dashboard',     icon: LayoutDashboard, group: 'Supervisión' },
-  { to: '/admin/usuarios',    label: 'Usuarios',      icon: Users,           group: 'Supervisión' },
-  { to: '/admin/roles',       label: 'Roles',         icon: ShieldCheck,     group: 'Supervisión' },
-  { to: '/tablero-mesas',     label: 'Tablero',       icon: ClipboardList,   group: 'Operación' },
-  { to: '/cocina/pendientes', label: 'Cocina',        icon: ChefHat,         group: 'Operación' },
-  { to: '/cajero/cobros',    label: 'Cobros',        icon: Receipt,         group: 'Operación' },
-  { to: '/pedidos/nuevo',    label: 'Nuevo pedido',  icon: PlusCircle,      group: 'Operación' },
-  { to: '/menu',              label: 'Menú',          icon: Utensils,        group: 'Catálogo' },
+  { to: '/admin/dashboard',   label: 'Dashboard',      icon: LayoutDashboard, group: 'Supervisión' },
+  { to: '/admin/usuarios',    label: 'Usuarios',       icon: Users,           group: 'Supervisión' },
+  { to: '/admin/roles',       label: 'Roles',          icon: ShieldCheck,     group: 'Supervisión' },
+  { to: '/mi-mesa',           label: 'Mi mesa',        icon: ClipboardList,   group: 'Operación' },
+  { to: '/tablero-mesas',     label: 'Tablero',        icon: ClipboardList,   group: 'Operación' },
+  { to: '/cocina/pendientes', label: 'Cocina',         icon: ChefHat,         group: 'Operación' },
+  { to: '/cajero/cobros',     label: 'Cobros',         icon: Receipt,         group: 'Operación' },
+  { to: '/pedidos/nuevo',     label: 'Nuevo pedido',   icon: PlusCircle,      group: 'Operación' },
+  { to: '/menu',              label: 'Menú',           icon: Utensils,        group: 'Catálogo' },
   { to: '/admin/platos',      label: 'Gestionar Menú', icon: UtensilsCrossed, group: 'Catálogo' },
 ]
 
@@ -59,8 +61,13 @@ export default function Sidebar({ open, onClose }) {
     </NavLink>
   )
 
-  // Agrupar items por bloque
-  const groups = ITEMS.reduce((acc, it) => {
+  // Filtrar por rol de la sesión y agrupar
+  const role = session?.role
+  const visibles = ITEMS.filter((it) => {
+    const allowed = rolesFor(it.to)
+    return role && allowed.includes(role)
+  })
+  const groups = visibles.reduce((acc, it) => {
     (acc[it.group] = acc[it.group] || []).push(it)
     return acc
   }, {})
