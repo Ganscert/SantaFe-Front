@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useLiveSync } from './LiveSyncContext.jsx'
 
 const STORAGE_KEY = 'santa-fe:platos'
 const PlatosCtx = createContext(null)
@@ -19,7 +20,14 @@ function nuevoId() {
 }
 
 export function PlatosProvider({ children }) {
+  const { serverState, sendMessage, connected } = useLiveSync() || {}
   const [platos, setPlatos] = useState(leerStorage)
+
+  useEffect(() => {
+    if (serverState?.platos) {
+      setPlatos(serverState.platos)
+    }
+  }, [serverState?.platos])
 
   useEffect(() => {
     try {
@@ -29,17 +37,34 @@ export function PlatosProvider({ children }) {
     }
   }, [platos])
 
+  const syncPlatos = useCallback((nextPlatos) => {
+    if (!connected) return
+    sendMessage({ type: 'sync:platos', platos: nextPlatos })
+  }, [connected, sendMessage])
+
   const agregarPlato = useCallback((data) => {
-    setPlatos((prev) => [{ id: nuevoId(), creadoEn: Date.now(), ...data }, ...prev])
-  }, [])
+    setPlatos((prev) => {
+      const next = [{ id: nuevoId(), creadoEn: Date.now(), ...data }, ...prev]
+      syncPlatos(next)
+      return next
+    })
+  }, [syncPlatos])
 
   const actualizarPlato = useCallback((id, data) => {
-    setPlatos((prev) => prev.map((p) => (p.id === id ? { ...p, ...data, actualizadoEn: Date.now() } : p)))
-  }, [])
+    setPlatos((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...data, actualizadoEn: Date.now() } : p))
+      syncPlatos(next)
+      return next
+    })
+  }, [syncPlatos])
 
   const eliminarPlato = useCallback((id) => {
-    setPlatos((prev) => prev.filter((p) => p.id !== id))
-  }, [])
+    setPlatos((prev) => {
+      const next = prev.filter((p) => p.id !== id)
+      syncPlatos(next)
+      return next
+    })
+  }, [syncPlatos])
 
   const value = useMemo(
     () => ({ platos, agregarPlato, actualizarPlato, eliminarPlato }),

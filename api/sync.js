@@ -15,6 +15,7 @@ const ALLOWED = new Set([
   'sync:mesas',
   'sync:pedidos',
   'sync:tokens',
+  'sync:platos',
   'sync:reset',
 ])
 

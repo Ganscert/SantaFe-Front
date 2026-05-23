@@ -56,6 +56,11 @@ export const LiveSyncProvider = ({ children }) => {
         setServerState((prev) => ({ ...(prev || {}), tokens: data.tokens }))
       }
     })
+    channel.bind('sync:platos', (data) => {
+      if (Array.isArray(data?.platos)) {
+        setServerState((prev) => ({ ...(prev || {}), platos: data.platos }))
+      }
+    })
     channel.bind('sync:reset', () => {
       setServerState({ mesas: [], pedidos: [], tokens: [] })
     })

@@ -111,12 +111,24 @@ export default function Join() {
       cambiarEstadoA?.(mesa.numeroMesa, 'ocupada')
     }
 
-    // Registrar el comensal en la lista de integrantes de la mesa
+    // Registrar el comensal en la lista de integrantes y crear su cuenta automáticamente
     const integrantes = mesa.integrantes || []
+    const cuentas = mesa.cuentas || []
+    const patch = {}
+
     if (!integrantes.some((i) => i.userId === session.id)) {
-      actualizarMesa?.(mesa.numeroMesa, {
-        integrantes: [...integrantes, { userId: session.id, nombre: session.name, joinedAt: Date.now() }],
-      })
+      patch.integrantes = [...integrantes, { userId: session.id, nombre: session.name, joinedAt: Date.now() }]
+    }
+
+    if (!cuentas.some((c) => c.userId === session.id)) {
+      const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36)
+      patch.cuentas = [...cuentas, { id: newId, nombre: session.name, abierta: true, creadaEn: Date.now(), userId: session.id }]
+    }
+
+    if (Object.keys(patch).length > 0) {
+      actualizarMesa?.(mesa.numeroMesa, patch)
     }
 
     setStatus('success')
