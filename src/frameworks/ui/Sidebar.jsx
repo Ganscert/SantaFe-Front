@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, ChefHat, PlusCircle, Utensils, UtensilsCrossed,
-  ShieldCheck, LogOut, X, Sun, Moon, Users, Receipt,
+  ShieldCheck, LogOut, X, Sun, Moon, Users, Receipt, UserCog,
 } from 'lucide-react'
 import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
@@ -10,6 +10,7 @@ import { rolesFor } from './roleAccess.js'
 
 const ITEMS = [
   { to: '/admin/dashboard',   label: 'Dashboard',      icon: LayoutDashboard, group: 'Supervisión' },
+  { to: '/admin/meseros',     label: 'Meseros',        icon: UserCog,         group: 'Supervisión' },
   { to: '/admin/usuarios',    label: 'Usuarios',       icon: Users,           group: 'Supervisión' },
   { to: '/admin/roles',       label: 'Roles',          icon: ShieldCheck,     group: 'Supervisión' },
   { to: '/mi-mesa',           label: 'Mi mesa',        icon: ClipboardList,   group: 'Operación' },

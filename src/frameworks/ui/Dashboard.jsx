@@ -7,11 +7,13 @@ import {
 import {
   LayoutDashboard, TrendingUp, Receipt, Users, Utensils,
   Download, Sun, Moon, Wifi, WifiOff, ArrowLeft, Activity, Calendar,
-  UserCheck, Clock,
+  UserCheck, Clock, Timer,
 } from 'lucide-react'
 import { useDashboardMetrics } from '../../usecases/useDashboardMetrics.js'
+import { useTiempoServicio } from '../../usecases/useServicioMetrics.js'
 import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { useAuth } from '../state/AuthContext.jsx'
 
 const PALETA = ['#C1440E', '#6B7C4F', '#D4A017', '#3b82f6', '#8b5cf6', '#ec4899']
 const PERIODOS = [
@@ -189,10 +191,32 @@ function descargarCSV(csv, period) {
   URL.revokeObjectURL(url)
 }
 
+function TiempoServicioChart({ data, theme }) {
+  const grid = theme === 'dark' ? '#1e293b' : '#e2e8f0'
+  const axis = theme === 'dark' ? '#64748b' : '#94a3b8'
+  const fmtSeg = (v) => { const m = Math.floor(v / 60); return m > 0 ? `${m}m` : `${v}s` }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <CartesianGrid stroke={grid} strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtSeg} />
+        <YAxis type="category" dataKey="plato" stroke={axis} fontSize={10} tickLine={false} axisLine={false} width={100} tick={{ textAnchor: 'end' }} />
+        <Tooltip content={<ChartTooltip formatter={(v) => fmtSeg(v)} />} cursor={{ fill: theme === 'dark' ? '#0f172a' : '#f1f5f9' }} />
+        <Bar dataKey="promedio_seg" name="Prom." radius={[0, 8, 8, 0]} animationDuration={700}>
+          {data.map((_, i) => <Cell key={i} fill={PALETA[i % PALETA.length]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
 export default function Dashboard() {
   const [period, setPeriod] = useState('today')
   const { theme } = useTheme()
+  const { session } = useAuth()
   const { kpis, salesOverTime, topItems, mesaPerformance, pedidosRecientes, cuentasActivas, csv, isEmpty } = useDashboardMetrics(period)
+  const { data: tiempoData, loading: tiempoLoading } = useTiempoServicio()
+  const puedeVerTiempo = ['admin', 'gerente'].includes(session?.role)
 
   const periodLabel = PERIODOS.find(p => p.id === period)?.label.toLowerCase()
 
@@ -363,6 +387,37 @@ export default function Dashboard() {
             </div>
           </div>
         </section>
+
+        {/* ── Tiempo de servicio por plato (admin/gerente) ── */}
+        {puedeVerTiempo && (
+          <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-bold flex items-center gap-2">
+                  <Timer size={15} className="text-amber-500" /> Tiempo de servicio por plato
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Promedio en_preparacion → entregado · top 10
+                </p>
+              </div>
+              <Link
+                to="/admin/meseros"
+                className="text-xs font-bold text-[#C1440E] hover:underline"
+              >
+                Ver panel completo →
+              </Link>
+            </div>
+            <div className="flex-1 min-h-[280px]">
+              {tiempoLoading ? (
+                <div className="h-64 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+              ) : !tiempoData.length ? (
+                <EmptyState />
+              ) : (
+                <TiempoServicioChart data={tiempoData} theme={theme} />
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ── Cuentas activas + pedidos recientes ── */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">

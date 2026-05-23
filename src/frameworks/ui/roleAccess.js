@@ -2,6 +2,7 @@
 
 export const ROUTE_ACCESS = {
   '/admin/dashboard':   ['admin', 'gerente'],
+  '/admin/meseros':     ['admin', 'gerente'],
   '/admin/usuarios':    ['admin', 'gerente'],
   '/admin/roles':       ['admin'],
   '/admin/platos':      ['admin', 'gerente'],

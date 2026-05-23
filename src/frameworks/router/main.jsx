@@ -9,6 +9,7 @@ import MesaDetalle from '../ui/MesaDetalle.jsx'
 import AgregarPedido from '../ui/AgregarPedido.jsx'
 import CocinaPendientes from '../ui/CocinaPendientes.jsx'
 import Dashboard from '../ui/Dashboard.jsx'
+import RendimientoMeseros from '../ui/RendimientoMeseros.jsx'
 import Roles from '../ui/Roles.jsx'
 import AdminPlatos from '../ui/AdminPlatos.jsx'
 import AdminUsuarios from '../ui/AdminUsuarios.jsx'
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
       { path: '/cocina/pendientes', element: <RequireAuth roles={rolesFor('/cocina/pendientes')}><CocinaPendientes /></RequireAuth> },
       { path: '/cajero/cobros',     element: <RequireAuth roles={rolesFor('/cajero/cobros')}><CajeroCobros /></RequireAuth> },
       { path: '/admin/dashboard',   element: <RequireAuth roles={rolesFor('/admin/dashboard')}><Dashboard /></RequireAuth> },
+      { path: '/admin/meseros',     element: <RequireAuth roles={rolesFor('/admin/meseros')}><RendimientoMeseros /></RequireAuth> },
       { path: '/admin/roles',       element: <RequireAuth roles={rolesFor('/admin/roles')}><Roles /></RequireAuth> },
       { path: '/admin/platos',      element: <RequireAuth roles={rolesFor('/admin/platos')}><AdminPlatos /></RequireAuth> },
       { path: '/admin/usuarios',    element: <RequireAuth roles={rolesFor('/admin/usuarios')}><AdminUsuarios /></RequireAuth> },
