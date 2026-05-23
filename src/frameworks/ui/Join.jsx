@@ -6,9 +6,44 @@ import { useTokens } from '../state/TokensContext.jsx'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { supabase, RESTAURANTE_ID } from '../../adapters/supabase.js'
 
 const PENDING_TOKEN_KEY = 'santa-fe:pending-join-token'
 const ACTIVE_CLIENT_MESA_KEY = 'santa-fe:client-mesa'
+
+// Fail-closed: registra al comensal en Supabase (upsert por mesa+username).
+// Devuelve { ok:true } o { ok:false, error }. Si supabase no está configurado
+// también rechaza: la política del producto es no permitir interacción sin
+// persistencia validada en la BD.
+async function registrarComensalEnSupabase(mesa, session) {
+  if (!supabase) {
+    return { ok: false, error: 'Conexión con Supabase no configurada (.env.local).' }
+  }
+  // Resolver mesa_id real en Supabase por (restaurante_id, numero_mesa).
+  // El id local proviene del WS y NO coincide con el UUID de la BD.
+  const { data: mesaRow, error: mErr } = await supabase
+    .from('mesas')
+    .select('id')
+    .eq('restaurante_id', RESTAURANTE_ID)
+    .eq('numero_mesa', mesa.numeroMesa)
+    .maybeSingle()
+  if (mErr) return { ok: false, error: `BD mesas: ${mErr.message}` }
+  if (!mesaRow) return { ok: false, error: `Mesa ${mesa.numeroMesa} no existe en la BD.` }
+
+  const username = (session?.name || session?.id || '').trim()
+  if (!username) return { ok: false, error: 'Sesión sin nombre de usuario.' }
+
+  const { error: cErr } = await supabase
+    .from('comensales')
+    .upsert(
+      { mesa_id: mesaRow.id, username, activo: true },
+      { onConflict: 'mesa_id,username' },
+    )
+    .select('id, total_cuenta, activo')
+    .single()
+  if (cErr) return { ok: false, error: `BD comensales: ${cErr.message}` }
+  return { ok: true }
+}
 
 // Tiempo máximo de espera para que llegue el estado del WS antes de fallar.
 // Necesario para escenarios cross-device: el teléfono del cliente no tiene
@@ -90,71 +125,80 @@ export default function Join() {
       return
     }
 
-    // ── Aplicar el token (una sola vez) ──
+    // ── Validación + aplicación del token (una sola vez) ──
+    // Gate de persistencia: el comensal DEBE existir en Supabase antes de
+    // mutar nada en el estado local. Si falla, permitimos reintento.
     consumidoRef.current = true
-    const res = usarToken(token.token, session.id)
-    if (!res.ok) {
-      setStatus('error')
-      setMessage(res.error || 'No se pudo aplicar el código.')
-      return
-    }
-
-    try {
-      localStorage.removeItem(PENDING_TOKEN_KEY)
-      localStorage.setItem(ACTIVE_CLIENT_MESA_KEY, JSON.stringify({
-        mesaId: mesa.id,
-        numeroMesa: mesa.numeroMesa,
-        userId: session.id,
-        joinedAt: Date.now(),
-      }))
-    } catch {}
-
-    if (mesa.estado === 'disponible' || mesa.estado === 'por_cobrar') {
-      cambiarEstadoA?.(mesa.numeroMesa, 'ocupada')
-    }
-
-    // Registrar el comensal en la lista de integrantes y crear su cuenta automáticamente
-    const integrantes = mesa.integrantes || []
-    const cuentas = mesa.cuentas || []
-    const patch = {}
-
-    if (!integrantes.some((i) => i.userId === session.id)) {
-      patch.integrantes = [...integrantes, { userId: session.id, nombre: session.name, joinedAt: Date.now() }]
-    }
-
-    if (!cuentas.some((c) => c.userId === session.id)) {
-      const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now().toString(36)
-      patch.cuentas = [...cuentas, { id: newId, nombre: session.name, abierta: true, creadaEn: Date.now(), userId: session.id }]
-    }
-
-    if (Object.keys(patch).length > 0) {
-      actualizarMesa?.(mesa.numeroMesa, patch)
-    }
-
-    // Aplicar transferencia pendiente (cuando el cliente cambia de mesa)
-    const newCuentaId = patch.cuentas
-      ? patch.cuentas[patch.cuentas.length - 1].id
-      : cuentas.find((c) => c.userId === session.id)?.id
-
-    try {
-      const raw = localStorage.getItem('santa-fe:pending-transfer')
-      const transfer = raw ? JSON.parse(raw) : null
-      if (transfer && newCuentaId && transfer.oldMesaNumero !== mesa.numeroMesa) {
-        transferirPedidos(transfer.oldMesaNumero, transfer.cuentaId, mesa.numeroMesa, newCuentaId)
-        localStorage.removeItem('santa-fe:pending-transfer')
+    ;(async () => {
+      const reg = await registrarComensalEnSupabase(mesa, session)
+      if (!reg.ok) {
+        consumidoRef.current = false
+        setStatus('error')
+        setMessage(reg.error)
+        return
       }
-    } catch {}
 
-    setStatus('success')
-    setMessage(`Te uniste a la Mesa ${mesa.numeroMesa}`)
+      const res = usarToken(token.token, session.id)
+      if (!res.ok) {
+        setStatus('error')
+        setMessage(res.error || 'No se pudo aplicar el código.')
+        return
+      }
 
-    const dest = session.role === ROLES.CLIENTE ? '/mi-mesa' : `/mesa/${mesa.numeroMesa}`
-    // No usamos cleanup del timeout: tokens muta tras usarToken y re-corre el
-    // effect; el cleanup cancelaría el navigate. El componente se desmonta al
-    // navegar, así que el timeout fire-and-forget es seguro.
-    setTimeout(() => navigate(dest, { replace: true }), 900)
+      try {
+        localStorage.removeItem(PENDING_TOKEN_KEY)
+        localStorage.setItem(ACTIVE_CLIENT_MESA_KEY, JSON.stringify({
+          mesaId: mesa.id,
+          numeroMesa: mesa.numeroMesa,
+          userId: session.id,
+          joinedAt: Date.now(),
+        }))
+      } catch {}
+
+      if (mesa.estado === 'disponible' || mesa.estado === 'por_cobrar') {
+        cambiarEstadoA?.(mesa.numeroMesa, 'ocupada')
+      }
+
+      // Registrar el comensal en la lista de integrantes y crear su cuenta automáticamente
+      const integrantes = mesa.integrantes || []
+      const cuentas = mesa.cuentas || []
+      const patch = {}
+
+      if (!integrantes.some((i) => i.userId === session.id)) {
+        patch.integrantes = [...integrantes, { userId: session.id, nombre: session.name, joinedAt: Date.now() }]
+      }
+
+      if (!cuentas.some((c) => c.userId === session.id)) {
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2) + Date.now().toString(36)
+        patch.cuentas = [...cuentas, { id: newId, nombre: session.name, abierta: true, creadaEn: Date.now(), userId: session.id }]
+      }
+
+      if (Object.keys(patch).length > 0) {
+        actualizarMesa?.(mesa.numeroMesa, patch)
+      }
+
+      // Aplicar transferencia pendiente (cuando el cliente cambia de mesa)
+      const newCuentaId = patch.cuentas
+        ? patch.cuentas[patch.cuentas.length - 1].id
+        : cuentas.find((c) => c.userId === session.id)?.id
+
+      try {
+        const raw = localStorage.getItem('santa-fe:pending-transfer')
+        const transfer = raw ? JSON.parse(raw) : null
+        if (transfer && newCuentaId && transfer.oldMesaNumero !== mesa.numeroMesa) {
+          transferirPedidos(transfer.oldMesaNumero, transfer.cuentaId, mesa.numeroMesa, newCuentaId)
+          localStorage.removeItem('santa-fe:pending-transfer')
+        }
+      } catch {}
+
+      setStatus('success')
+      setMessage(`Te uniste a la Mesa ${mesa.numeroMesa}`)
+
+      const dest = session.role === ROLES.CLIENTE ? '/mi-mesa' : `/mesa/${mesa.numeroMesa}`
+      setTimeout(() => navigate(dest, { replace: true }), 900)
+    })()
     // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenStr, codigoParam, session?.id, tokens, mesas])

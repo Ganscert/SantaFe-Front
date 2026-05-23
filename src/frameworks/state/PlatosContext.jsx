@@ -1,8 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
+import { supabase, RESTAURANTE_ID } from '../../adapters/supabase.js'
 
 const STORAGE_KEY = 'santa-fe:platos'
 const PlatosCtx = createContext(null)
+
+// Adapta una fila de `public.platos` (snake_case) al shape interno del front.
+// El schema base no incluye categoría/imagen/ingredientes → defaults seguros.
+function mapRowToPlato(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    precio: Number(row.precio),
+    disponible: row.disponible,
+    categoria: row.categoria || 'Plato Principal',
+    ingredientes: row.ingredientes || [],
+    imagenData: row.imagen_data || null,
+    creadoEn: row.creado_en ? new Date(row.creado_en).getTime() : Date.now(),
+    remoto: true,
+  }
+}
 
 function leerStorage() {
   if (typeof window === 'undefined') return []
@@ -48,6 +65,34 @@ export function PlatosProvider({ children }) {
       /* quota excedida — ignoramos silenciosamente */
     }
   }, [platos])
+
+  // ── Realtime menú: inyecta nuevos platos sin recargar la página ──
+  // Suscripción a INSERT en `public.platos` filtrada por restaurante (tenant).
+  // El payload se mapea y se concatena al estado; la dedupe evita duplicar si
+  // el plato también llegó por el WS de Pusher.
+  useEffect(() => {
+    if (!supabase) return
+    const channel = supabase
+      .channel(`platos-insert-${RESTAURANTE_ID}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'platos',
+          filter: `restaurante_id=eq.${RESTAURANTE_ID}`,
+        },
+        (payload) => {
+          const incoming = mapRowToPlato(payload.new)
+          setPlatos((prev) => {
+            if (prev.some((p) => p.id === incoming.id)) return prev
+            return [incoming, ...prev]
+          })
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const syncPlatos = useCallback((nextPlatos) => {
     if (!connected) return

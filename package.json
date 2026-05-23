@@ -11,6 +11,7 @@
     "sync:roles": "node -e \"require('fs').copyFileSync('../roles_permissions.json','public/roles_permissions.json'); console.log('✓ roles_permissions.json sincronizado a public/')\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^1.14.0",
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0",
