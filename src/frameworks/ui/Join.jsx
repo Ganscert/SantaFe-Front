@@ -6,43 +6,20 @@ import { useTokens } from '../state/TokensContext.jsx'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
-import { supabase, RESTAURANTE_ID } from '../../adapters/supabase.js'
+import { db } from '../../adapters/db.js'
 
 const PENDING_TOKEN_KEY = 'santa-fe:pending-join-token'
 const ACTIVE_CLIENT_MESA_KEY = 'santa-fe:client-mesa'
 
-// Fail-closed: registra al comensal en Supabase (upsert por mesa+username).
-// Devuelve { ok:true } o { ok:false, error }. Si supabase no está configurado
-// también rechaza: la política del producto es no permitir interacción sin
-// persistencia validada en la BD.
-async function registrarComensalEnSupabase(mesa, session) {
-  if (!supabase) {
-    return { ok: false, error: 'Conexión con Supabase no configurada (.env.local).' }
-  }
-  // Resolver mesa_id real en Supabase por (restaurante_id, numero_mesa).
-  // El id local proviene del WS y NO coincide con el UUID de la BD.
-  const { data: mesaRow, error: mErr } = await supabase
-    .from('mesas')
-    .select('id')
-    .eq('restaurante_id', RESTAURANTE_ID)
-    .eq('numero_mesa', mesa.numeroMesa)
-    .maybeSingle()
-  if (mErr) return { ok: false, error: `BD mesas: ${mErr.message}` }
-  if (!mesaRow) return { ok: false, error: `Mesa ${mesa.numeroMesa} no existe en la BD.` }
-
+async function registrarComensal(mesa, session) {
   const username = (session?.name || session?.id || '').trim()
   if (!username) return { ok: false, error: 'Sesión sin nombre de usuario.' }
-
-  const { error: cErr } = await supabase
-    .from('comensales')
-    .upsert(
-      { mesa_id: mesaRow.id, username, activo: true },
-      { onConflict: 'mesa_id,username' },
-    )
-    .select('id, total_cuenta, activo')
-    .single()
-  if (cErr) return { ok: false, error: `BD comensales: ${cErr.message}` }
-  return { ok: true }
+  try {
+    await db.comensales.upsert({ numero_mesa: mesa.numeroMesa, username })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
 }
 
 // Tiempo máximo de espera para que llegue el estado del WS antes de fallar.
@@ -130,7 +107,7 @@ export default function Join() {
     // mutar nada en el estado local. Si falla, permitimos reintento.
     consumidoRef.current = true
     ;(async () => {
-      const reg = await registrarComensalEnSupabase(mesa, session)
+      const reg = await registrarComensal(mesa, session)
       if (!reg.ok) {
         consumidoRef.current = false
         setStatus('error')

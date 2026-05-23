@@ -9,5 +9,8 @@ export default defineConfig({
     port: process.env.PORT ? Number(process.env.PORT) : undefined,
     strictPort: !!process.env.PORT,
     allowedHosts: ['t42v4rjh-5173.use2.devtunnels.ms'],
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+    },
   },
 })
