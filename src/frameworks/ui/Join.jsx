@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Loader2, QrCode } from 'lucide-react'
 import { useAuth, ROLES } from '../state/AuthContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useMesas } from '../state/MesasContext.jsx'
+import { usePedidos } from '../state/PedidosContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
 
 const PENDING_TOKEN_KEY = 'santa-fe:pending-join-token'
@@ -24,6 +25,7 @@ export default function Join() {
   const { session } = useAuth()
   const { tokens, buscarPorToken, buscarPorCodigo, usarToken } = useTokens()
   const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
+  const { transferirPedidos } = usePedidos()
   const { connected } = useLiveSync() || {}
 
   const [status, setStatus] = useState('checking') // checking | success | error
@@ -130,6 +132,20 @@ export default function Join() {
     if (Object.keys(patch).length > 0) {
       actualizarMesa?.(mesa.numeroMesa, patch)
     }
+
+    // Aplicar transferencia pendiente (cuando el cliente cambia de mesa)
+    const newCuentaId = patch.cuentas
+      ? patch.cuentas[patch.cuentas.length - 1].id
+      : cuentas.find((c) => c.userId === session.id)?.id
+
+    try {
+      const raw = localStorage.getItem('santa-fe:pending-transfer')
+      const transfer = raw ? JSON.parse(raw) : null
+      if (transfer && newCuentaId && transfer.oldMesaNumero !== mesa.numeroMesa) {
+        transferirPedidos(transfer.oldMesaNumero, transfer.cuentaId, mesa.numeroMesa, newCuentaId)
+        localStorage.removeItem('santa-fe:pending-transfer')
+      }
+    } catch {}
 
     setStatus('success')
     setMessage(`Te uniste a la Mesa ${mesa.numeroMesa}`)

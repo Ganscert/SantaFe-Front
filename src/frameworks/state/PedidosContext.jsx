@@ -125,6 +125,20 @@ export const PedidosProvider = ({ children }) => {
       return next
     }), [syncPedidos])
 
+  // Transfiere todos los pedidos de un (mesa, cuenta) origen a un (mesa, cuenta) destino.
+  // Se usa cuando el cliente cambia de mesa y arrastra sus pedidos activos.
+  const transferirPedidos = useCallback((oldMesaNumero, oldCuentaId, newMesaNumero, newCuentaId) => {
+    setPedidos(prev => {
+      const next = prev.map(p =>
+        p.mesa === Number(oldMesaNumero) && p.cuentaId === oldCuentaId
+          ? { ...p, mesa: Number(newMesaNumero), cuentaId: newCuentaId }
+          : p
+      )
+      syncPedidos(next)
+      return next
+    })
+  }, [syncPedidos])
+
   const pedidosPendientes    = useMemo(() => pedidos.filter(p => p.estado === 'pendiente'),      [pedidos])
   const pedidosEnPreparacion = useMemo(() => pedidos.filter(p => p.estado === 'en_preparacion'), [pedidos])
   const pedidosListos        = useMemo(() => pedidos.filter(p => p.estado === 'listo'),          [pedidos])
@@ -140,10 +154,11 @@ export const PedidosProvider = ({ children }) => {
     marcarListo,
     marcarEntregado,
     limpiarCocina,
+    transferirPedidos,
   }), [
     pedidos, pedidosPendientes, pedidosEnPreparacion, pedidosListos,
     contarActivosMesa, agregarPedido, marcarPreparando, marcarListo,
-    marcarEntregado, limpiarCocina,
+    marcarEntregado, limpiarCocina, transferirPedidos,
   ])
 
   return <PedidosContext.Provider value={value}>{children}</PedidosContext.Provider>

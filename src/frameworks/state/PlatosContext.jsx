@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
 
 const STORAGE_KEY = 'santa-fe:platos'
@@ -22,6 +22,18 @@ function nuevoId() {
 export function PlatosProvider({ children }) {
   const { serverState, sendMessage, connected } = useLiveSync() || {}
   const [platos, setPlatos] = useState(leerStorage)
+  const initSent = useRef(false)
+
+  // Broadcast inicial: cuando conecta, comparte los platos locales para que
+  // otros dispositivos recién conectados los reciban sin esperar una mutación.
+  useEffect(() => {
+    if (!connected) { initSent.current = false; return }
+    if (initSent.current) return
+    if (platos.length > 0) {
+      sendMessage?.({ type: 'sync:platos', platos })
+    }
+    initSent.current = true
+  }, [connected, platos, sendMessage])
 
   useEffect(() => {
     if (serverState?.platos) {

@@ -34,7 +34,7 @@ export default function MesaCliente() {
   const { mesas, actualizarMesa, cambiarEstadoA } = useMesas()
   const { pedidos, agregarPedido } = usePedidos()
   const { platos: platosAdmin } = usePlatos()
-  const { invalidarTokensDeMesa } = useTokens()
+  useTokens() // mantiene el contexto activo para sincronización
 
   // Leer localStorage una sola vez (no cambia durante la vida del componente).
   const activaRef = useRef(leerMesaActiva())
@@ -149,12 +149,28 @@ export default function MesaCliente() {
     navigate('/', { replace: true })
   }
 
-  function liberarMesa() {
-    // Para clientes en demo: opción de soltar la mesa (re-disponibiliza + invalida tokens)
+  function cambiarMesa() {
     if (!mesa) return
+
+    // Remover al usuario de integrantes y cuentas de la mesa actual
+    const nextIntegrantes = (mesa.integrantes || []).filter(i => i.userId !== session?.id)
+    const nextCuentas = (mesa.cuentas || []).filter(c => c.userId !== session?.id)
+    actualizarMesa(mesa.numeroMesa, { integrantes: nextIntegrantes, cuentas: nextCuentas })
+
+    // Guardar datos para transferir al unirse a la nueva mesa
+    const miCuenta = (mesa.cuentas || []).find(c => c.userId === session?.id)
+    if (miCuenta) {
+      try {
+        localStorage.setItem('santa-fe:pending-transfer', JSON.stringify({
+          cuentaId: miCuenta.id,
+          oldMesaNumero: mesa.numeroMesa,
+        }))
+      } catch {}
+    }
+
     try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
-    invalidarTokensDeMesa(mesa.id)
-    navigate('/', { replace: true })
+    // Navegar a /mi-mesa donde verán el UnirseConCodigo para escanear nueva mesa
+    navigate('/mi-mesa', { replace: true })
   }
 
   function pedirCuenta() {
@@ -237,8 +253,8 @@ export default function MesaCliente() {
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={liberarMesa}
-                title="Soltar mesa"
+                onClick={cambiarMesa}
+                title="Cambiar de mesa"
                 className="px-2.5 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Cambiar mesa
