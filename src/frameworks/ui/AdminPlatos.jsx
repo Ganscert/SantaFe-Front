@@ -1,19 +1,21 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  ChefHat, ImageIcon, Pencil, Plus, RotateCcw, Save, Trash2, Upload, X, Search,
+  ChefHat, ImageIcon, Loader2, Pencil, Plus, RotateCcw, Save, Trash2, Upload, X, Search,
 } from 'lucide-react'
 import { usePlatos } from '../state/PlatosContext.jsx'
+import { supabase } from '../../adapters/supabase.js'
 
 const CATEGORIAS = ['Entrada', 'Plato Principal', 'Postre', 'Bebida']
-const CARPETA_SIM = '/src/frameworks/assets/menu/'
+const BUCKET = 'imagenes-menu'
 
 const FORM_VACIO = {
   nombre: '',
   precio: '',
   categoria: 'Entrada',
   ingredientes: [],
-  imagenData: null,
+  imagenData: null,    // preview (base64) o URL pública existente al editar
   imagenNombre: '',
+  imagenFile: null,    // File real para subir a Storage (sólo en form nuevo)
 }
 
 const formatPEN = (n) =>
@@ -28,10 +30,20 @@ const slugify = (s = '') =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
-function rutaSimulada(nombre, archivo) {
-  if (!archivo) return null
-  const ext = archivo.includes('.') ? archivo.split('.').pop().toLowerCase() : 'jpg'
-  return `${CARPETA_SIM}${slugify(nombre) || 'plato'}.${ext}`
+// Sube un File al bucket público `imagenes-menu` y devuelve { url } o { error }.
+// El path incluye timestamp para evitar colisiones cuando dos platos comparten slug.
+async function subirImagen(nombre, file) {
+  if (!supabase) return { error: 'Supabase no configurado.' }
+  if (!file)     return { error: 'Archivo vacío.' }
+  const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const path = `${slugify(nombre) || 'plato'}-${Date.now()}.${ext}`
+  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  })
+  if (upErr) return { error: upErr.message }
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return { url: data?.publicUrl, path }
 }
 
 export default function AdminPlatos() {
@@ -44,6 +56,7 @@ export default function AdminPlatos() {
   const [error, setError] = useState('')
   const [filtro, setFiltro] = useState('Todos')
   const [busqueda, setBusqueda] = useState('')
+  const [subiendo, setSubiendo] = useState(false)
   const fileInputRef = useRef(null)
 
   const editando = Boolean(editandoId)
@@ -63,9 +76,10 @@ export default function AdminPlatos() {
       setError('El archivo seleccionado no es una imagen válida.')
       return
     }
+    // Preview local en base64 — la subida real ocurre al hacer Submit.
     const reader = new FileReader()
     reader.onload = () => {
-      setForm((f) => ({ ...f, imagenData: reader.result, imagenNombre: file.name }))
+      setForm((f) => ({ ...f, imagenData: reader.result, imagenNombre: file.name, imagenFile: file }))
       setError('')
     }
     reader.onerror = () => setError('No se pudo leer la imagen.')
@@ -73,7 +87,7 @@ export default function AdminPlatos() {
   }
 
   function quitarImagen() {
-    setForm((f) => ({ ...f, imagenData: null, imagenNombre: '' }))
+    setForm((f) => ({ ...f, imagenData: null, imagenNombre: '', imagenFile: null }))
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -92,7 +106,7 @@ export default function AdminPlatos() {
     setForm((f) => ({ ...f, ingredientes: f.ingredientes.filter((_, i) => i !== idx) }))
   }
 
-  function onSubmit(e) {
+  async function onSubmit(e) {
     e.preventDefault()
     setError('')
     const nombre = form.nombre.trim()
@@ -101,18 +115,37 @@ export default function AdminPlatos() {
     if (!Number.isFinite(precio) || precio <= 0) return setError('Ingresa un precio válido (> 0).')
     if (form.ingredientes.length === 0) return setError('Agrega al menos un ingrediente.')
 
+    // 1) Subir imagen a Storage si hay archivo nuevo. Si el usuario sólo
+    //    cambió texto al editar, conservamos la URL existente (imagenData).
+    let imagenUrl = form.imagenData || null
+    if (form.imagenFile) {
+      setSubiendo(true)
+      const up = await subirImagen(nombre, form.imagenFile)
+      setSubiendo(false)
+      if (up.error) {
+        setError(`No se pudo subir la imagen: ${up.error}`)
+        return
+      }
+      imagenUrl = up.url
+    }
+
+    // 2) Persistir el plato (PlatosContext decide si va a Supabase o local).
     const data = {
       nombre,
       precio,
       categoria: form.categoria,
       ingredientes: form.ingredientes,
-      imagenData: form.imagenData,
-      imagenNombre: form.imagenNombre,
-      imagenPath: rutaSimulada(nombre, form.imagenNombre),
+      imagenUrl,
+      imagenData: imagenUrl,  // alias legacy para componentes que aún lo leen
     }
 
-    if (editando) actualizarPlato(editandoId, data)
-    else agregarPlato(data)
+    const res = editando
+      ? await actualizarPlato(editandoId, data)
+      : await agregarPlato(data)
+    if (res?.ok === false) {
+      setError(`No se pudo guardar: ${res.error}`)
+      return
+    }
     resetFormulario()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -122,9 +155,10 @@ export default function AdminPlatos() {
       nombre: p.nombre,
       precio: String(p.precio),
       categoria: p.categoria,
-      ingredientes: [...p.ingredientes],
-      imagenData: p.imagenData ?? null,
+      ingredientes: [...(p.ingredientes || [])],
+      imagenData: p.imagenUrl ?? p.imagenData ?? null,
       imagenNombre: p.imagenNombre ?? '',
+      imagenFile: null,
     })
     setEditandoId(p.id)
     setError('')
@@ -247,8 +281,8 @@ export default function AdminPlatos() {
                 />
               </label>
               {form.imagenNombre && (
-                <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate" title={rutaSimulada(form.nombre, form.imagenNombre)}>
-                  📁 {rutaSimulada(form.nombre, form.imagenNombre)}
+                <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate" title={form.imagenNombre}>
+                  📁 {form.imagenNombre}
                 </p>
               )}
             </div>
@@ -350,10 +384,11 @@ export default function AdminPlatos() {
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#C1440E] text-white text-sm font-bold hover:bg-[#a33a0c] transition-colors shadow-sm"
+                  disabled={subiendo}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#C1440E] text-white text-sm font-bold hover:bg-[#a33a0c] disabled:opacity-60 transition-colors shadow-sm"
                 >
-                  <Save size={16} />
-                  {editando ? 'Guardar cambios' : 'Crear plato'}
+                  {subiendo ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {subiendo ? 'Subiendo…' : (editando ? 'Guardar cambios' : 'Crear plato')}
                 </button>
                 <button
                   type="button"
@@ -419,9 +454,9 @@ export default function AdminPlatos() {
                   }`}
                 >
                   <div className="relative h-44 bg-[#FDF6EC] dark:bg-slate-800 flex items-center justify-center">
-                    {p.imagenData ? (
+                    {(p.imagenUrl || p.imagenData) ? (
                       <img
-                        src={p.imagenData}
+                        src={p.imagenUrl || p.imagenData}
                         alt={p.nombre}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
@@ -447,7 +482,7 @@ export default function AdminPlatos() {
                       </span>
                     </div>
                     <ul className="flex flex-wrap gap-1 mb-3">
-                      {p.ingredientes.slice(0, 4).map((ing, j) => (
+                      {(p.ingredientes || []).slice(0, 4).map((ing, j) => (
                         <li
                           key={`${p.id}-ing-${j}`}
                           className="text-xs bg-[#FDF6EC] dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full border border-[#e8e0d8] dark:border-slate-700"
@@ -455,20 +490,12 @@ export default function AdminPlatos() {
                           {ing}
                         </li>
                       ))}
-                      {p.ingredientes.length > 4 && (
+                      {(p.ingredientes || []).length > 4 && (
                         <li className="text-xs text-slate-400 dark:text-slate-500 px-2 py-0.5">
                           +{p.ingredientes.length - 4} más
                         </li>
                       )}
                     </ul>
-                    {p.imagenPath && (
-                      <p
-                        className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate mb-3"
-                        title={p.imagenPath}
-                      >
-                        {p.imagenPath}
-                      </p>
-                    )}
                     <div className="mt-auto flex gap-2">
                       <button
                         type="button"

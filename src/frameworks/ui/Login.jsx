@@ -49,23 +49,28 @@ export default function Login() {
     navigate(from || defaultHomeForRole(session.role), { replace: true })
   }, [session, pendingToken, navigate, location.state])
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setBusy(true)
-    const result = tab === 'login'
-      ? login(email, password)
-      : register({ name, email, password, role })
-    setBusy(false)
-    if (!result.ok) setError(result.error)
-    // Si ok → el efecto arriba redirige
+    try {
+      const result = tab === 'login'
+        ? await login(email, password)
+        : await register({ name, email, password, role })
+      if (!result.ok) setError(result.error)
+      // Si ok → el efecto arriba redirige
+    } catch (err) {
+      setError(err?.message || 'Error inesperado.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function loginAs(demoEmail) {
+  async function loginAs(demoEmail) {
     setEmail(demoEmail)
     setPassword('demo1234')
     setError('')
-    const r = login(demoEmail, 'demo1234')
+    const r = await login(demoEmail, 'demo1234')
     if (!r.ok) setError(r.error)
   }
 
