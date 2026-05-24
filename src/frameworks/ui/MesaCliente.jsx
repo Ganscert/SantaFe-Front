@@ -55,6 +55,23 @@ export default function MesaCliente() {
   const [enviandoPedido, setEnviandoPedido] = useState(false)
   const enviandoRef = useRef(false)
   const salidaIniciadaRef = useRef(false)
+  // Pedidos desde DB para conocer estado de pago (cobrado_en). El state local
+  // de Pusher no incluye esa info — se refresca por polling cada 10s.
+  const [pedidosDB, setPedidosDB] = useState([])
+
+  // Polling de pedidos DB para conocer cuáles están cobrados.
+  useEffect(() => {
+    if (!mesa?.id) return
+    let cancelled = false
+    const fetchPedidos = () => {
+      db.pedidos.listByMesa(mesa.id)
+        .then(rows => { if (!cancelled) setPedidosDB(rows || []) })
+        .catch(() => {})
+    }
+    fetchPedidos()
+    const id = setInterval(fetchPedidos, 10000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [mesa?.id])
 
   // Cuando el personal libera la mesa (estado → disponible), expulsar al cliente.
   // mesa.estado se actualiza reactivamente vía WS sync en MesasContext.
@@ -108,6 +125,47 @@ export default function MesaCliente() {
           .sort((a, b) => b.creadoEn - a.creadoEn)
       : [],
     [pedidos, mesa, joinedAt],
+  )
+
+  // Pedidos DB del cliente desde que se unió. Tienen `cobrado_en` y `pago_id`.
+  const misPedidosDB = useMemo(
+    () => pedidosDB.filter(p => new Date(p.creado_en).getTime() >= joinedAt - 5000),
+    [pedidosDB, joinedAt],
+  )
+
+  // Match pedido local ↔ pedido DB por timestamp cercano (±10s) y items
+  // similares (mismo total). Devuelve { cobrado: boolean } o null si no matchea.
+  const inferirPago = (pedidoLocal) => {
+    if (!misPedidosDB.length) return null
+    const totalLocal = (pedidoLocal.items || []).reduce(
+      (s, it) => s + (Number(it.precio) || 0) * (Number(it.cantidad) || 0), 0
+    )
+    const candidato = misPedidosDB.find(p => {
+      const dt = Math.abs(new Date(p.creado_en).getTime() - pedidoLocal.creadoEn)
+      const totalDB = Number(p.total) || (p.pedido_items || []).reduce(
+        (s, it) => s + (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0), 0
+      )
+      return dt < 15000 && Math.abs(totalDB - totalLocal) < 0.5
+    })
+    if (!candidato) return null
+    return { cobrado: candidato.cobrado_en != null }
+  }
+
+  // Resumen "Por pagar": suma de pedidos DB míos sin cobrar.
+  const totalPorPagar = useMemo(
+    () => misPedidosDB
+      .filter(p => p.cobrado_en == null)
+      .reduce((s, p) => {
+        const t = Number(p.total) || (p.pedido_items || []).reduce(
+          (si, it) => si + (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0), 0
+        )
+        return s + t
+      }, 0),
+    [misPedidosDB],
+  )
+  const cantidadPorPagar = useMemo(
+    () => misPedidosDB.filter(p => p.cobrado_en == null).length,
+    [misPedidosDB],
   )
 
   const totalCarrito = carrito.reduce((s, it) => s + it.precio * it.cantidad, 0)
@@ -394,6 +452,23 @@ export default function MesaCliente() {
           </div>
         )}
 
+        {/* Aviso de pedidos por pagar */}
+        {cantidadPorPagar > 0 && (
+          <div className="mb-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-4 py-3 flex items-start gap-3">
+            <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+              <Receipt size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                Tienes {cantidadPorPagar} pedido{cantidadPorPagar !== 1 ? 's' : ''} sin pagar
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300/80">
+                Total pendiente: <span className="font-black">{formatPEN(totalPorPagar)}</span>. Revisá abajo cuáles están marcados como <span className="font-bold">Por pagar</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Pedir la cuenta */}
         <div className="mb-4">
           {(cuentaSolicitada || (mesa.solicitudesCuenta || []).some((s) => s.userId === session?.id)) ? (
@@ -430,13 +505,34 @@ export default function MesaCliente() {
                 const estado = items.every((it) => it.estado === 'listo') || p.estado === 'listo'
                   ? 'listo'
                   : p.estado
+                const pago = inferirPago(p)
                 return (
-                  <div key={p.id} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 px-4 py-3">
+                  <div
+                    key={p.id}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl ring-1 px-4 py-3 ${
+                      pago && !pago.cobrado
+                        ? 'ring-amber-300 dark:ring-amber-500/40'
+                        : 'ring-[#e8e0d8] dark:ring-slate-800'
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
                         <Clock size={11} /> {p.hora}
                       </span>
-                      <EstadoPedido estado={estado} />
+                      <div className="flex items-center gap-1.5">
+                        {pago && (
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              pago.cobrado
+                                ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                            }`}
+                          >
+                            {pago.cobrado ? 'Pagado' : 'Por pagar'}
+                          </span>
+                        )}
+                        <EstadoPedido estado={estado} />
+                      </div>
                     </div>
                     <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-0.5">
                       {items.map((it, idx) => (
