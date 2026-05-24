@@ -29,7 +29,13 @@ export const db = {
     delete: (id)         => req('/platos', 'DELETE', { id }),
   },
   comensales: {
-    listByMesa: (mesa_id)  => req(`/comensales?mesa_id=${mesa_id}`),
-    upsert:     (data)     => req('/comensales', 'POST', data),
+    listByMesa:  (mesa_id) => req(`/comensales?mesa_id=${mesa_id}`),
+    listTiempo:  ()        => req('/comensales?tipo=tiempo'),
+    upsert:      (data)    => req('/comensales', 'POST', data),
+    deactivate:  (mesa_id) => req('/comensales', 'PATCH', { mesa_id, activo: false }),
+  },
+  pagos: {
+    list:   (mesa_id) => req(`/pagos${mesa_id ? `?mesa_id=${encodeURIComponent(mesa_id)}` : ''}`),
+    insert: (data)    => req('/pagos', 'POST', data),
   },
 }

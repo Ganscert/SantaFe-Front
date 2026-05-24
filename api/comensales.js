@@ -4,19 +4,30 @@ const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-00
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   const sql = neon(process.env.DATABASE_URL)
   try {
     if (req.method === 'GET') {
-      const { mesa_id } = req.query
+      const { mesa_id, tipo } = req.query
+
+      if (tipo === 'tiempo') {
+        const rows = await sql`
+          SELECT c.id, c.username, c.creado_en, m.numero_mesa,
+            EXTRACT(EPOCH FROM (now() - c.creado_en)) / 60 AS minutos_en_mesa
+          FROM public.comensales c
+          JOIN public.mesas m ON m.id = c.mesa_id
+          WHERE c.restaurante_id = ${RESTAURANTE_ID} AND c.activo = true
+          ORDER BY minutos_en_mesa DESC`
+        return res.json(rows)
+      }
+
       const rows = await sql`
         SELECT id, mesa_id, username, total_cuenta, activo
         FROM public.comensales
-        WHERE mesa_id = ${mesa_id} AND activo = true
-      `
+        WHERE mesa_id = ${mesa_id} AND activo = true`
       return res.json(rows)
     }
 
@@ -26,8 +37,7 @@ export default async function handler(req, res) {
       if (!mesa_id && numero_mesa) {
         const [mesa] = await sql`
           SELECT id FROM public.mesas
-          WHERE restaurante_id = ${RESTAURANTE_ID} AND numero_mesa = ${numero_mesa}
-        `
+          WHERE restaurante_id = ${RESTAURANTE_ID} AND numero_mesa = ${numero_mesa}`
         if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada' })
         mesa_id = mesa.id
       }
@@ -35,12 +45,19 @@ export default async function handler(req, res) {
         INSERT INTO public.comensales (mesa_id, restaurante_id, username)
         VALUES (${mesa_id}, ${RESTAURANTE_ID}, ${username})
         ON CONFLICT (mesa_id, username) DO UPDATE SET activo = true
-        RETURNING id, mesa_id, username, total_cuenta, activo
-      `
+        RETURNING id, mesa_id, username, total_cuenta, activo`
       return res.json(row)
     }
 
-    res.setHeader('Allow', 'GET, POST')
+    if (req.method === 'PATCH') {
+      const { mesa_id, activo } = req.body
+      await sql`
+        UPDATE public.comensales SET activo = ${activo}
+        WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID}`
+      return res.json({ ok: true })
+    }
+
+    res.setHeader('Allow', 'GET, POST, PATCH')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
     console.error('[api/comensales]', e.message)

@@ -1,12 +1,16 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Receipt, Users, Clock, CheckCircle2, Wifi, WifiOff, CircleDollarSign, AlertCircle,
+  Receipt, Users, Clock, CheckCircle2, Wifi, WifiOff, CircleDollarSign,
+  AlertCircle, Timer, Hourglass,
 } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { db } from '../../adapters/db.js'
+
+const METODOS = ['efectivo', 'tarjeta', 'yape', 'plin', 'transferencia']
 
 const formatPEN = (n) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0)
@@ -20,13 +24,113 @@ function tiempoRelativo(ts) {
   return `hace ${Math.floor(min / 60)}h`
 }
 
+function formatMinutos(min) {
+  const m = Math.round(Number(min) || 0)
+  if (m < 60) return `${m} min`
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  return rem > 0 ? `${h}h ${rem}min` : `${h}h`
+}
+
+/* ── Modal de cobro ── */
+function ModalPago({ mesa, total, onConfirm, onClose }) {
+  const [metodo, setMetodo] = useState('efectivo')
+  const [monto, setMonto] = useState(total > 0 ? total.toFixed(2) : '')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const montoNum = parseFloat(monto)
+    if (!montoNum || montoNum <= 0) return setError('Ingresa un monto válido.')
+    setLoading(true)
+    try {
+      await onConfirm(metodo, montoNum)
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Error al registrar el cobro.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-xl p-6">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mb-0.5">Registrar cobro</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Mesa {mesa.numeroMesa}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+              Método de pago
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {METODOS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMetodo(m)}
+                  className={`py-2 rounded-xl text-xs font-bold capitalize transition-all ring-1 ${
+                    metodo === m
+                      ? 'bg-indigo-500 text-white ring-indigo-600'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-indigo-300 dark:hover:ring-indigo-500'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-1.5">
+              Monto recibido (S/)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm font-bold text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="0.00"
+            />
+          </div>
+          {error && <p className="text-xs text-red-500 dark:text-red-400 font-semibold">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors disabled:opacity-60"
+            >
+              {loading ? 'Guardando…' : 'Confirmar cobro'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function CajeroCobros() {
   const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
   const { pedidos } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { connected } = useLiveSync()
 
-  // Mesas con solicitudes activas, ordenadas: primero las que todos pidieron
+  const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
+  const [tiempoComensales, setTiempoComensales] = useState([])
+
+  useEffect(() => {
+    db.comensales.listTiempo().then(setTiempoComensales).catch(() => {})
+  }, [])
+
   const mesasConSolicitud = useMemo(() => {
     return mesas
       .filter((m) => (m.solicitudesCuenta?.length || 0) > 0)
@@ -40,7 +144,6 @@ export default function CajeroCobros() {
       })
   }, [mesas])
 
-  // Mesas por_cobrar marcadas manualmente por staff (sin solicitudes de cliente)
   const mesasPorCobrar = useMemo(
     () => mesas.filter((m) => m.estado === 'por_cobrar' && !(m.solicitudesCuenta?.length > 0)),
     [mesas],
@@ -48,13 +151,26 @@ export default function CajeroCobros() {
 
   const pedidosDeMesa = (mesa) => pedidos.filter((p) => Number(p.mesa) === mesa.numeroMesa)
 
-  function cobrarYLiberar(mesa) {
+  async function registrarCobro(mesa, metodo, monto) {
+    await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
+    // Mesa queda en por_cobrar — el mesero la libera manualmente
+    if (mesa.estado !== 'por_cobrar') {
+      cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')
+    }
+    actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
+    // Invalidar tokens para que no entren nuevos comensales
     invalidarTokensDeMesa(mesa.id)
-    cambiarEstadoA(mesa.numeroMesa, 'disponible')
   }
 
-  function soloClearSolicitudes(mesa) {
-    actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
+  function calcularTotal(mesa) {
+    const items = pedidosDeMesa(mesa).flatMap((p) => p.items || [])
+    const grouped = items.reduce((acc, it) => {
+      const k = it.nombre
+      if (!acc[k]) acc[k] = { precio: it.precio || 0, cantidad: 0 }
+      acc[k].cantidad += it.cantidad || 1
+      return acc
+    }, {})
+    return Object.values(grouped).reduce((s, it) => s + it.precio * it.cantidad, 0)
   }
 
   return (
@@ -97,7 +213,7 @@ export default function CajeroCobros() {
               <CheckCircle2 size={36} className="mx-auto text-emerald-400 dark:text-emerald-500 mb-3" />
               <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Sin solicitudes pendientes</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                Las alertas aparecen aquí en tiempo real cuando un cliente pide la cuenta.
+                Las alertas aparecen aquí cuando un cliente pide la cuenta.
               </p>
             </div>
           ) : (
@@ -107,19 +223,19 @@ export default function CajeroCobros() {
                   key={mesa.id}
                   mesa={mesa}
                   pedidosDeMesa={pedidosDeMesa(mesa)}
-                  onCobrar={() => cobrarYLiberar(mesa)}
-                  onAtender={() => soloClearSolicitudes(mesa)}
+                  onCobrar={() => setPagoModal(mesa)}
+                  onAtender={() => actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })}
                 />
               ))}
             </div>
           )}
         </section>
 
-        {/* ── Por cobrar (marcadas por staff) ── */}
+        {/* ── Por cobrar — esperando liberación ── */}
         {mesasPorCobrar.length > 0 && (
           <section>
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">
-              Por cobrar — marcadas por personal ({mesasPorCobrar.length})
+              Por cobrar — pendiente de liberación ({mesasPorCobrar.length})
             </h2>
             <div className="space-y-2">
               {mesasPorCobrar.map((mesa) => (
@@ -133,40 +249,91 @@ export default function CajeroCobros() {
                     </span>
                     <div className="min-w-0">
                       <p className="font-bold text-slate-900 dark:text-slate-50 text-sm">Mesa {mesa.numeroMesa}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">Marcada por personal</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Esperando que el mesero libere la mesa</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setPagoModal(mesa)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors"
+                    >
+                      Registrar cobro
+                    </button>
                     <Link
                       to={`/mesa/${mesa.numeroMesa}`}
                       className="text-xs font-bold text-[#C1440E] dark:text-[#D4A017] hover:underline"
                     >
-                      Ver detalle →
+                      Ver →
                     </Link>
-                    <button
-                      onClick={() => cobrarYLiberar(mesa)}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors"
-                    >
-                      Cobrar
-                    </button>
                   </div>
                 </div>
               ))}
             </div>
+            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Timer size={11} />
+              El mesero debe liberar la mesa desde el tablero cuando el cliente se retire.
+            </p>
+          </section>
+        )}
+
+        {/* ── Tiempo en mesa ── */}
+        {tiempoComensales.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+              <Hourglass size={12} />
+              Comensales con más tiempo en mesa
+            </h2>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
+              {tiempoComensales.slice(0, 10).map((c, i) => {
+                const min = Math.round(Number(c.minutos_en_mesa) || 0)
+                const esLargo = min > 90
+                return (
+                  <div
+                    key={c.id}
+                    className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#e8e0d8] dark:border-slate-800' : ''}`}
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center text-[10px] font-black">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{c.username}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Mesa {c.numero_mesa}</p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                      esLargo
+                        ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}>
+                      <Clock size={10} />
+                      {formatMinutos(c.minutos_en_mesa)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </section>
         )}
       </div>
+
+      {/* Modal de pago */}
+      {pagoModal && (
+        <ModalPago
+          mesa={pagoModal}
+          total={calcularTotal(pagoModal)}
+          onConfirm={(metodo, monto) => registrarCobro(pagoModal, metodo, monto)}
+          onClose={() => setPagoModal(null)}
+        />
+      )}
     </div>
   )
 }
 
 /* ── Tarjeta de cobro individual ── */
 function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
-  const solicitudes  = mesa.solicitudesCuenta || []
-  const integrantes  = mesa.integrantes || []
+  const solicitudes   = mesa.solicitudesCuenta || []
+  const integrantes   = mesa.integrantes || []
   const todosHanPedido = integrantes.length > 0 && solicitudes.length >= integrantes.length
 
-  // Agrupar ítems de todos los pedidos por nombre
   const allItems = pedidosDeMesa.flatMap((p) => p.items || [])
   const grouped = allItems.reduce((acc, it) => {
     const k = it.nombre
@@ -183,7 +350,7 @@ function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
         ? 'ring-indigo-300 dark:ring-indigo-500/40'
         : 'ring-amber-200 dark:ring-amber-500/30'
     }`}>
-      {/* Cabecera coloreada */}
+      {/* Cabecera */}
       <div className={`px-4 py-3 flex items-center justify-between gap-3 ${
         todosHanPedido
           ? 'bg-indigo-50 dark:bg-indigo-500/10'
@@ -272,7 +439,7 @@ function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
           onClick={onCobrar}
           className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors shadow-sm"
         >
-          <CircleDollarSign size={15} /> Cobrar y liberar mesa
+          <CircleDollarSign size={15} /> Registrar cobro
         </button>
         <div className="flex gap-2">
           <Link
@@ -284,7 +451,7 @@ function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
           <button
             onClick={onAtender}
             className="px-3 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            title="Marcar como atendido sin liberar la mesa"
+            title="Marcar como atendido sin registrar cobro"
           >
             Solo atender
           </button>

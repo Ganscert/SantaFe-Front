@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { QrCode, Receipt, Users } from 'lucide-react'
+import { QrCode, Receipt, Users, LogOut } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
+import { useTokens } from '../state/TokensContext.jsx'
 import { useAuth, ROLES } from '../state/AuthContext.jsx'
+import { db } from '../../adapters/db.js'
 import AccountPicker from './AccountPicker.jsx'
 import GenerarQR from './GenerarQR.jsx'
 
@@ -149,7 +151,7 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
 }
 
 /* ── Panel lateral ────────────────────────────────── */
-function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta }) {
+function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa }) {
   if (!mesa) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center">
       <span className="text-4xl">👆</span>
@@ -167,7 +169,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Mesa {mesa.numeroMesa}</h2>
         <EstadoBadge estado={mesa.estado} size="lg" />
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{mesa.capacidad} personas · ID {mesa.id}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{mesa.capacidad} personas</p>
 
       {/* Alerta: clientes solicitaron la cuenta */}
       {(mesa.solicitudesCuenta?.length > 0) && (
@@ -198,6 +200,24 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
               Atendido
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Alerta: mesa pagada, esperando liberación */}
+      {mesa.estado === 'por_cobrar' && !(mesa.solicitudesCuenta?.length > 0) && (
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 ring-1 ring-emerald-200 dark:ring-emerald-500/30 p-3 flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Cobro registrado</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+              Libera la mesa cuando el cliente se retire.
+            </p>
+          </div>
+          <button
+            onClick={() => onLiberarMesa?.(mesa)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors"
+          >
+            <LogOut size={11} /> Liberar
+          </button>
         </div>
       )}
 
@@ -267,7 +287,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
 }
 
 /* ── Panel / Drawer híbrido ───────────────────────── */
-function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta }) {
+function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa }) {
   // Cierra con Escape
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose()
@@ -285,7 +305,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
       >
         ✕
       </button>
-      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} />
+      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} />
     </div>
   )
 
@@ -324,6 +344,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
 function TableroMesas() {
   const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
   const { pedidos, contarActivosMesa } = usePedidos()
+  const { invalidarTokensDeMesa } = useTokens()
   const { session } = useAuth()
   const navigate                 = useNavigate()
   const [selectedMesa, setSelectedMesa] = useState(null)
@@ -339,6 +360,13 @@ function TableroMesas() {
   const handleClose  = () => setSelectedMesa(null)
   const handlePedirCuenta = (mesa) => setPickerMesa(mesa)
   const handleClearCuenta = (mesa) => actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
+
+  const handleLiberarMesa = (mesa) => {
+    invalidarTokensDeMesa(mesa.id)
+    db.comensales.deactivate(mesa.id).catch(() => {})
+    cambiarEstadoA(mesa.numeroMesa, 'disponible')
+    setSelectedMesa(null)
+  }
 
   useEffect(() => {
     if (!selectedMesa) return
@@ -475,6 +503,7 @@ function TableroMesas() {
           onGenerarQR={(m) => setQrMesa(m)}
           puedeGenerarQR={puedeGenerarQR}
           onClearCuenta={handleClearCuenta}
+          onLiberarMesa={handleLiberarMesa}
         />
       </div>
 

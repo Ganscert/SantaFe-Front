@@ -115,7 +115,19 @@ app.delete('/api/platos', async (req, res) => {
 app.get('/api/comensales', async (req, res) => {
   try {
     const sql = db()
-    const { mesa_id } = req.query
+    const { mesa_id, tipo } = req.query
+
+    if (tipo === 'tiempo') {
+      const rows = await sql`
+        SELECT c.id, c.username, c.creado_en, m.numero_mesa,
+          EXTRACT(EPOCH FROM (now() - c.creado_en)) / 60 AS minutos_en_mesa
+        FROM public.comensales c
+        JOIN public.mesas m ON m.id = c.mesa_id
+        WHERE c.restaurante_id = ${RESTAURANTE_ID} AND c.activo = true
+        ORDER BY minutos_en_mesa DESC`
+      return res.json(rows)
+    }
+
     const rows = await sql`
       SELECT id, mesa_id, username, total_cuenta, activo FROM public.comensales
       WHERE mesa_id = ${mesa_id} AND activo = true`
@@ -140,6 +152,49 @@ app.post('/api/comensales', async (req, res) => {
       VALUES (${mesa_id}, ${RESTAURANTE_ID}, ${username})
       ON CONFLICT (mesa_id, username) DO UPDATE SET activo = true
       RETURNING id, mesa_id, username, total_cuenta, activo`
+    res.json(row)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.patch('/api/comensales', async (req, res) => {
+  try {
+    const sql = db()
+    const { mesa_id, activo } = req.body
+    await sql`
+      UPDATE public.comensales SET activo = ${activo}
+      WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID}`
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ─── PAGOS ────────────────────────────────────────────────────────────────────
+app.get('/api/pagos', async (req, res) => {
+  try {
+    const sql = db()
+    const { mesa_id } = req.query
+    const rows = mesa_id
+      ? await sql`
+          SELECT id, mesa_id, monto, metodo, referencia, creado_en
+          FROM public.pagos
+          WHERE restaurante_id = ${RESTAURANTE_ID} AND mesa_id = ${mesa_id}
+          ORDER BY creado_en DESC`
+      : await sql`
+          SELECT id, mesa_id, monto, metodo, referencia, creado_en
+          FROM public.pagos
+          WHERE restaurante_id = ${RESTAURANTE_ID}
+          ORDER BY creado_en DESC LIMIT 100`
+    res.json(rows)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/pagos', async (req, res) => {
+  try {
+    const sql = db()
+    const { mesa_id, monto, metodo, referencia = null } = req.body
+    const [row] = await sql`
+      INSERT INTO public.pagos (restaurante_id, mesa_id, monto, metodo, referencia)
+      VALUES (${RESTAURANTE_ID}, ${mesa_id}, ${monto}, ${metodo}, ${referencia})
+      RETURNING id, mesa_id, monto, metodo, referencia, creado_en`
     res.json(row)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
