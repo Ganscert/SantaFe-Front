@@ -4,7 +4,11 @@ import { db } from '../../adapters/db.js'
 
 const MesasContext = createContext(null)
 const ESTADOS_VALIDOS = new Set(['disponible', 'ocupada', 'por_cobrar'])
-const POLL_MS = 4000
+// Polling defensivo solo como fallback cuando Pusher no está conectado.
+// Si Pusher está conectado, los updates llegan en vivo y este poll no corre.
+const POLL_MS = 15000
+// Tras un cambio optimista local, ignorar polls por este tiempo para no pisar el estado.
+const OPTIMISTIC_GUARD_MS = 3000
 
 const defaultMesas = [
   { id: 'mesa-1', numeroMesa: 1, capacidad: 4, estado: 'disponible', cuentas: [] },
@@ -31,8 +35,9 @@ export function MesasProvider({ children }) {
   const { serverState, sendMessage, connected } = useLiveSync()
   const [mesas, setMesas] = useState(defaultMesas)
   const prevRef = useRef([])
+  const lastOptimisticAtRef = useRef(0)
 
-  // Carga desde Neon vía API
+  // Carga desde Supabase vía API
   async function cargar(prev) {
     try {
       const rows = await db.mesas.list()
@@ -47,14 +52,18 @@ export function MesasProvider({ children }) {
     cargar([])
   }, [])
 
-  // Polling para detectar cambios desde otros dispositivos
+  // Polling como fallback: solo corre cuando Pusher NO está conectado.
+  // Cuando Pusher está activo, los updates llegan en vivo via sync:mesas.
   useEffect(() => {
+    if (connected) return
     const id = setInterval(() => {
+      // No pisar estado durante una ventana de optimistic update reciente.
+      if (Date.now() - lastOptimisticAtRef.current < OPTIMISTIC_GUARD_MS) return
       setMesas(prev => { prevRef.current = prev; return prev })
       cargar(prevRef.current)
     }, POLL_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [connected])
 
   // WS legacy (cuentas/integrantes en tiempo real)
   useEffect(() => {
@@ -68,6 +77,7 @@ export function MesasProvider({ children }) {
 
   const cambiarEstadoA = useCallback((numeroMesa, nuevoEstado) => {
     if (!ESTADOS_VALIDOS.has(nuevoEstado)) return
+    lastOptimisticAtRef.current = Date.now()
     setMesas(current => {
       const next = current.map(m => {
         if (m.numeroMesa !== numeroMesa) return m
@@ -83,6 +93,7 @@ export function MesasProvider({ children }) {
   }, [syncMesas])
 
   const actualizarMesa = useCallback((numeroMesa, patch) => {
+    lastOptimisticAtRef.current = Date.now()
     setMesas(current => {
       const next = current.map(m => m.numeroMesa === numeroMesa ? { ...m, ...patch } : m)
       syncMesas(next)

@@ -66,7 +66,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { mesa_id, activo, pagado } = req.body
+      const { mesa_id, activo, pagado, username } = req.body
       if (pagado === true) {
         const { error } = await sb
           .from('comensales')
@@ -77,11 +77,14 @@ export default async function handler(req, res) {
         if (error) throw error
         return res.json({ ok: true })
       }
-      const { error } = await sb
+      // Si llega username, desactivar solo a ese comensal; si no, a todos los de la mesa
+      let q = sb
         .from('comensales')
         .update({ activo })
         .eq('mesa_id', mesa_id)
         .eq('restaurante_id', RESTAURANTE_ID)
+      if (username) q = q.eq('username', username)
+      const { error } = await q
       if (error) throw error
       return res.json({ ok: true })
     }

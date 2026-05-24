@@ -165,13 +165,15 @@ app.post('/api/comensales', async (req, res) => {
 
 app.patch('/api/comensales', async (req, res) => {
   try {
-    const { mesa_id, activo, pagado } = req.body
+    const { mesa_id, activo, pagado, username } = req.body
     if (pagado === true) {
       const { error } = await db().from('comensales').update({ pagado_en: new Date().toISOString() }).eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID).eq('activo', true)
       if (error) throw error
       return res.json({ ok: true })
     }
-    const { error } = await db().from('comensales').update({ activo }).eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID)
+    let q = db().from('comensales').update({ activo }).eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID)
+    if (username) q = q.eq('username', username)
+    const { error } = await q
     if (error) throw error
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }

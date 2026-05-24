@@ -52,11 +52,15 @@ export default function MesaCliente() {
   const [mesaLiberada, setMesaLiberada] = useState(false)
   const [saliendoError, setSaliendoError] = useState('')
   const [verificandoSalida, setVerificandoSalida] = useState(false)
+  const [enviandoPedido, setEnviandoPedido] = useState(false)
+  const enviandoRef = useRef(false)
+  const salidaIniciadaRef = useRef(false)
 
   // Cuando el personal libera la mesa (estado → disponible), expulsar al cliente.
   // mesa.estado se actualiza reactivamente vía WS sync en MesasContext.
   useEffect(() => {
     if (!mesa || mesa.estado !== 'disponible') return
+    if (salidaIniciadaRef.current) return // el cliente está saliendo por su cuenta
     setMesaLiberada(true)
     const id = setTimeout(() => {
       try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
@@ -134,19 +138,30 @@ export default function MesaCliente() {
 
   function enviarPedido() {
     if (!mesa || carrito.length === 0) return
-    agregarPedido({
-      mesa: mesa.numeroMesa,
-      cuentaId: null,
-      items: carrito.map((c) => ({ nombre: c.nombre, cantidad: c.cantidad, precio: c.precio })),
-    })
-    setUltimo({ at: Date.now(), total: totalCarrito, items: itemsCarrito })
+    if (enviandoRef.current) return
+    enviandoRef.current = true
+    setEnviandoPedido(true)
+    const itemsSnapshot = carrito.map((c) => ({ nombre: c.nombre, cantidad: c.cantidad, precio: c.precio }))
+    const totalSnapshot = totalCarrito
+    const itemsCantSnapshot = itemsCarrito
     vaciarCarrito()
     setConfirma(false)
+    try {
+      agregarPedido({
+        mesa: mesa.numeroMesa,
+        cuentaId: null,
+        items: itemsSnapshot,
+      })
+      setUltimo({ at: Date.now(), total: totalSnapshot, items: itemsCantSnapshot })
+    } finally {
+      setTimeout(() => { enviandoRef.current = false; setEnviandoPedido(false) }, 800)
+    }
   }
 
   async function salir() {
-    // Sin pedidos o mesa ya liberada → salir directamente
-    if (misPedidos.length === 0 || !mesa || mesa.estado === 'disponible') {
+    salidaIniciadaRef.current = true
+    // Sin mesa o mesa ya liberada → salir directamente
+    if (!mesa || mesa.estado === 'disponible') {
       try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
       logout()
       navigate('/', { replace: true })
@@ -155,16 +170,40 @@ export default function MesaCliente() {
 
     setVerificandoSalida(true)
     setSaliendoError('')
-    try {
-      const comensales = await db.comensales.listByMesa(activa.mesaId)
-      const miRegistro = comensales.find(c => c.username === session?.name)
-      if (miRegistro && !miRegistro.pagado_en) {
-        setSaliendoError('Tu cuenta aún no fue cobrada. Solicita la cuenta al cajero.')
-        setVerificandoSalida(false)
-        return
+
+    // Solo bloqueamos la salida si el cliente tiene pedidos sin cobrar.
+    if (misPedidos.length > 0) {
+      try {
+        const comensales = await db.comensales.listByMesa(activa.mesaId)
+        const miRegistro = comensales.find(c => c.username === session?.name)
+        if (miRegistro && !miRegistro.pagado_en) {
+          setSaliendoError('Tu cuenta aún no fue cobrada. Solicita la cuenta al cajero.')
+          setVerificandoSalida(false)
+          return
+        }
+      } catch {
+        // Si la DB no responde, permitir salir.
       }
-    } catch {
-      // Si la DB no responde, permitir salir
+    }
+
+    // Quitar al usuario de integrantes / cuentas / solicitudes en la mesa.
+    const nextIntegrantes = (mesa.integrantes || []).filter(i => i.userId !== session?.id)
+    const nextCuentas     = (mesa.cuentas     || []).filter(c => c.userId !== session?.id)
+    const nextSolicitudes = (mesa.solicitudesCuenta || []).filter(s => s.userId !== session?.id)
+    actualizarMesa(mesa.numeroMesa, {
+      integrantes:        nextIntegrantes,
+      cuentas:            nextCuentas,
+      solicitudesCuenta:  nextSolicitudes,
+    })
+
+    // Desactivar al comensal en DB.
+    if (session?.name) {
+      db.comensales.deactivateOne(activa.mesaId, session.name).catch(() => {})
+    }
+
+    // Si era el último integrante → liberar la mesa para el resto del personal.
+    if (nextIntegrantes.length === 0 && mesa.estado !== 'disponible') {
+      cambiarEstadoA(mesa.numeroMesa, 'disponible')
     }
 
     try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
@@ -536,9 +575,12 @@ export default function MesaCliente() {
               <button
                 type="button"
                 onClick={enviarPedido}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold transition-colors"
+                disabled={enviandoPedido}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-wait"
               >
-                <ChefHat size={14} /> Enviar a cocina
+                {enviandoPedido
+                  ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
+                  : <><ChefHat size={14} /> Enviar a cocina</>}
               </button>
             </div>
           </div>

@@ -29,11 +29,12 @@ export const db = {
     delete: (id)         => req('/platos', 'DELETE', { id }),
   },
   comensales: {
-    listByMesa:  (mesa_id) => req(`/comensales?mesa_id=${mesa_id}`),
-    listTiempo:  ()        => req('/comensales?tipo=tiempo'),
-    upsert:      (data)    => req('/comensales', 'POST', data),
-    deactivate:  (mesa_id) => req('/comensales', 'PATCH', { mesa_id, activo: false }),
-    marcarPagado:(mesa_id) => req('/comensales', 'PATCH', { mesa_id, pagado: true }),
+    listByMesa:    (mesa_id) => req(`/comensales?mesa_id=${mesa_id}`),
+    listTiempo:    ()        => req('/comensales?tipo=tiempo'),
+    upsert:        (data)    => req('/comensales', 'POST', data),
+    deactivate:    (mesa_id) => req('/comensales', 'PATCH', { mesa_id, activo: false }),
+    deactivateOne: (mesa_id, username) => req('/comensales', 'PATCH', { mesa_id, username, activo: false }),
+    marcarPagado:  (mesa_id) => req('/comensales', 'PATCH', { mesa_id, pagado: true }),
   },
   pagos: {
     list:   (mesa_id) => req(`/pagos${mesa_id ? `?mesa_id=${encodeURIComponent(mesa_id)}` : ''}`),
