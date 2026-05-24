@@ -85,14 +85,29 @@ export default async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const { id, estado } = req.body
-      const { data, error } = await sb
+      const { data: item, error } = await sb
         .from('pedido_items')
         .update({ estado })
         .eq('id', id)
-        .select('id, estado')
+        .select('id, estado, pedido_id')
         .single()
       if (error) throw error
-      return res.json(data)
+
+      // Recalcular estado del pedido padre según sus ítems
+      const { data: siblings } = await sb
+        .from('pedido_items')
+        .select('estado')
+        .eq('pedido_id', item.pedido_id)
+      if (siblings?.length) {
+        const es = siblings.map(s => s.estado)
+        let nuevoPedidoEstado = 'pendiente'
+        if (es.every(e => e === 'entregado' || e === 'cancelado')) nuevoPedidoEstado = 'entregado'
+        else if (es.some(e => e === 'listo'))          nuevoPedidoEstado = 'listo'
+        else if (es.some(e => e === 'en_preparacion')) nuevoPedidoEstado = 'en_preparacion'
+        await sb.from('pedidos').update({ estado: nuevoPedidoEstado }).eq('id', item.pedido_id)
+      }
+
+      return res.json({ id: item.id, estado: item.estado })
     }
 
     res.setHeader('Allow', 'GET, POST, PATCH')

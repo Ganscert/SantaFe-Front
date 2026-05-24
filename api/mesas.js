@@ -34,6 +34,11 @@ export default async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const { id, estado } = req.body
+      // Cerrar todos los pedidos abiertos antes de por_cobrar / disponible
+      // para que el trigger de validación no bloquee el cambio de estado.
+      if (estado === 'por_cobrar' || estado === 'disponible') {
+        await sb.rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+      }
       const { data, error } = await sb
         .from('mesas')
         .update({ estado })

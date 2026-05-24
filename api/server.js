@@ -54,6 +54,9 @@ app.post('/api/mesas', async (req, res) => {
 app.patch('/api/mesas', async (req, res) => {
   try {
     const { id, estado } = req.body
+    if (estado === 'por_cobrar' || estado === 'disponible') {
+      await db().rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+    }
     const { data, error } = await db().from('mesas').update({ estado }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad').single()
     if (error) throw error
     res.json(data)
@@ -278,9 +281,20 @@ app.post('/api/pedidos', async (req, res) => {
 app.patch('/api/pedidos', async (req, res) => {
   try {
     const { id, estado } = req.body
-    const { data, error } = await db().from('pedido_items').update({ estado }).eq('id', id).select('id, estado').single()
+    const { data: item, error } = await db().from('pedido_items').update({ estado }).eq('id', id).select('id, estado, pedido_id').single()
     if (error) throw error
-    res.json(data ?? null)
+
+    const { data: siblings } = await db().from('pedido_items').select('estado').eq('pedido_id', item.pedido_id)
+    if (siblings?.length) {
+      const es = siblings.map(s => s.estado)
+      let nuevoPedidoEstado = 'pendiente'
+      if (es.every(e => e === 'entregado' || e === 'cancelado')) nuevoPedidoEstado = 'entregado'
+      else if (es.some(e => e === 'listo'))          nuevoPedidoEstado = 'listo'
+      else if (es.some(e => e === 'en_preparacion')) nuevoPedidoEstado = 'en_preparacion'
+      await db().from('pedidos').update({ estado: nuevoPedidoEstado }).eq('id', item.pedido_id)
+    }
+
+    res.json({ id: item.id, estado: item.estado })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
