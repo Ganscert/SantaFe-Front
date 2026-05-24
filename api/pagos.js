@@ -38,6 +38,23 @@ export default async function handler(req, res) {
         .maybeSingle()
       if (existing) return res.json(existing)
 
+      // Validar que la mesa tenga pedidos pendientes de cobrar.
+      // Esto evita transacciones fantasma si el cajero hace doble click,
+      // o si se intenta cobrar una mesa cuyos pedidos ya están todos cobrados.
+      const { count: pendientesCount, error: countErr } = await sb
+        .from('pedidos')
+        .select('id', { count: 'exact', head: true })
+        .eq('mesa_id', mesa_id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .is('cobrado_en', null)
+      if (countErr) throw countErr
+      if (!pendientesCount || pendientesCount === 0) {
+        return res.status(409).json({
+          error: 'No hay pedidos pendientes de cobro en esta mesa.',
+          code: 'NO_PENDING_ORDERS',
+        })
+      }
+
       const { data, error } = await sb
         .from('pagos')
         .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia })

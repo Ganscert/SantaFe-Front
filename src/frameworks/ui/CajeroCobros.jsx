@@ -131,6 +131,8 @@ export default function CajeroCobros() {
   const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
   const [tiempoComensales, setTiempoComensales] = useState([])
   const [pedidosDBMap, setPedidosDBMap] = useState({}) // { [mesa_id]: pedido[] }
+  const [cobrandoSet, setCobrandoSet] = useState(() => new Set()) // mesa.id que están en cobro
+  const cobrandoRef = useRef(new Set())
 
   useEffect(() => {
     db.comensales.listTiempo().then(setTiempoComensales).catch(() => {})
@@ -177,16 +179,40 @@ export default function CajeroCobros() {
   }
 
   async function registrarCobro(mesa, metodo, monto) {
-    if (monto > 0) {
-      await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
-      await db.comensales.marcarPagado(mesa.id).catch(() => {})
+    // Guard contra doble cobro: si ya hay un cobro en curso para esta mesa, abortar
+    if (cobrandoRef.current.has(mesa.id)) {
+      throw new Error('Ya hay un cobro en curso para esta mesa.')
     }
-    // Mesa queda en por_cobrar — el mesero la libera manualmente
-    if (mesa.estado !== 'por_cobrar') {
-      cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')
+    cobrandoRef.current.add(mesa.id)
+    setCobrandoSet(prev => new Set(prev).add(mesa.id))
+    try {
+      if (monto > 0) {
+        await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
+        await db.comensales.marcarPagado(mesa.id).catch(() => {})
+      }
+      // Mesa queda en por_cobrar — el mesero la libera manualmente
+      if (mesa.estado !== 'por_cobrar') {
+        cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')
+      }
+      actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
+      invalidarTokensDeMesa(mesa.id)
+
+      // Refrescar pedidos no cobrados de la mesa — ahora deben venir vacíos
+      try {
+        const rows = await db.pedidos.listByMesa(mesa.id, { soloNoCobrados: true })
+        setPedidosDBMap(prev => ({ ...prev, [mesa.id]: rows }))
+      } catch {
+        // Si falla, limpiar manualmente para no mostrar items obsoletos
+        setPedidosDBMap(prev => ({ ...prev, [mesa.id]: [] }))
+      }
+    } finally {
+      cobrandoRef.current.delete(mesa.id)
+      setCobrandoSet(prev => {
+        const next = new Set(prev)
+        next.delete(mesa.id)
+        return next
+      })
     }
-    actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
-    invalidarTokensDeMesa(mesa.id)
   }
 
   function calcularTotal(mesa) {
@@ -250,6 +276,7 @@ export default function CajeroCobros() {
                   key={mesa.id}
                   mesa={mesa}
                   pedidosDeMesa={pedidosDeMesa(mesa)}
+                  cobrando={cobrandoSet.has(mesa.id)}
                   onCobrar={() => setPagoModal(mesa)}
                   onAtender={() => actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })}
                 />
@@ -285,9 +312,10 @@ export default function CajeroCobros() {
                     {total > 0 && (
                       <button
                         onClick={() => setPagoModal(mesa)}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors"
+                        disabled={cobrandoSet.has(mesa.id)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-wait"
                       >
-                        Registrar cobro
+                        {cobrandoSet.has(mesa.id) ? 'Procesando…' : 'Registrar cobro'}
                       </button>
                     )}
                     <Link
@@ -360,7 +388,7 @@ export default function CajeroCobros() {
 }
 
 /* ── Tarjeta de cobro individual ── */
-function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
+function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
   const solicitudes   = mesa.solicitudesCuenta || []
   const integrantes   = mesa.integrantes || []
   const todosHanPedido = integrantes.length > 0 && solicitudes.length >= integrantes.length
@@ -469,9 +497,10 @@ function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
         {total > 0 ? (
           <button
             onClick={onCobrar}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors shadow-sm"
+            disabled={cobrando}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors shadow-sm disabled:opacity-60 disabled:cursor-wait"
           >
-            <CircleDollarSign size={15} /> Registrar cobro
+            <CircleDollarSign size={15} /> {cobrando ? 'Procesando…' : 'Registrar cobro'}
           </button>
         ) : (
           <span className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-sm font-semibold">

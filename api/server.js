@@ -244,6 +244,16 @@ app.post('/api/pagos', async (req, res) => {
       .select('id, mesa_id, monto, metodo, referencia, creado_en')
       .eq('restaurante_id', RESTAURANTE_ID).eq('mesa_id', mesa_id).eq('monto', monto).eq('metodo', metodo).gt('creado_en', sixtySecsAgo).limit(1).maybeSingle()
     if (existing) return res.json(existing)
+
+    // Abortar si no hay pedidos pendientes (evita doble cobro fantasma)
+    const { count: pendientesCount, error: countErr } = await db().from('pedidos')
+      .select('id', { count: 'exact', head: true })
+      .eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID).is('cobrado_en', null)
+    if (countErr) throw countErr
+    if (!pendientesCount) {
+      return res.status(409).json({ error: 'No hay pedidos pendientes de cobro en esta mesa.', code: 'NO_PENDING_ORDERS' })
+    }
+
     const { data, error } = await db().from('pagos')
       .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia })
       .select('id, mesa_id, monto, metodo, referencia, creado_en').single()
