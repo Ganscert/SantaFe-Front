@@ -34,37 +34,43 @@ export default async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const { id, estado } = req.body
-      // Cerrar todos los pedidos abiertos antes de por_cobrar / disponible
-      // para que el trigger de validación no bloquee el cambio de estado.
+      // Cerrar TODOS los pedidos no entregados de la mesa antes de pasar a
+      // por_cobrar / disponible. No dependemos de la RPC porque su filtro
+      // por cobrado_en deja afuera pedidos cobrados-pero-en-estado-pendiente
+      // (estado raro pero posible), y el trigger los bloquea.
+      // Hacer esto desde JS es seguro e idempotente: pedidos ya entregados
+      // no se tocan.
       if (estado === 'por_cobrar' || estado === 'disponible') {
-        const { error: rpcErr } = await sb.rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
-        if (rpcErr) {
-          console.warn('[mesas.PATCH] RPC cerrar_pedidos_mesa falló, usando fallback JS:', rpcErr.message)
-          // Fallback: cerrar pedidos manualmente
-          const { data: abiertos } = await sb
-            .from('pedidos')
-            .select('id')
-            .eq('mesa_id', id)
-            .eq('restaurante_id', RESTAURANTE_ID)
+        const { data: abiertos, error: selErr } = await sb
+          .from('pedidos')
+          .select('id')
+          .eq('mesa_id', id)
+          .eq('restaurante_id', RESTAURANTE_ID)
+          .not('estado', 'in', '("entregado","cancelado")')
+        if (selErr) console.warn('[mesas.PATCH] select pedidos abiertos:', selErr.message)
+        if (abiertos?.length) {
+          const pedidoIds = abiertos.map(p => p.id)
+          const nowIso = new Date().toISOString()
+          // Items: setear iniciado_en para que el trigger de tiempo_servicio calcule
+          const { error: itemsIniErr } = await sb.from('pedido_items')
+            .update({ iniciado_en: nowIso })
+            .in('pedido_id', pedidoIds)
+            .is('iniciado_en', null)
             .not('estado', 'in', '("entregado","cancelado")')
-          if (abiertos?.length) {
-            const pedidoIds = abiertos.map(p => p.id)
-            const nowIso = new Date().toISOString()
-            // Items: setear iniciado_en (para que el trigger de tiempo_servicio calcule)
-            await sb.from('pedido_items')
-              .update({ iniciado_en: nowIso })
-              .in('pedido_id', pedidoIds)
-              .is('iniciado_en', null)
-              .not('estado', 'in', '("entregado","cancelado")')
-            // Items: entregado
-            await sb.from('pedido_items')
-              .update({ estado: 'entregado' })
-              .in('pedido_id', pedidoIds)
-              .not('estado', 'in', '("entregado","cancelado")')
-            // Pedidos: entregado
-            await sb.from('pedidos')
-              .update({ estado: 'entregado' })
-              .in('id', pedidoIds)
+          if (itemsIniErr) console.warn('[mesas.PATCH] update items iniciado_en:', itemsIniErr.message)
+          // Items: marcar entregado
+          const { error: itemsEntErr } = await sb.from('pedido_items')
+            .update({ estado: 'entregado' })
+            .in('pedido_id', pedidoIds)
+            .not('estado', 'in', '("entregado","cancelado")')
+          if (itemsEntErr) console.warn('[mesas.PATCH] update items entregado:', itemsEntErr.message)
+          // Pedidos: marcar entregado (lo que el trigger valida)
+          const { error: pedEntErr } = await sb.from('pedidos')
+            .update({ estado: 'entregado' })
+            .in('id', pedidoIds)
+          if (pedEntErr) {
+            console.error('[mesas.PATCH] update pedidos entregado:', pedEntErr.message)
+            throw pedEntErr
           }
         }
       }
