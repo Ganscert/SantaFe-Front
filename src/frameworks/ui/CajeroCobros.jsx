@@ -39,10 +39,12 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const submittedRef = useRef(false)
+  const sinPendientes = total <= 0
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (submittedRef.current) return
+    if (sinPendientes) return setError('No hay pedidos pendientes de cobro en esta mesa.')
     const montoNum = parseFloat(monto)
     if (!montoNum || montoNum <= 0) return setError('Ingresa un monto válido.')
     submittedRef.current = true
@@ -110,10 +112,10 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors disabled:opacity-60"
+              disabled={loading || sinPendientes}
+              className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Guardando…' : 'Confirmar cobro'}
+              {loading ? 'Guardando…' : sinPendientes ? 'Sin pendientes' : 'Confirmar cobro'}
             </button>
           </div>
         </form>
@@ -172,9 +174,14 @@ export default function CajeroCobros() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solicitudIdsKey, porCobrarIdsKey])
 
+  // Solo cuenta lo que la DB confirma como NO cobrado.
+  // - Si la query aún no respondió (undefined) → fallback al state local
+  //   (mientras carga, mostrar algo razonable para que la tarjeta no parezca rota).
+  // - Si la query respondió [] → no hay nada que cobrar (no caer al state local
+  //   porque ese contiene pedidos ya cobrados que rearrastran el total).
   const pedidosDeMesa = (mesa) => {
     const dbRows = pedidosDBMap[mesa.id]
-    if (dbRows && dbRows.length > 0) return dbRows
+    if (dbRows !== undefined) return dbRows
     return pedidos.filter(p => Number(p.mesa) === mesa.numeroMesa)
   }
 
