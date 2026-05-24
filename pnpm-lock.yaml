@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@supabase/supabase-js':
-        specifier: ^2.45.4
+        specifier: ^2.106.1
         version: 2.106.1
       lucide-react:
         specifier: ^1.14.0
