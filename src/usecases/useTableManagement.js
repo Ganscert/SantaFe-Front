@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMesas } from '../frameworks/state/MesasContext.jsx'
 import { usePedidos } from '../frameworks/state/PedidosContext.jsx'
+import { db } from '../adapters/db.js'
 
 const uid = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -32,7 +33,38 @@ export function useTableManagement(numeroMesa) {
     [mesas, numeroMesa]
   )
 
-  const cuentas = useMemo(() => mesa?.cuentas ?? [], [mesa])
+  // Comensales activos en DB → se usan para sintetizar cuentas cuando el state
+  // local no tiene info (ej. el mesero abre la app después de que el cliente
+  // se unió via QR, o tras una reconexión de Pusher sin replay).
+  const [comensalesDB, setComensalesDB] = useState([])
+  useEffect(() => {
+    if (!mesa?.id) { setComensalesDB([]); return }
+    let cancelled = false
+    db.comensales.listByMesa(mesa.id)
+      .then(rows => { if (!cancelled) setComensalesDB((rows || []).filter(c => c.activo)) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [mesa?.id, mesa?.estado, mesa?.integrantes?.length])
+
+  // Fusiona cuentas locales (state/Pusher) con comensales en DB.
+  // Si hay un comensal en DB que no tiene cuenta correspondiente, se crea una sintética.
+  const cuentas = useMemo(() => {
+    const locales = mesa?.cuentas ?? []
+    if (!comensalesDB.length) return locales
+    const nombresLocales = new Set(locales.map(c => (c.nombre || '').toLowerCase().trim()))
+    const sinteticas = comensalesDB
+      .filter(c => !nombresLocales.has((c.username || '').toLowerCase().trim()))
+      .map(c => ({
+        id: `comensal-${c.id}`,
+        nombre: c.username,
+        abierta: c.pagado_en ? false : true,
+        creadaEn: c.creado_en ? new Date(c.creado_en).getTime() : Date.now(),
+        userId: c.user_id ?? null,
+        fromDB: true,
+      }))
+    return [...locales, ...sinteticas]
+  }, [mesa?.cuentas, comensalesDB])
+
   const cuentasAbiertas = useMemo(() => cuentas.filter(c => c.abierta !== false), [cuentas])
   const puedeAgregar = mesa ? cuentasAbiertas.length < (mesa.capacidad ?? 1) : false
 
