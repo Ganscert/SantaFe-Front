@@ -205,11 +205,11 @@ export default function MesaCliente() {
     vaciarCarrito()
     setConfirma(false)
 
-    // Si el cliente había pedido la cuenta, cancelar esa solicitud al agregar un nuevo plato
+    // Al pedir un plato nuevo, siempre cancelar cualquier solicitud de cuenta previa
+    setCuentaSolicitada(false)
     if ((mesa.solicitudesCuenta || []).some((s) => s.userId === session?.id)) {
       const nextSolicitudes = (mesa.solicitudesCuenta || []).filter((s) => s.userId !== session?.id)
       actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: nextSolicitudes })
-      setCuentaSolicitada(false)
     }
 
     try {
