@@ -129,7 +129,7 @@ app.get('/api/comensales', async (req, res) => {
     }
 
     const rows = await sql`
-      SELECT id, mesa_id, username, total_cuenta, activo FROM public.comensales
+      SELECT id, mesa_id, username, total_cuenta, activo, pagado_en, creado_en FROM public.comensales
       WHERE mesa_id = ${mesa_id} AND activo = true`
     res.json(rows)
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -159,11 +159,69 @@ app.post('/api/comensales', async (req, res) => {
 app.patch('/api/comensales', async (req, res) => {
   try {
     const sql = db()
-    const { mesa_id, activo } = req.body
+    const { mesa_id, activo, pagado } = req.body
+    if (pagado === true) {
+      await sql`
+        UPDATE public.comensales SET pagado_en = now()
+        WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID} AND activo = true`
+      return res.json({ ok: true })
+    }
     await sql`
       UPDATE public.comensales SET activo = ${activo}
       WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID}`
     res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ─── USUARIOS ─────────────────────────────────────────────────────────────────
+app.get('/api/usuarios', async (req, res) => {
+  try {
+    const sql = db()
+    const rows = await sql`
+      SELECT id, restaurante_id, nombre, email, role, activo, creado_en, actualizado_en
+      FROM public.usuarios
+      WHERE restaurante_id = ${RESTAURANTE_ID}
+      ORDER BY creado_en DESC`
+    res.json(rows)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/usuarios', async (req, res) => {
+  try {
+    const sql = db()
+    const { action, email, password, nombre, role } = req.body || {}
+
+    if (action === 'login') {
+      if (!email || !password) return res.json({ ok: false, error: 'Email y contraseña requeridos.' })
+      const [user] = await sql`
+        SELECT id, nombre, email, role
+        FROM public.usuarios
+        WHERE email = ${String(email).trim().toLowerCase()}
+          AND password_hash = ${password}
+          AND activo = true
+        LIMIT 1`
+      if (!user) return res.json({ ok: false, error: 'Credenciales incorrectas.' })
+      return res.json({ ok: true, user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role } })
+    }
+
+    if (action === 'register') {
+      if (!nombre || !email || !password) return res.json({ ok: false, error: 'Nombre, email y contraseña son requeridos.' })
+      const cleanEmail = String(email).trim().toLowerCase()
+      try {
+        const [row] = await sql`
+          INSERT INTO public.usuarios (restaurante_id, nombre, email, password_hash, role)
+          VALUES (${RESTAURANTE_ID}, ${String(nombre).trim()}, ${cleanEmail}, ${password}, ${role || 'cliente'})
+          RETURNING id, nombre, email, role, creado_en`
+        return res.json({ ok: true, user: row })
+      } catch (e) {
+        if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
+          return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
+        }
+        throw e
+      }
+    }
+
+    return res.status(400).json({ error: 'action no reconocida.' })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

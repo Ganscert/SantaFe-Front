@@ -10,6 +10,7 @@ import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { usePlatos } from '../state/PlatosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
+import { db } from '../../adapters/db.js'
 
 const ACTIVE_CLIENT_MESA_KEY = 'santa-fe:client-mesa'
 const CATEGORIAS = ['Todos', 'Entrada', 'Plato Principal', 'Postre', 'Bebida']
@@ -49,6 +50,8 @@ export default function MesaCliente() {
   const [ultimo, setUltimo]       = useState(null) // último pedido enviado (mostrar feedback)
   const [cuentaSolicitada, setCuentaSolicitada] = useState(false)
   const [mesaLiberada, setMesaLiberada] = useState(false)
+  const [saliendoError, setSaliendoError] = useState('')
+  const [verificandoSalida, setVerificandoSalida] = useState(false)
 
   // Cuando el personal libera la mesa (estado → disponible), expulsar al cliente.
   // mesa.estado se actualiza reactivamente vía WS sync en MesasContext.
@@ -141,9 +144,29 @@ export default function MesaCliente() {
     setConfirma(false)
   }
 
-  function salir() {
-    // Cliente abandona la mesa: limpia su asociación local. NO libera la mesa
-    // (la mesa la libera el staff cuando cobra).
+  async function salir() {
+    // Sin pedidos o mesa ya liberada → salir directamente
+    if (misPedidos.length === 0 || !mesa || mesa.estado === 'disponible') {
+      try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
+      logout()
+      navigate('/', { replace: true })
+      return
+    }
+
+    setVerificandoSalida(true)
+    setSaliendoError('')
+    try {
+      const comensales = await db.comensales.listByMesa(activa.mesaId)
+      const miRegistro = comensales.find(c => c.username === session?.name)
+      if (miRegistro && !miRegistro.pagado_en) {
+        setSaliendoError('Tu cuenta aún no fue cobrada. Solicita la cuenta al cajero.')
+        setVerificandoSalida(false)
+        return
+      }
+    } catch {
+      // Si la DB no responde, permitir salir
+    }
+
     try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
     logout()
     navigate('/', { replace: true })
@@ -263,12 +286,17 @@ export default function MesaCliente() {
                 type="button"
                 onClick={salir}
                 aria-label="Cerrar sesión"
-                className="w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center"
+                disabled={verificandoSalida}
+                className="w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center disabled:opacity-50"
               >
-                <LogOut size={15} />
+                {verificandoSalida ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
               </button>
             </div>
           </div>
+
+          {saliendoError && (
+            <p className="mt-1.5 text-xs font-semibold text-red-600 dark:text-red-400">{saliendoError}</p>
+          )}
 
           {/* Integrantes de la mesa */}
           {(mesa.integrantes || []).length > 0 && (

@@ -151,7 +151,7 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
 }
 
 /* ── Panel lateral ────────────────────────────────── */
-function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa }) {
+function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [] }) {
   if (!mesa) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center">
       <span className="text-4xl">👆</span>
@@ -237,6 +237,29 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         </div>
       )}
 
+      {/* Comensales DB con estado de pago */}
+      {comensalesDB.filter(c => c.activo).length > 0 && (
+        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Comensales en mesa</p>
+          {comensalesDB.filter(c => c.activo).map(c => {
+            const diff = Date.now() - new Date(c.creado_en).getTime()
+            const min = Math.floor(diff / 60000)
+            const tiempoStr = min < 1 ? 'ahora' : min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}min`
+            return (
+              <div key={c.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{c.username}</p>
+                  <p className="text-[10px] text-slate-400">{tiempoStr}</p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.pagado_en ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {c.pagado_en ? 'Pagado' : 'Pendiente'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* botonera de estado */}
       <BotoneraEstado mesa={mesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} />
 
@@ -287,7 +310,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
 }
 
 /* ── Panel / Drawer híbrido ───────────────────────── */
-function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa }) {
+function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [] }) {
   // Cierra con Escape
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose()
@@ -305,7 +328,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
       >
         ✕
       </button>
-      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} />
+      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} />
     </div>
   )
 
@@ -350,6 +373,7 @@ function TableroMesas() {
   const [selectedMesa, setSelectedMesa] = useState(null)
   const [pickerMesa, setPickerMesa] = useState(null)
   const [qrMesa, setQrMesa] = useState(null)
+  const [comensalesDB, setComensalesDB] = useState([])
 
   const puedeGenerarQR = session?.role === ROLES.RECEPCIONISTA || session?.role === ROLES.MESERO
     || session?.role === 'admin' || session?.role === 'gerente'
@@ -367,6 +391,11 @@ function TableroMesas() {
     cambiarEstadoA(mesa.numeroMesa, 'disponible')
     setSelectedMesa(null)
   }
+
+  useEffect(() => {
+    if (!selectedMesa?.id) { setComensalesDB([]); return }
+    db.comensales.listByMesa(selectedMesa.id).then(setComensalesDB).catch(() => {})
+  }, [selectedMesa?.id])
 
   useEffect(() => {
     if (!selectedMesa) return
@@ -504,6 +533,7 @@ function TableroMesas() {
           puedeGenerarQR={puedeGenerarQR}
           onClearCuenta={handleClearCuenta}
           onLiberarMesa={handleLiberarMesa}
+          comensalesDB={comensalesDB}
         />
       </div>
 

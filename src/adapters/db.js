@@ -33,9 +33,15 @@ export const db = {
     listTiempo:  ()        => req('/comensales?tipo=tiempo'),
     upsert:      (data)    => req('/comensales', 'POST', data),
     deactivate:  (mesa_id) => req('/comensales', 'PATCH', { mesa_id, activo: false }),
+    marcarPagado:(mesa_id) => req('/comensales', 'PATCH', { mesa_id, pagado: true }),
   },
   pagos: {
     list:   (mesa_id) => req(`/pagos${mesa_id ? `?mesa_id=${encodeURIComponent(mesa_id)}` : ''}`),
     insert: (data)    => req('/pagos', 'POST', data),
+  },
+  usuarios: {
+    login:    (email, password) => req('/usuarios', 'POST', { action: 'login', email, password }),
+    register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),
+    list:     ()                => req('/usuarios'),
   },
 }

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       }
 
       const rows = await sql`
-        SELECT id, mesa_id, username, total_cuenta, activo
+        SELECT id, mesa_id, username, total_cuenta, activo, pagado_en, creado_en
         FROM public.comensales
         WHERE mesa_id = ${mesa_id} AND activo = true`
       return res.json(rows)
@@ -50,7 +50,13 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { mesa_id, activo } = req.body
+      const { mesa_id, activo, pagado } = req.body
+      if (pagado === true) {
+        await sql`
+          UPDATE public.comensales SET pagado_en = now()
+          WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID} AND activo = true`
+        return res.json({ ok: true })
+      }
       await sql`
         UPDATE public.comensales SET activo = ${activo}
         WHERE mesa_id = ${mesa_id} AND restaurante_id = ${RESTAURANTE_ID}`

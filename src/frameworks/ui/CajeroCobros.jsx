@@ -157,6 +157,7 @@ export default function CajeroCobros() {
 
   async function registrarCobro(mesa, metodo, monto) {
     await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
+    await db.comensales.marcarPagado(mesa.id).catch(() => {})
     // Mesa queda en por_cobrar — el mesero la libera manualmente
     if (mesa.estado !== 'por_cobrar') {
       cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')

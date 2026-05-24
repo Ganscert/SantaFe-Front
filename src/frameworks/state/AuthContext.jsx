@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { db } from '../../adapters/db.js'
 
 const STORAGE_KEY_SESSION = 'santa-fe:session'
 const STORAGE_KEY_USERS   = 'santa-fe:auth-users'
@@ -59,13 +60,25 @@ export function AuthProvider({ children }) {
   }, [session])
 
   const login = useCallback(async (email, password) => {
-    const cleanEmail = String(email || '').trim().toLowerCase()
-    const match = users.find(u => u.email.toLowerCase() === cleanEmail)
-    if (!match) return { ok: false, error: 'No existe una cuenta con ese correo.' }
-    if (match.password !== password) return { ok: false, error: 'Contraseña incorrecta.' }
-    const safe = { id: match.id, name: match.name, email: match.email, role: match.role, issuedAt: Date.now() }
-    setSession(safe)
-    return { ok: true, user: safe }
+    // Try DB first
+    try {
+      const result = await db.usuarios.login(email, password)
+      if (result.ok) {
+        const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now() }
+        setSession(safe)
+        return { ok: true, user: safe }
+      }
+      return { ok: false, error: result.error }
+    } catch {
+      // DB unavailable → fallback local
+      const cleanEmail = String(email || '').trim().toLowerCase()
+      const match = users.find(u => u.email.toLowerCase() === cleanEmail)
+      if (!match) return { ok: false, error: 'No existe una cuenta con ese correo.' }
+      if (match.password !== password) return { ok: false, error: 'Contraseña incorrecta.' }
+      const safe = { id: match.id, name: match.name, email: match.email, role: match.role, issuedAt: Date.now() }
+      setSession(safe)
+      return { ok: true, user: safe }
+    }
   }, [users])
 
   const register = useCallback(async ({ name, email, password, role = ROLES.CLIENTE }) => {
@@ -74,14 +87,25 @@ export function AuthProvider({ children }) {
     if (!cleanName)                       return { ok: false, error: 'Ingresa tu nombre.' }
     if (!emailRegex.test(cleanEmail))     return { ok: false, error: 'Correo no válido.' }
     if (!password || password.length < 6) return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' }
-    if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
-      return { ok: false, error: 'Ya existe una cuenta con ese correo.' }
+
+    // Try DB first
+    try {
+      const result = await db.usuarios.register({ nombre: cleanName, email: cleanEmail, password, role })
+      if (!result.ok) return { ok: false, error: result.error }
+      const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now() }
+      setSession(safe)
+      return { ok: true, user: safe }
+    } catch {
+      // DB unavailable → fallback local
+      if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+        return { ok: false, error: 'Ya existe una cuenta con ese correo.' }
+      }
+      const nuevo = { id: `user-${Date.now().toString(36)}`, name: cleanName, email: cleanEmail, password, role }
+      setUsers(prev => [...prev, nuevo])
+      const safe = { id: nuevo.id, name: nuevo.name, email: nuevo.email, role: nuevo.role, issuedAt: Date.now() }
+      setSession(safe)
+      return { ok: true, user: safe }
     }
-    const nuevo = { id: `user-${Date.now().toString(36)}`, name: cleanName, email: cleanEmail, password, role }
-    setUsers(prev => [...prev, nuevo])
-    const safe = { id: nuevo.id, name: nuevo.name, email: nuevo.email, role: nuevo.role, issuedAt: Date.now() }
-    setSession(safe)
-    return { ok: true, user: safe }
   }, [users])
 
   const logout = useCallback(() => setSession(null), [])
