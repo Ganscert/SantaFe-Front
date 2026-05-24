@@ -46,7 +46,18 @@ export default async function handler(req, res) {
       if (error) throw error
 
       // Marca todos los pedidos no cobrados de la mesa como cobrados por este pago
-      await sb.rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
+      const { error: rpcErr } = await sb.rpc('marcar_pedidos_cobrados', {
+        p_mesa_id: mesa_id, p_pago_id: data.id,
+      })
+      if (rpcErr) {
+        console.warn('[pagos.POST] RPC marcar_pedidos_cobrados falló, usando fallback JS:', rpcErr.message)
+        await sb
+          .from('pedidos')
+          .update({ cobrado_en: new Date().toISOString(), pago_id: data.id })
+          .eq('mesa_id', mesa_id)
+          .eq('restaurante_id', RESTAURANTE_ID)
+          .is('cobrado_en', null)
+      }
 
       return res.json(data)
     }

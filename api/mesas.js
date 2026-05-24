@@ -37,7 +37,36 @@ export default async function handler(req, res) {
       // Cerrar todos los pedidos abiertos antes de por_cobrar / disponible
       // para que el trigger de validación no bloquee el cambio de estado.
       if (estado === 'por_cobrar' || estado === 'disponible') {
-        await sb.rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+        const { error: rpcErr } = await sb.rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+        if (rpcErr) {
+          console.warn('[mesas.PATCH] RPC cerrar_pedidos_mesa falló, usando fallback JS:', rpcErr.message)
+          // Fallback: cerrar pedidos manualmente
+          const { data: abiertos } = await sb
+            .from('pedidos')
+            .select('id')
+            .eq('mesa_id', id)
+            .eq('restaurante_id', RESTAURANTE_ID)
+            .not('estado', 'in', '("entregado","cancelado")')
+          if (abiertos?.length) {
+            const pedidoIds = abiertos.map(p => p.id)
+            const nowIso = new Date().toISOString()
+            // Items: setear iniciado_en (para que el trigger de tiempo_servicio calcule)
+            await sb.from('pedido_items')
+              .update({ iniciado_en: nowIso })
+              .in('pedido_id', pedidoIds)
+              .is('iniciado_en', null)
+              .not('estado', 'in', '("entregado","cancelado")')
+            // Items: entregado
+            await sb.from('pedido_items')
+              .update({ estado: 'entregado' })
+              .in('pedido_id', pedidoIds)
+              .not('estado', 'in', '("entregado","cancelado")')
+            // Pedidos: entregado
+            await sb.from('pedidos')
+              .update({ estado: 'entregado' })
+              .in('id', pedidoIds)
+          }
+        }
       }
       const { data, error } = await sb
         .from('mesas')

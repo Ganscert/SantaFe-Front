@@ -55,7 +55,22 @@ app.patch('/api/mesas', async (req, res) => {
   try {
     const { id, estado } = req.body
     if (estado === 'por_cobrar' || estado === 'disponible') {
-      await db().rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+      const { error: rpcErr } = await db().rpc('cerrar_pedidos_mesa', { p_mesa_id: id })
+      if (rpcErr) {
+        console.warn('[mesas.PATCH] RPC cerrar_pedidos_mesa falló, fallback JS:', rpcErr.message)
+        const { data: abiertos } = await db().from('pedidos').select('id')
+          .eq('mesa_id', id).eq('restaurante_id', RESTAURANTE_ID)
+          .not('estado', 'in', '("entregado","cancelado")')
+        if (abiertos?.length) {
+          const ids = abiertos.map(p => p.id)
+          const nowIso = new Date().toISOString()
+          await db().from('pedido_items').update({ iniciado_en: nowIso })
+            .in('pedido_id', ids).is('iniciado_en', null).not('estado', 'in', '("entregado","cancelado")')
+          await db().from('pedido_items').update({ estado: 'entregado' })
+            .in('pedido_id', ids).not('estado', 'in', '("entregado","cancelado")')
+          await db().from('pedidos').update({ estado: 'entregado' }).in('id', ids)
+        }
+      }
     }
     const { data, error } = await db().from('mesas').update({ estado }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad').single()
     if (error) throw error
@@ -231,7 +246,13 @@ app.post('/api/pagos', async (req, res) => {
       .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia })
       .select('id, mesa_id, monto, metodo, referencia, creado_en').single()
     if (error) throw error
-    await db().rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
+    const { error: rpcErr } = await db().rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
+    if (rpcErr) {
+      console.warn('[pagos.POST] RPC marcar_pedidos_cobrados falló, fallback JS:', rpcErr.message)
+      await db().from('pedidos')
+        .update({ cobrado_en: new Date().toISOString(), pago_id: data.id })
+        .eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID).is('cobrado_en', null)
+    }
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
