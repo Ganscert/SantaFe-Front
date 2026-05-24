@@ -45,7 +45,11 @@ export const db = {
     list:     ()                => req('/usuarios'),
   },
   pedidos: {
-    listByMesa: (mesa_id) => req(`/pedidos?mesa_id=${encodeURIComponent(mesa_id)}`),
+    listByMesa: (mesa_id, opts = {}) => {
+      const qs = new URLSearchParams({ mesa_id })
+      if (opts.soloNoCobrados) qs.set('solo_no_cobrados', '1')
+      return req(`/pedidos?${qs.toString()}`)
+    },
     crear:      (data)    => req('/pedidos', 'POST', data),
     updateItem: (id, estado) => req('/pedidos', 'PATCH', { id, estado }),
   },

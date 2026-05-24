@@ -44,6 +44,10 @@ export default async function handler(req, res) {
         .select('id, mesa_id, monto, metodo, referencia, creado_en')
         .single()
       if (error) throw error
+
+      // Marca todos los pedidos no cobrados de la mesa como cobrados por este pago
+      await sb.rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
+
       return res.json(data)
     }
 

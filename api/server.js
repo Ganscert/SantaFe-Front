@@ -231,6 +231,7 @@ app.post('/api/pagos', async (req, res) => {
       .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia })
       .select('id, mesa_id, monto, metodo, referencia, creado_en').single()
     if (error) throw error
+    await db().rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -238,7 +239,7 @@ app.post('/api/pagos', async (req, res) => {
 // ─── PEDIDOS ─────────────────────────────────────────────────────────────────
 app.get('/api/pedidos', async (req, res) => {
   try {
-    const { numero_mesa, mesa_id } = req.query
+    const { numero_mesa, mesa_id, solo_no_cobrados } = req.query
     let mid = mesa_id
     if (!mid && numero_mesa) {
       const { data: m } = await db().from('mesas').select('id').eq('restaurante_id', RESTAURANTE_ID).eq('numero_mesa', numero_mesa).maybeSingle()
@@ -246,9 +247,13 @@ app.get('/api/pedidos', async (req, res) => {
       mid = m.id
     }
     if (!mid) return res.json([])
-    const { data, error } = await db().from('pedidos')
-      .select('id, mesa_id, estado, total, creado_en, pedido_items (id, nombre, cantidad, precio_unitario, estado, subtotal, creado_en)')
+
+    let pedidosQuery = db().from('pedidos')
+      .select('id, mesa_id, estado, total, cobrado_en, pago_id, creado_en, pedido_items (id, nombre, cantidad, precio_unitario, estado, subtotal, creado_en)')
       .eq('mesa_id', mid).eq('restaurante_id', RESTAURANTE_ID).order('creado_en', { ascending: false })
+    if (solo_no_cobrados === '1' || solo_no_cobrados === 'true') pedidosQuery = pedidosQuery.is('cobrado_en', null)
+
+    const { data, error } = await pedidosQuery
     if (error) throw error
     res.json(data.map(p => {
       const items = (p.pedido_items || []).map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio_unitario, estado: i.estado, subtotal: i.subtotal }))

@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   try {
     const sb = getDB()
     if (req.method === 'GET') {
-      const { numero_mesa, mesa_id } = req.query
+      const { numero_mesa, mesa_id, solo_no_cobrados } = req.query
       let mid = mesa_id
 
       if (!mid && numero_mesa) {
@@ -24,12 +24,17 @@ export default async function handler(req, res) {
       }
       if (!mid) return res.json([])
 
-      const { data, error } = await sb
+      let pedidosQuery = sb
         .from('pedidos')
-        .select('id, mesa_id, estado, total, creado_en, pedido_items (id, nombre, cantidad, precio_unitario, estado, subtotal, creado_en)')
+        .select('id, mesa_id, estado, total, cobrado_en, pago_id, creado_en, pedido_items (id, nombre, cantidad, precio_unitario, estado, subtotal, creado_en)')
         .eq('mesa_id', mid)
         .eq('restaurante_id', RESTAURANTE_ID)
         .order('creado_en', { ascending: false })
+      if (solo_no_cobrados === '1' || solo_no_cobrados === 'true') {
+        pedidosQuery = pedidosQuery.is('cobrado_en', null)
+      }
+
+      const { data, error } = await pedidosQuery
       if (error) throw error
 
       const rows = data.map(p => {

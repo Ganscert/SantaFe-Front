@@ -163,7 +163,7 @@ export default function CajeroCobros() {
     const seen = new Set()
     const unique = allMesas.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
     unique.forEach(mesa => {
-      db.pedidos.listByMesa(mesa.id)
+      db.pedidos.listByMesa(mesa.id, { soloNoCobrados: true })
         .then(rows => setPedidosDBMap(prev => ({ ...prev, [mesa.id]: rows })))
         .catch(() => {})
     })
