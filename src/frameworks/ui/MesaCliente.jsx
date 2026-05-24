@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Utensils, Plus, Minus, ShoppingBag, Check, X, LogOut, ImageIcon, Clock, ChefHat,
@@ -10,6 +10,7 @@ import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { usePlatos } from '../state/PlatosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
+import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { db } from '../../adapters/db.js'
 
 const ACTIVE_CLIENT_MESA_KEY = 'santa-fe:client-mesa'
@@ -36,13 +37,15 @@ export default function MesaCliente() {
   const { pedidos, agregarPedido } = usePedidos()
   const { platos: platosAdmin } = usePlatos()
   useTokens() // mantiene el contexto activo para sincronización
+  const { serverState } = useLiveSync()
 
   // Leer localStorage una sola vez (no cambia durante la vida del componente).
   const activaRef = useRef(leerMesaActiva())
   const activa = activaRef.current
   const mesa = activa ? mesas.find((m) => m.id === activa.mesaId) : null
-  // Momento en que el cliente se unió — sirve para ocultar el historial previo.
-  const joinedAt = activa?.joinedAt ?? Date.now()
+  // joinedAt es STATE (no ref) porque puede avanzar tras un cobro para
+  // descartar todos los pedidos previos y evitar contaminación al refrescar.
+  const [joinedAt, setJoinedAt] = useState(() => activa?.joinedAt ?? Date.now())
 
   const [carrito, setCarrito]     = useState([]) // [{ nombre, precio, cantidad }]
   const [categoria, setCategoria] = useState('Todos')
@@ -53,18 +56,31 @@ export default function MesaCliente() {
   const [saliendoError, setSaliendoError] = useState('')
   const [verificandoSalida, setVerificandoSalida] = useState(false)
   const [enviandoPedido, setEnviandoPedido] = useState(false)
+  const [reseteando, setReseteando] = useState(false) // overlay mientras procesamos un cobro
   const enviandoRef = useRef(false)
   const salidaIniciadaRef = useRef(false)
-  // Pedidos desde DB para conocer estado de pago (cobrado_en). El state local
-  // de Pusher no incluye esa info — se refresca por polling cada 10s.
+  const lastPagoSeenRef = useRef(0)
+  // Pedidos DB SIN COBRAR — única fuente de verdad para lo que el cliente debe pagar.
+  // El polling cada 10s es respaldo; el camino primario es sync:pago vía Pusher.
   const [pedidosDB, setPedidosDB] = useState([])
 
-  // Polling de pedidos DB para conocer cuáles están cobrados.
+  const refetchPedidosDB = useCallback(async () => {
+    if (!mesa?.id) return []
+    try {
+      const rows = await db.pedidos.listByMesa(mesa.id, { soloNoCobrados: true })
+      setPedidosDB(rows || [])
+      return rows || []
+    } catch {
+      return []
+    }
+  }, [mesa?.id])
+
+  // Polling de respaldo (no carga ítems cobrados).
   useEffect(() => {
     if (!mesa?.id) return
     let cancelled = false
     const fetchPedidos = () => {
-      db.pedidos.listByMesa(mesa.id)
+      db.pedidos.listByMesa(mesa.id, { soloNoCobrados: true })
         .then(rows => { if (!cancelled) setPedidosDB(rows || []) })
         .catch(() => {})
     }
@@ -72,6 +88,38 @@ export default function MesaCliente() {
     const id = setInterval(fetchPedidos, 10000)
     return () => { cancelled = true; clearInterval(id) }
   }, [mesa?.id])
+
+  // Hard reset al detectar un cobro en esta mesa (vía Pusher sync:pago).
+  // Vacía estado UI, avanza joinedAt para que pedidos viejos no reaparezcan
+  // al refrescar y re-fetchea pedidosDB para confirmar la cuenta vacía.
+  useEffect(() => {
+    const lp = serverState?.lastPago
+    if (!lp || !mesa?.id) return
+    if (lp.mesa_id !== mesa.id) return
+    if (lp.at <= lastPagoSeenRef.current) return
+    lastPagoSeenRef.current = lp.at
+
+    let cancelled = false
+    ;(async () => {
+      setReseteando(true)
+      const nuevoJoinedAt = Date.now()
+      try {
+        const next = { ...(activaRef.current || {}), joinedAt: nuevoJoinedAt }
+        activaRef.current = next
+        localStorage.setItem(ACTIVE_CLIENT_MESA_KEY, JSON.stringify(next))
+      } catch {}
+      if (!cancelled) {
+        setJoinedAt(nuevoJoinedAt)
+        setCarrito([])
+        setConfirma(false)
+        setUltimo(null)
+        setCuentaSolicitada(false)
+      }
+      await refetchPedidosDB()
+      if (!cancelled) setReseteando(false)
+    })()
+    return () => { cancelled = true }
+  }, [serverState?.lastPago, mesa?.id, refetchPedidosDB])
 
   // Cuando el personal libera la mesa (estado → disponible), expulsar al cliente.
   // mesa.estado se actualiza reactivamente vía WS sync en MesasContext.
@@ -115,26 +163,16 @@ export default function MesaCliente() {
     if (!session) navigate('/', { replace: true })
   }, [session, navigate])
 
-  // El cliente NO debe ver el historial de la mesa: sólo los pedidos creados
-  // desde el momento en que se unió a esta sesión (excluye pedidos previos
-  // de otros comensales o de visitas anteriores a la mesa).
-  const misPedidos = useMemo(
-    () => mesa
-      ? pedidos
-          .filter((p) => p.mesa === mesa.numeroMesa && p.creadoEn >= joinedAt)
-          .sort((a, b) => b.creadoEn - a.creadoEn)
-      : [],
-    [pedidos, mesa, joinedAt],
-  )
-
-  // Pedidos DB del cliente desde que se unió. Tienen `cobrado_en` y `pago_id`.
+  // Pedidos DB del cliente desde que se unió. Sólo incluye NO cobrados
+  // (la query usa soloNoCobrados=true).
   const misPedidosDB = useMemo(
     () => pedidosDB.filter(p => new Date(p.creado_en).getTime() >= joinedAt - 5000),
     [pedidosDB, joinedAt],
   )
 
-  // Match pedido local ↔ pedido DB por timestamp cercano (±10s) y items
-  // similares (mismo total). Devuelve { cobrado: boolean } o null si no matchea.
+  // Match pedido local ↔ pedido DB por timestamp cercano y total similar.
+  // Como pedidosDB excluye cobrados, un match implica { cobrado: false }.
+  // Devuelve null si no hay match (puede ser: muy reciente y aún no persiste, o ya fue cobrado).
   const inferirPago = (pedidoLocal) => {
     if (!misPedidosDB.length) return null
     const totalLocal = (pedidoLocal.items || []).reduce(
@@ -150,6 +188,26 @@ export default function MesaCliente() {
     if (!candidato) return null
     return { cobrado: candidato.cobrado_en != null }
   }
+
+  // El cliente NO debe ver el historial de la mesa: sólo los pedidos creados
+  // desde joinedAt. Además, NUNCA mostramos un pedido ya cobrado (aislamiento
+  // estricto por cobrado_en): si pedidosDB tiene datos y este pedido no aparece
+  // ahí, asumimos que ya fue cobrado y lo ocultamos (excepto si es muy reciente
+  // y aún no se persistió en DB).
+  const misPedidos = useMemo(() => {
+    if (!mesa) return []
+    const ahora = Date.now()
+    return pedidos
+      .filter((p) => p.mesa === mesa.numeroMesa && p.creadoEn >= joinedAt)
+      .filter((p) => {
+        const match = inferirPago(p)
+        if (match) return !match.cobrado
+        // Sin match: optimista sólo si es muy reciente; si no, asumimos cobrado.
+        return ahora - p.creadoEn < 15000
+      })
+      .sort((a, b) => b.creadoEn - a.creadoEn)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidos, mesa, joinedAt, misPedidosDB])
 
   // Resumen "Por pagar": suma de pedidos DB míos sin cobrar.
   const totalPorPagar = useMemo(
@@ -367,6 +425,20 @@ export default function MesaCliente() {
 
   return (
     <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 pb-32">
+      {/* Overlay bloqueante durante el hard-reset post-cobro */}
+      {reseteando && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-2xl p-6 text-center max-w-xs w-full">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+              <Loader2 size={26} className="animate-spin" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">Actualizando cuenta…</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Tu pago fue registrado. Sincronizando tu cuenta.
+            </p>
+          </div>
+        </div>
+      )}
       <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#e8e0d8] dark:border-slate-800 shadow-sm sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3">

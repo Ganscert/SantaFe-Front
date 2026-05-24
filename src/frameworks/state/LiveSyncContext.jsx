@@ -64,6 +64,15 @@ export const LiveSyncProvider = ({ children }) => {
     channel.bind('sync:reset', () => {
       setServerState({ mesas: [], pedidos: [], tokens: [] })
     })
+    // Notifica a clientes/cajero que se registró un cobro para una mesa.
+    // Se usa para que la vista del cliente haga hard-reset sin esperar polling.
+    channel.bind('sync:pago', (data) => {
+      if (!data?.mesa_id) return
+      setServerState((prev) => ({
+        ...(prev || {}),
+        lastPago: { mesa_id: data.mesa_id, at: data.at || Date.now() },
+      }))
+    })
 
     return () => {
       channel.unbind_all()

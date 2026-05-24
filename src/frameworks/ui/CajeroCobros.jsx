@@ -128,7 +128,7 @@ export default function CajeroCobros() {
   const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
   const { pedidos } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
-  const { connected } = useLiveSync()
+  const { connected, sendMessage } = useLiveSync()
 
   const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
   const [tiempoComensales, setTiempoComensales] = useState([])
@@ -197,6 +197,8 @@ export default function CajeroCobros() {
         await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
         await db.comensales.marcarPagado(mesa.id).catch(() => {})
       }
+      // Notificar a clientes de esta mesa para que hagan hard-reset (sin esperar polling).
+      sendMessage({ type: 'sync:pago', mesa_id: mesa.id, at: Date.now() })
       // Mesa queda en por_cobrar — el mesero la libera manualmente
       if (mesa.estado !== 'por_cobrar') {
         cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')

@@ -17,6 +17,7 @@ const ALLOWED = new Set([
   'sync:tokens',
   'sync:platos',
   'sync:reset',
+  'sync:pago',
 ])
 
 export default async function handler(req, res) {
