@@ -6,8 +6,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
-  const sb = getDB()
   try {
+    const sb = getDB()
     if (req.method === 'GET') {
       const { numero_mesa, mesa_id } = req.query
       let mid = mesa_id
