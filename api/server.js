@@ -191,6 +191,14 @@ app.post('/api/pagos', async (req, res) => {
   try {
     const sql = db()
     const { mesa_id, monto, metodo, referencia = null } = req.body
+    // Idempotency: reject duplicate for same mesa+monto+metodo within 60 s
+    const [existing] = await sql`
+      SELECT id, mesa_id, monto, metodo, referencia, creado_en FROM public.pagos
+      WHERE restaurante_id = ${RESTAURANTE_ID} AND mesa_id = ${mesa_id}
+        AND monto = ${monto} AND metodo = ${metodo}
+        AND creado_en > now() - interval '60 seconds'
+      LIMIT 1`
+    if (existing) return res.json(existing)
     const [row] = await sql`
       INSERT INTO public.pagos (restaurante_id, mesa_id, monto, metodo, referencia)
       VALUES (${RESTAURANTE_ID}, ${mesa_id}, ${monto}, ${metodo}, ${referencia})

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Receipt, Users, Clock, CheckCircle2, Wifi, WifiOff, CircleDollarSign,
@@ -38,16 +38,20 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
   const [monto, setMonto] = useState(total > 0 ? total.toFixed(2) : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const submittedRef = useRef(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (submittedRef.current) return
     const montoNum = parseFloat(monto)
     if (!montoNum || montoNum <= 0) return setError('Ingresa un monto válido.')
+    submittedRef.current = true
     setLoading(true)
     try {
       await onConfirm(metodo, montoNum)
       onClose()
     } catch (err) {
+      submittedRef.current = false
       setError(err.message || 'Error al registrar el cobro.')
     } finally {
       setLoading(false)
