@@ -44,4 +44,9 @@ export const db = {
     register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),
     list:     ()                => req('/usuarios'),
   },
+  pedidos: {
+    listByMesa: (mesa_id) => req(`/pedidos?mesa_id=${encodeURIComponent(mesa_id)}`),
+    crear:      (data)    => req('/pedidos', 'POST', data),
+    updateItem: (id, estado) => req('/pedidos', 'PATCH', { id, estado }),
+  },
 }

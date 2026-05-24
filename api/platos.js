@@ -1,6 +1,4 @@
-import { neon } from '@neondatabase/serverless'
-
-const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
+import { getDB, RESTAURANTE_ID } from './_supabase.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,51 +6,59 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
-  const sql = neon(process.env.DATABASE_URL)
+  const sb = getDB()
   try {
     if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT id, nombre, precio, disponible, imagen_url, categoria, ingredientes, creado_en
-        FROM public.platos
-        WHERE restaurante_id = ${RESTAURANTE_ID}
-          AND eliminado_en IS NULL
-        ORDER BY creado_en DESC
-      `
-      return res.json(rows)
+      const { data, error } = await sb
+        .from('platos')
+        .select('id, nombre, precio, disponible, imagen_url, categoria, ingredientes, creado_en')
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .is('eliminado_en', null)
+        .order('creado_en', { ascending: false })
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'POST') {
       const { nombre, precio, disponible = true, imagen_url = null, categoria = null, ingredientes = [] } = req.body
-      const [row] = await sql`
-        INSERT INTO public.platos (restaurante_id, nombre, precio, disponible, imagen_url, categoria, ingredientes)
-        VALUES (${RESTAURANTE_ID}, ${nombre}, ${precio}, ${disponible}, ${imagen_url}, ${categoria}, ${ingredientes})
-        RETURNING *
-      `
-      return res.json(row)
+      const { data, error } = await sb
+        .from('platos')
+        .insert({ restaurante_id: RESTAURANTE_ID, nombre, precio, disponible, imagen_url, categoria, ingredientes })
+        .select()
+        .single()
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'PATCH') {
       const { id, nombre, precio, disponible, imagen_url, categoria, ingredientes } = req.body
-      const [row] = await sql`
-        UPDATE public.platos
-        SET nombre      = ${nombre},
-            precio      = ${precio},
-            disponible  = ${disponible},
-            imagen_url  = ${imagen_url ?? null},
-            categoria   = ${categoria ?? null},
-            ingredientes= ${ingredientes ?? []}
-        WHERE id = ${id} AND restaurante_id = ${RESTAURANTE_ID} AND eliminado_en IS NULL
-        RETURNING *
-      `
-      return res.json(row ?? null)
+      const { data, error } = await sb
+        .from('platos')
+        .update({
+          nombre,
+          precio,
+          disponible,
+          imagen_url: imagen_url ?? null,
+          categoria: categoria ?? null,
+          ingredientes: ingredientes ?? [],
+        })
+        .eq('id', id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .is('eliminado_en', null)
+        .select()
+        .single()
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.body ?? {}
-      await sql`
-        UPDATE public.platos SET eliminado_en = now()
-        WHERE id = ${id} AND restaurante_id = ${RESTAURANTE_ID}
-      `
+      const { error } = await sb
+        .from('platos')
+        .update({ eliminado_en: new Date().toISOString() })
+        .eq('id', id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+      if (error) throw error
       return res.json({ ok: true })
     }
 

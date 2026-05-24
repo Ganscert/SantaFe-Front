@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useMesas } from './MesasContext.jsx'
 import { useLiveSync } from './LiveSyncContext.jsx'
+import { db } from '../../adapters/db.js'
 
 const uid = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -88,8 +89,17 @@ export const PedidosProvider = ({ children }) => {
       return next
     })
 
-    // Reapertura automática: si la mesa estaba disponible o por_cobrar → pasa a ocupada
     const mesa = mesas.find(m => m.numeroMesa === Number(pedido.mesa))
+
+    // Persistir en DB (fire-and-forget)
+    if (mesa?.id) {
+      db.pedidos.crear({
+        mesa_id: mesa.id,
+        items: nuevoPedido.items.map(i => ({ nombre: i.nombre, precio: i.precio, cantidad: i.cantidad })),
+      }).catch(() => {})
+    }
+
+    // Reapertura automática: si la mesa estaba disponible o por_cobrar → pasa a ocupada
     if (mesa && (mesa.estado === 'disponible' || mesa.estado === 'por_cobrar')) {
       cambiarEstadoA(mesa.numeroMesa, 'ocupada')
     }

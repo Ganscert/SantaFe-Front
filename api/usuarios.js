@@ -1,6 +1,4 @@
-import { neon } from '@neondatabase/serverless'
-
-const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
+import { getDB, RESTAURANTE_ID } from './_supabase.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,16 +6,16 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
-  const sql = neon(process.env.DATABASE_URL)
-
+  const sb = getDB()
   try {
     if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT id, restaurante_id, nombre, email, role, activo, creado_en, actualizado_en
-        FROM public.usuarios
-        WHERE restaurante_id = ${RESTAURANTE_ID}
-        ORDER BY creado_en DESC`
-      return res.json(rows)
+      const { data, error } = await sb
+        .from('usuarios')
+        .select('id, restaurante_id, nombre, email, role, activo, creado_en, actualizado_en')
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .order('creado_en', { ascending: false })
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'POST') {
@@ -25,13 +23,14 @@ export default async function handler(req, res) {
 
       if (action === 'login') {
         if (!email || !password) return res.json({ ok: false, error: 'Email y contraseña requeridos.' })
-        const [user] = await sql`
-          SELECT id, nombre, email, role
-          FROM public.usuarios
-          WHERE email = ${String(email).trim().toLowerCase()}
-            AND password_hash = ${password}
-            AND activo = true
-          LIMIT 1`
+        const { data: user, error } = await sb
+          .from('usuarios')
+          .select('id, nombre, email, role')
+          .eq('email', String(email).trim().toLowerCase())
+          .eq('password_hash', password)
+          .eq('activo', true)
+          .maybeSingle()
+        if (error) throw error
         if (!user) return res.json({ ok: false, error: 'Credenciales incorrectas.' })
         return res.json({ ok: true, user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role } })
       }
@@ -39,18 +38,18 @@ export default async function handler(req, res) {
       if (action === 'register') {
         if (!nombre || !email || !password) return res.json({ ok: false, error: 'Nombre, email y contraseña son requeridos.' })
         const cleanEmail = String(email).trim().toLowerCase()
-        try {
-          const [row] = await sql`
-            INSERT INTO public.usuarios (restaurante_id, nombre, email, password_hash, role)
-            VALUES (${RESTAURANTE_ID}, ${String(nombre).trim()}, ${cleanEmail}, ${password}, ${role || 'cliente'})
-            RETURNING id, nombre, email, role, creado_en`
-          return res.json({ ok: true, user: row })
-        } catch (e) {
-          if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
+        const { data: row, error } = await sb
+          .from('usuarios')
+          .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: password, role: role || 'cliente' })
+          .select('id, nombre, email, role, creado_en')
+          .single()
+        if (error) {
+          if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
             return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
           }
-          throw e
+          throw error
         }
+        return res.json({ ok: true, user: row })
       }
 
       return res.status(400).json({ error: 'action no reconocida.' })

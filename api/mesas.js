@@ -1,6 +1,4 @@
-import { neon } from '@neondatabase/serverless'
-
-const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
+import { getDB, RESTAURANTE_ID } from './_supabase.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,37 +6,43 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
-  const sql = neon(process.env.DATABASE_URL)
+  const sb = getDB()
   try {
     if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT id, numero_mesa, estado, capacidad
-        FROM public.mesas
-        WHERE restaurante_id = ${RESTAURANTE_ID}
-        ORDER BY numero_mesa
-      `
-      return res.json(rows)
+      const { data, error } = await sb
+        .from('mesas')
+        .select('id, numero_mesa, estado, capacidad')
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .order('numero_mesa')
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'POST') {
       const { numero_mesa, capacidad = 4, estado = 'disponible' } = req.body
-      const [row] = await sql`
-        INSERT INTO public.mesas (restaurante_id, numero_mesa, capacidad, estado)
-        VALUES (${RESTAURANTE_ID}, ${numero_mesa}, ${capacidad}, ${estado})
-        ON CONFLICT (restaurante_id, numero_mesa) DO NOTHING
-        RETURNING id, numero_mesa, estado, capacidad
-      `
-      return res.json(row ?? null)
+      const { data, error } = await sb
+        .from('mesas')
+        .upsert(
+          { restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado },
+          { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true }
+        )
+        .select('id, numero_mesa, estado, capacidad')
+        .maybeSingle()
+      if (error) throw error
+      return res.json(data)
     }
 
     if (req.method === 'PATCH') {
       const { id, estado } = req.body
-      const [row] = await sql`
-        UPDATE public.mesas SET estado = ${estado}
-        WHERE id = ${id} AND restaurante_id = ${RESTAURANTE_ID}
-        RETURNING id, numero_mesa, estado, capacidad
-      `
-      return res.json(row ?? null)
+      const { data, error } = await sb
+        .from('mesas')
+        .update({ estado })
+        .eq('id', id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .select('id, numero_mesa, estado, capacidad')
+        .single()
+      if (error) throw error
+      return res.json(data)
     }
 
     res.setHeader('Allow', 'GET, POST, PATCH')

@@ -246,14 +246,9 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
             const min = Math.floor(diff / 60000)
             const tiempoStr = min < 1 ? 'ahora' : min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}min`
             return (
-              <div key={c.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-slate-200 dark:border-slate-700">
-                <div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{c.username}</p>
-                  <p className="text-[10px] text-slate-400">{tiempoStr}</p>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.pagado_en ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {c.pagado_en ? 'Pagado' : 'Pendiente'}
-                </span>
+              <div key={c.id} className="py-1.5 border-b last:border-0 border-slate-200 dark:border-slate-700">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{c.username}</p>
+                <p className="text-[10px] text-slate-400">{tiempoStr}</p>
               </div>
             )
           })}

@@ -130,6 +130,7 @@ export default function CajeroCobros() {
 
   const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
   const [tiempoComensales, setTiempoComensales] = useState([])
+  const [pedidosDBMap, setPedidosDBMap] = useState({}) // { [mesa_id]: pedido[] }
 
   useEffect(() => {
     db.comensales.listTiempo().then(setTiempoComensales).catch(() => {})
@@ -153,17 +154,38 @@ export default function CajeroCobros() {
     [mesas],
   )
 
-  const pedidosDeMesa = (mesa) => pedidos.filter((p) => Number(p.mesa) === mesa.numeroMesa)
+  // Claves estables para el effect de fetch
+  const solicitudIdsKey = mesasConSolicitud.map(m => m.id).join(',')
+  const porCobrarIdsKey = mesasPorCobrar.map(m => m.id).join(',')
+
+  useEffect(() => {
+    const allMesas = [...mesasConSolicitud, ...mesasPorCobrar]
+    const seen = new Set()
+    const unique = allMesas.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
+    unique.forEach(mesa => {
+      db.pedidos.listByMesa(mesa.id)
+        .then(rows => setPedidosDBMap(prev => ({ ...prev, [mesa.id]: rows })))
+        .catch(() => {})
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solicitudIdsKey, porCobrarIdsKey])
+
+  const pedidosDeMesa = (mesa) => {
+    const dbRows = pedidosDBMap[mesa.id]
+    if (dbRows && dbRows.length > 0) return dbRows
+    return pedidos.filter(p => Number(p.mesa) === mesa.numeroMesa)
+  }
 
   async function registrarCobro(mesa, metodo, monto) {
-    await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
-    await db.comensales.marcarPagado(mesa.id).catch(() => {})
+    if (monto > 0) {
+      await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
+      await db.comensales.marcarPagado(mesa.id).catch(() => {})
+    }
     // Mesa queda en por_cobrar — el mesero la libera manualmente
     if (mesa.estado !== 'por_cobrar') {
       cambiarEstadoA(mesa.numeroMesa, 'por_cobrar')
     }
     actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
-    // Invalidar tokens para que no entren nuevos comensales
     invalidarTokensDeMesa(mesa.id)
   }
 
@@ -243,7 +265,9 @@ export default function CajeroCobros() {
               Por cobrar — pendiente de liberación ({mesasPorCobrar.length})
             </h2>
             <div className="space-y-2">
-              {mesasPorCobrar.map((mesa) => (
+              {mesasPorCobrar.map((mesa) => {
+                const total = calcularTotal(mesa)
+                return (
                 <div
                   key={mesa.id}
                   className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 px-4 py-3 flex items-center justify-between gap-3"
@@ -258,12 +282,14 @@ export default function CajeroCobros() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setPagoModal(mesa)}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors"
-                    >
-                      Registrar cobro
-                    </button>
+                    {total > 0 && (
+                      <button
+                        onClick={() => setPagoModal(mesa)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors"
+                      >
+                        Registrar cobro
+                      </button>
+                    )}
                     <Link
                       to={`/mesa/${mesa.numeroMesa}`}
                       className="text-xs font-bold text-[#C1440E] dark:text-[#D4A017] hover:underline"
@@ -272,7 +298,7 @@ export default function CajeroCobros() {
                     </Link>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
             <p className="mt-2 text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
               <Timer size={11} />
@@ -440,12 +466,18 @@ function TarjetaCobro({ mesa, pedidosDeMesa, onCobrar, onAtender }) {
 
       {/* Acciones */}
       <div className="bg-white dark:bg-slate-900 px-4 pb-4 flex flex-col sm:flex-row gap-2">
-        <button
-          onClick={onCobrar}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors shadow-sm"
-        >
-          <CircleDollarSign size={15} /> Registrar cobro
-        </button>
+        {total > 0 ? (
+          <button
+            onClick={onCobrar}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors shadow-sm"
+          >
+            <CircleDollarSign size={15} /> Registrar cobro
+          </button>
+        ) : (
+          <span className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-sm font-semibold">
+            Sin consumo
+          </span>
+        )}
         <div className="flex gap-2">
           <Link
             to={`/mesa/${mesa.numeroMesa}`}
