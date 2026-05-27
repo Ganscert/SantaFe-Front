@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePedidos } from '../frameworks/state/PedidosContext.jsx'
 import { useMesas } from '../frameworks/state/MesasContext.jsx'
+import { db } from '../adapters/db.js'
 
 const DAY = 86400000
 const HOUR = 3600000
@@ -21,20 +22,60 @@ const periodWindow = (period) => {
 const totalDePedido = (p) =>
   (p.items ?? []).reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 0), 0)
 
+// Normaliza un registro de v_dashboard_resumen al shape interno de pedido local.
+function dbRowToPedido(row) {
+  const items = (row.items || []).map(it => ({
+    id: it.id,
+    nombre: it.nombre,
+    cantidad: Number(it.cantidad) || 0,
+    precio: Number(it.precio) || 0,
+    estado: it.estado,
+  }))
+  return {
+    id: row.id,
+    dbId: row.id,
+    mesa: Number(row.numero_mesa),
+    cuentaId: null,
+    cliente_nombre: row.cliente_nombre,
+    items,
+    estado: row.estado,
+    creadoEn: new Date(row.creado_en).getTime(),
+    hora: new Date(row.creado_en).toLocaleTimeString(),
+    cobrado_en: row.cobrado_en,
+  }
+}
+
 export function useDashboardMetrics(period = 'today') {
   const { pedidos } = usePedidos()
   const { mesas } = useMesas()
+  const [pedidosDB, setPedidosDB] = useState([])
+
+  // Cargar desde DB cuando cambia el período; refresca cada 30s.
+  useEffect(() => {
+    let cancelled = false
+    const { from, to } = periodWindow(period)
+    const cargar = () => {
+      db.pedidos.listDashboard({ desde: from, hasta: to })
+        .then(rows => { if (!cancelled) setPedidosDB((rows || []).map(dbRowToPedido)) })
+        .catch(() => {})
+    }
+    cargar()
+    const id = setInterval(cargar, 30000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [period])
 
   return useMemo(() => {
     const { from, to, bucket, fmt } = periodWindow(period)
-    const enRango = pedidos.filter(p => {
+    // DB-first: si la consulta devolvió algo, úsala; si no, fallback al estado local.
+    const fuente = pedidosDB.length ? pedidosDB : pedidos
+    const enRango = fuente.filter(p => {
       const t = p.creadoEn ?? 0
       return t >= from && t <= to
     })
 
     const ventasFacturadas = enRango.filter(p => p.estado === 'entregado' || p.estado === 'listo' || p.estado === 'en_preparacion' || p.estado === 'pendiente')
     const totalVentas = ventasFacturadas.reduce((s, p) => s + totalDePedido(p), 0)
-    const pedidosActivos = pedidos.filter(p => p.estado !== 'entregado').length
+    const pedidosActivos = fuente.filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado').length
     const ticketPromedio = ventasFacturadas.length ? totalVentas / ventasFacturadas.length : 0
     const mesasOcupadas = mesas.filter(m => m.estado === 'ocupada' || m.estado === 'por_cobrar').length
 
@@ -131,5 +172,5 @@ export function useDashboardMetrics(period = 'today') {
       period,
       isEmpty: ventasFacturadas.length === 0,
     }
-  }, [pedidos, mesas, period])
+  }, [pedidos, mesas, period, pedidosDB])
 }

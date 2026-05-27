@@ -51,7 +51,18 @@ export const db = {
       if (opts.soloNoCobrados) qs.set('solo_no_cobrados', '1')
       return req(`/pedidos?${qs.toString()}`)
     },
+    listDashboard: (opts = {}) => {
+      const qs = new URLSearchParams({ dashboard: '1' })
+      if (opts.desde) qs.set('desde', String(opts.desde))
+      if (opts.hasta) qs.set('hasta', String(opts.hasta))
+      return req(`/pedidos?${qs.toString()}`)
+    },
     crear:      (data)    => req('/pedidos', 'POST', data),
     updateItem: (id, estado) => req('/pedidos', 'PATCH', { id, estado }),
+    cancelar:   (pedido_id, opts = {}) => req('/pedidos', 'PATCH', {
+      accion: 'cancelar', pedido_id,
+      cancelado_por: opts.cancelado_por ?? null,
+      motivo: opts.motivo ?? null,
+    }),
   },
 }

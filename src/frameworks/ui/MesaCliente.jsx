@@ -34,7 +34,9 @@ export default function MesaCliente() {
   const navigate = useNavigate()
   const { session, logout } = useAuth()
   const { mesas, actualizarMesa, cambiarEstadoA } = useMesas()
-  const { pedidos, agregarPedido } = usePedidos()
+  const { pedidos, agregarPedido, cancelarPedido } = usePedidos()
+  const [cancelandoId, setCancelandoId] = useState(null)
+  const [cancelError, setCancelError]   = useState('')
   const { platos: platosAdmin } = usePlatos()
   useTokens() // mantiene el contexto activo para sincronización
   const { serverState } = useLiveSync()
@@ -274,6 +276,7 @@ export default function MesaCliente() {
       agregarPedido({
         mesa: mesa.numeroMesa,
         cuentaId: null,
+        cliente_nombre: session?.name ?? null,
         items: itemsSnapshot,
       })
       setUltimo({ at: Date.now(), total: totalSnapshot, items: itemsCantSnapshot })
@@ -357,6 +360,17 @@ export default function MesaCliente() {
     try { localStorage.removeItem(ACTIVE_CLIENT_MESA_KEY) } catch {}
     // Navegar a /mi-mesa donde verán el UnirseConCodigo para escanear nueva mesa
     navigate('/mi-mesa', { replace: true })
+  }
+
+  async function handleCancelar(pedidoId) {
+    if (cancelandoId) return
+    if (!window.confirm('¿Cancelar este pedido? Sólo se puede mientras la cocina no haya empezado.')) return
+    setCancelandoId(pedidoId)
+    setCancelError('')
+    const r = await cancelarPedido(pedidoId, { cancelado_por: session?.name ?? 'cliente', motivo: 'cliente' })
+    if (!r.ok) setCancelError(r.error || 'No se pudo cancelar')
+    setCancelandoId(null)
+    refetchPedidosDB().catch(() => {})
   }
 
   function pedirCuenta() {
@@ -626,10 +640,26 @@ export default function MesaCliente() {
                       <span className="text-slate-500 dark:text-slate-400">Total</span>
                       <span className="text-[#C1440E] dark:text-[#D4A017]">{formatPEN(total)}</span>
                     </div>
+                    {/* Cancelar (sólo si aún pendiente y no cobrado) */}
+                    {estado === 'pendiente' && !(pago && pago.cobrado) && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelar(p.id)}
+                        disabled={cancelandoId === p.id}
+                        className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
+                      >
+                        {cancelandoId === p.id
+                          ? <><Loader2 size={12} className="animate-spin" /> Cancelando…</>
+                          : <><X size={12} /> Cancelar pedido</>}
+                      </button>
+                    )}
                   </div>
                 )
               })}
             </div>
+            {cancelError && (
+              <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">{cancelError}</p>
+            )}
           </section>
         )}
 

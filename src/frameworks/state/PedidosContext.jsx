@@ -77,6 +77,7 @@ export const PedidosProvider = ({ children }) => {
       id: uid(),
       mesa: Number(pedido.mesa),
       cuentaId: pedido.cuentaId ?? null,
+      cliente_nombre: pedido.cliente_nombre ?? null,
       items: pedido.items.map(i => ({ ...i, id: uid(), estado: 'pendiente' })),
       estado: 'pendiente',
       creadoEn: Date.now(),
@@ -91,11 +92,21 @@ export const PedidosProvider = ({ children }) => {
 
     const mesa = mesas.find(m => m.numeroMesa === Number(pedido.mesa))
 
-    // Persistir en DB (fire-and-forget)
+    // Persistir en DB (fire-and-forget) — guardamos el id real en el pedido local
+    // para poder cancelar/seguir desde DB.
     if (mesa?.id) {
       db.pedidos.crear({
         mesa_id: mesa.id,
+        cliente_nombre: nuevoPedido.cliente_nombre,
+        comensal_id: pedido.comensal_id ?? null,
         items: nuevoPedido.items.map(i => ({ nombre: i.nombre, precio: i.precio, cantidad: i.cantidad })),
+      }).then(row => {
+        if (!row?.id) return
+        setPedidos(prev => {
+          const next = prev.map(p => p.id === nuevoPedido.id ? { ...p, dbId: row.id } : p)
+          syncPedidos(next)
+          return next
+        })
       }).catch(() => {})
     }
 
@@ -126,6 +137,42 @@ export const PedidosProvider = ({ children }) => {
       syncPedidos(next)
       return next
     }), [syncPedidos])
+
+  // Cancelar un pedido entero (sólo si está aún pendiente).
+  // Devuelve { ok:true } u { ok:false, error }.
+  const cancelarPedido = useCallback(async (id, opts = {}) => {
+    const target = pedidos.find(p => p.id === id || p.dbId === id)
+    if (!target) return { ok: false, error: 'Pedido no encontrado' }
+    if (target.estado !== 'pendiente') {
+      return { ok: false, error: 'La cocina ya empezó a preparar este pedido' }
+    }
+    // Optimista
+    setPedidos(prev => {
+      const next = prev.map(p => p.id === target.id
+        ? { ...p, estado: 'cancelado', items: p.items.map(i => ({ ...i, estado: 'cancelado' })) }
+        : p)
+      syncPedidos(next)
+      return next
+    })
+    // DB
+    if (target.dbId) {
+      try {
+        await db.pedidos.cancelar(target.dbId, {
+          cancelado_por: opts.cancelado_por ?? null,
+          motivo: opts.motivo ?? null,
+        })
+      } catch (e) {
+        // Rollback en caso de error (p.ej. cocina ya empezó)
+        setPedidos(prev => {
+          const next = prev.map(p => p.id === target.id ? target : p)
+          syncPedidos(next)
+          return next
+        })
+        return { ok: false, error: e.message || 'No se pudo cancelar' }
+      }
+    }
+    return { ok: true }
+  }, [pedidos, syncPedidos])
 
   // Limpieza global de cocina: NO toca el estado de las mesas
   const limpiarCocina = useCallback(() =>
@@ -165,10 +212,11 @@ export const PedidosProvider = ({ children }) => {
     marcarEntregado,
     limpiarCocina,
     transferirPedidos,
+    cancelarPedido,
   }), [
     pedidos, pedidosPendientes, pedidosEnPreparacion, pedidosListos,
     contarActivosMesa, agregarPedido, marcarPreparando, marcarListo,
-    marcarEntregado, limpiarCocina, transferirPedidos,
+    marcarEntregado, limpiarCocina, transferirPedidos, cancelarPedido,
   ])
 
   return <PedidosContext.Provider value={value}>{children}</PedidosContext.Provider>

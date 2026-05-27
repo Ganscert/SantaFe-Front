@@ -270,7 +270,17 @@ app.post('/api/pagos', async (req, res) => {
 // ─── PEDIDOS ─────────────────────────────────────────────────────────────────
 app.get('/api/pedidos', async (req, res) => {
   try {
-    const { numero_mesa, mesa_id, solo_no_cobrados } = req.query
+    const { numero_mesa, mesa_id, solo_no_cobrados, dashboard, desde, hasta } = req.query
+
+    if (dashboard === '1' || dashboard === 'true') {
+      let q = db().from('v_dashboard_resumen').select('*').eq('restaurante_id', RESTAURANTE_ID).order('creado_en', { ascending: false })
+      if (desde) q = q.gte('creado_en', new Date(Number(desde) || desde).toISOString())
+      if (hasta) q = q.lte('creado_en', new Date(Number(hasta) || hasta).toISOString())
+      const { data, error } = await q
+      if (error) throw error
+      return res.json(data || [])
+    }
+
     let mid = mesa_id
     if (!mid && numero_mesa) {
       const { data: m } = await db().from('mesas').select('id').eq('restaurante_id', RESTAURANTE_ID).eq('numero_mesa', numero_mesa).maybeSingle()
@@ -296,7 +306,7 @@ app.get('/api/pedidos', async (req, res) => {
 
 app.post('/api/pedidos', async (req, res) => {
   try {
-    const { numero_mesa, mesa_id: directMesaId, items = [] } = req.body
+    const { numero_mesa, mesa_id: directMesaId, items = [], cliente_nombre = null, comensal_id = null } = req.body
     if (!items.length) return res.status(400).json({ error: 'Sin ítems' })
     let mesa_id = directMesaId
     if (!mesa_id && numero_mesa) {
@@ -305,7 +315,8 @@ app.post('/api/pedidos', async (req, res) => {
       mesa_id = m.id
     }
     const { data: pedido, error: pedidoError } = await db().from('pedidos')
-      .insert({ restaurante_id: RESTAURANTE_ID, mesa_id }).select('id, mesa_id, estado, total, creado_en').single()
+      .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, cliente_nombre, comensal_id })
+      .select('id, mesa_id, estado, total, cliente_nombre, creado_en').single()
     if (pedidoError) throw pedidoError
     const { error: itemsError } = await db().from('pedido_items')
       .insert(items.map(item => ({ pedido_id: pedido.id, nombre: item.nombre, precio_unitario: item.precio, cantidad: item.cantidad })))
@@ -316,7 +327,21 @@ app.post('/api/pedidos', async (req, res) => {
 
 app.patch('/api/pedidos', async (req, res) => {
   try {
-    const { id, estado } = req.body
+    const { id, estado, accion, pedido_id, cancelado_por, motivo } = req.body
+
+    if (accion === 'cancelar' && pedido_id) {
+      const { data, error } = await db().rpc('cancelar_pedido', {
+        p_pedido_id: pedido_id,
+        p_cancelado_por: cancelado_por ?? null,
+        p_motivo: motivo ?? null,
+      })
+      if (error) {
+        const code = error.message?.includes('cocina ya empezó') ? 409 : 400
+        return res.status(code).json({ error: error.message })
+      }
+      return res.json({ ok: true, pedido: data })
+    }
+
     const { data: item, error } = await db().from('pedido_items').update({ estado }).eq('id', id).select('id, estado, pedido_id').single()
     if (error) throw error
 

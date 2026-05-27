@@ -26,13 +26,16 @@ function umbralTimer(d) {
 }
 
 function Card({ pedido, onAccion, labelAccion }) {
+  const quienPidio = pedido.cliente_nombre || pedido.cuentaName
   return (
     <article className={`bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm ring-2 ring-inset ${umbralRing(pedido.creadoEn)}`}>
       <header className="flex items-center justify-between mb-3">
         <div className="min-w-0">
           <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">Mesa {pedido.mesa}</h3>
-          {pedido.cuentaName && (
-            <p className="text-[11px] font-bold text-[#C1440E] dark:text-[#D4A017] truncate">{pedido.cuentaName}</p>
+          {quienPidio && (
+            <p className="text-[11px] font-bold text-[#C1440E] dark:text-[#D4A017] truncate" title="Cliente">
+              👤 {quienPidio}
+            </p>
           )}
         </div>
         <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${umbralTimer(pedido.creadoEn)}`}>
@@ -95,6 +98,7 @@ function VistaAgrupada({ pedidos }) {
         entry.detalles.push({
           mesa: p.mesa,
           cuentaName: p.cuentaName,
+          cliente_nombre: p.cliente_nombre,
           cantidad: item.cantidad,
           estado: p.estado,
           creadoEn: p.creadoEn,
@@ -134,12 +138,13 @@ function VistaAgrupada({ pedidos }) {
           <ul className="space-y-1.5 text-sm">
             {g.detalles.map((d, i) => {
               const cfg = ESTADO_CFG[d.estado] ?? ESTADO_CFG.pendiente
+              const quien = d.cliente_nombre || d.cuentaName
               return (
                 <li key={i} className="flex items-center justify-between gap-2">
                   <span className="text-slate-700 dark:text-slate-200 truncate">
                     <strong className="text-slate-900 dark:text-slate-50">{d.cantidad}×</strong>{' '}
                     Mesa {d.mesa}
-                    {d.cuentaName && <span className="text-[#C1440E] dark:text-[#D4A017] ml-1">· {d.cuentaName}</span>}
+                    {quien && <span className="text-[#C1440E] dark:text-[#D4A017] ml-1">· 👤 {quien}</span>}
                   </span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cfg.bg}`}>
                     {cfg.label}
@@ -180,7 +185,7 @@ function CocinaPendientes() {
     return m
   }, [mesas])
 
-  // Aplica filtros sobre una lista de pedidos
+  // Aplica filtros sobre una lista de pedidos y ordena por (mesa, cliente).
   const aplicarFiltros = (lista) => {
     const q = filtroPlatillo.trim().toLowerCase()
     return lista
@@ -192,6 +197,13 @@ function CocinaPendientes() {
         return items.length > 0 ? { ...p, items } : null
       })
       .filter(Boolean)
+      .sort((a, b) => {
+        const m = Number(a.mesa) - Number(b.mesa)
+        if (m !== 0) return m
+        const na = (a.cliente_nombre || a.cuentaName || '').toLowerCase()
+        const nb = (b.cliente_nombre || b.cuentaName || '').toLowerCase()
+        return na.localeCompare(nb)
+      })
   }
 
   const pP = useMemo(() => aplicarFiltros(pedidosPendientes),

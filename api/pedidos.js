@@ -9,7 +9,21 @@ export default async function handler(req, res) {
   try {
     const sb = getDB()
     if (req.method === 'GET') {
-      const { numero_mesa, mesa_id, solo_no_cobrados } = req.query
+      const { numero_mesa, mesa_id, solo_no_cobrados, dashboard, desde, hasta } = req.query
+
+      // Modo dashboard: lista todos los pedidos del restaurante en una ventana.
+      if (dashboard === '1' || dashboard === 'true') {
+        let q = sb.from('v_dashboard_resumen')
+          .select('*')
+          .eq('restaurante_id', RESTAURANTE_ID)
+          .order('creado_en', { ascending: false })
+        if (desde) q = q.gte('creado_en', new Date(Number(desde) || desde).toISOString())
+        if (hasta) q = q.lte('creado_en', new Date(Number(hasta) || hasta).toISOString())
+        const { data, error } = await q
+        if (error) throw error
+        return res.json(data || [])
+      }
+
       let mid = mesa_id
 
       if (!mid && numero_mesa) {
@@ -53,7 +67,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { numero_mesa, mesa_id: directMesaId, items = [] } = req.body
+      const {
+        numero_mesa, mesa_id: directMesaId, items = [],
+        cliente_nombre = null, comensal_id = null,
+      } = req.body
       if (!items.length) return res.status(400).json({ error: 'Sin ítems' })
 
       let mesa_id = directMesaId
@@ -70,8 +87,8 @@ export default async function handler(req, res) {
 
       const { data: pedido, error: pedidoError } = await sb
         .from('pedidos')
-        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id })
-        .select('id, mesa_id, estado, total, creado_en')
+        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, cliente_nombre, comensal_id })
+        .select('id, mesa_id, estado, total, cliente_nombre, creado_en')
         .single()
       if (pedidoError) throw pedidoError
 
@@ -89,7 +106,22 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { id, estado } = req.body
+      const { id, estado, accion, pedido_id, cancelado_por, motivo } = req.body
+
+      // Cancelar pedido entero (bloquea si la cocina ya empezó)
+      if (accion === 'cancelar' && pedido_id) {
+        const { data, error } = await sb.rpc('cancelar_pedido', {
+          p_pedido_id: pedido_id,
+          p_cancelado_por: cancelado_por ?? null,
+          p_motivo: motivo ?? null,
+        })
+        if (error) {
+          const code = error.message?.includes('cocina ya empezó') ? 409 : 400
+          return res.status(code).json({ error: error.message })
+        }
+        return res.json({ ok: true, pedido: data })
+      }
+
       const { data: item, error } = await sb
         .from('pedido_items')
         .update({ estado })
