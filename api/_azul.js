@@ -58,11 +58,14 @@ function hmac(message, key) {
 
 // Construye los campos del formulario de la Página de Pagos + su AuthHash.
 // `orderNumber` debe ser único por intento de cobro.
-export function buildAzulRequest({ orderNumber, amount, mesaId = '', itbis = '000' }) {
+export function buildAzulRequest({ orderNumber, amount, mesaId = '', itbis = '000', returnTo = '' }) {
   const c = azulConfig()
-  const approvedUrl = `${c.baseUrl}/api/pagos-azul?action=callback&estado=approved`
-  const declinedUrl = `${c.baseUrl}/api/pagos-azul?action=callback&estado=declined`
-  const cancelUrl   = `${c.baseUrl}/api/pagos-azul?action=callback&estado=cancel`
+  // `returnTo` viaja en las URLs de callback (Azul hace POST a estas mismas URLs,
+  // preservando el query) para saber si redirigir al cliente (/mi-mesa) o al cajero.
+  const rt = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''
+  const approvedUrl = `${c.baseUrl}/api/pagos-azul?action=callback&estado=approved${rt}`
+  const declinedUrl = `${c.baseUrl}/api/pagos-azul?action=callback&estado=declined${rt}`
+  const cancelUrl   = `${c.baseUrl}/api/pagos-azul?action=callback&estado=cancel${rt}`
   const amountStr   = toAzulAmount(amount)
 
   // mesa_id y monto viajan en CustomFields: Azul los devuelve en el callback,

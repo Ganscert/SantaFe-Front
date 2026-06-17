@@ -40,12 +40,12 @@ export default async function handler(req, res) {
   try {
     // ── Crear sesión de pago: devuelve el formulario de la Página de Pagos ──
     if (action === 'session') {
-      const { mesa_id, monto } = req.body || {}
+      const { mesa_id, monto, returnTo } = req.body || {}
       if (!mesa_id || !(Number(monto) > 0)) {
         return res.status(400).json({ error: 'mesa_id y monto (>0) requeridos.' })
       }
       const orderNumber = 'SF' + Date.now().toString().slice(-12)
-      const built = buildAzulRequest({ orderNumber, amount: monto, mesaId: mesa_id })
+      const built = buildAzulRequest({ orderNumber, amount: monto, mesaId: mesa_id, returnTo })
       return res.json({
         mode: azulIsLive() ? 'live' : 'sandbox',
         env: c.env,
@@ -68,6 +68,8 @@ export default async function handler(req, res) {
       const mesa_id = body.CustomField1Value
       const monto   = (Number(body.Amount) || 0) / 100
       const estado  = req.query?.estado
+      // ¿El pago lo inició un cliente desde su mesa? → volver a /mi-mesa.
+      const destBase = req.query?.returnTo === 'cliente' ? '/mi-mesa' : '/cajero/cobros'
 
       if (valid && approved && estado === 'approved' && mesa_id && monto > 0) {
         try {
@@ -78,10 +80,10 @@ export default async function handler(req, res) {
         } catch (e) {
           console.error('[pagos-azul.callback] registrar pago falló:', e.message)
         }
-        return res.redirect(`${c.baseUrl}/cajero/cobros?azul=ok`)
+        return res.redirect(`${c.baseUrl}${destBase}?azul=ok`)
       }
       const motivo = estado === 'cancel' ? 'cancelado' : 'rechazado'
-      return res.redirect(`${c.baseUrl}/cajero/cobros?azul=${motivo}`)
+      return res.redirect(`${c.baseUrl}${destBase}?azul=${motivo}`)
     }
 
     return res.status(400).json({ error: 'action no reconocida (session | sandbox-approve | callback).' })

@@ -1,9 +1,13 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { X, ImageIcon, Star, Search, EyeOff } from 'lucide-react'
+import { X, ImageIcon, Star, Search, EyeOff, Eye, Loader2, Pause } from 'lucide-react'
 import ingredientes from '../assets/data/ingredientes.js'
 import { usePlatos } from '../state/PlatosContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
+import { useToast } from '../state/ToastContext.jsx'
+
+// Roles que pueden pausar un plato (ocultarlo a los clientes): supervisor y gerente.
+const ROLES_PAUSA = ['admin', 'gerente']
 
 const CATEGORIAS = ['Todos', 'Favoritos', 'Entrada', 'Plato Principal', 'Postre', 'Bebida']
 const FAVORITOS_KEY = 'santa-fe:menu-favoritos'
@@ -25,9 +29,25 @@ function Menu() {
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState(null)
   const [favoritos, setFavoritos] = useState(leerFavoritos)
-  const { platos: platosAdmin } = usePlatos()
+  const [pausandoId, setPausandoId] = useState(null)
+  const { platos: platosAdmin, setDisponible } = usePlatos()
   const { session } = useAuth()
+  const toast = useToast()
   const esCliente = session?.role === 'cliente'
+  const puedePausar = ROLES_PAUSA.includes(session?.role)
+
+  const togglePausa = useCallback(async (e, plato) => {
+    e.stopPropagation()
+    if (!plato.id) return
+    setPausandoId(plato.id)
+    const next = plato.disponible === false // estaba pausado → reactivar
+    const r = await setDisponible(plato.id, next)
+    setPausandoId(null)
+    if (r?.ok === false) toast.error(`No se pudo actualizar: ${r.error}`)
+    else toast.success(next
+      ? `“${plato.nombre}” reactivado en la carta.`
+      : `“${plato.nombre}” pausado — oculto para los clientes.`)
+  }, [setDisponible, toast])
 
   const toggleFavorito = useCallback((nombre) => {
     setFavoritos(prev => {
@@ -53,6 +73,7 @@ function Menu() {
     }))
     const extra = (platosAdmin || []).map((p) => ({
       key: `admin-${p.id}`,
+      id: p.id,
       nombre: p.nombre,
       precio: p.precio,
       categoria: p.categoria,
@@ -210,6 +231,26 @@ function Menu() {
                     </li>
                   )}
                 </ul>
+
+                {/* Pausar/reactivar — sólo supervisor y gerente, y sólo platos del catálogo (DB). */}
+                {puedePausar && plato.origen === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={(e) => togglePausa(e, plato)}
+                    disabled={pausandoId === plato.id}
+                    className={`mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      plato.disponible === false
+                        ? 'bg-[#7D8B6A] text-white hover:bg-[#566437]'
+                        : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20'
+                    }`}
+                  >
+                    {pausandoId === plato.id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : plato.disponible === false
+                        ? <><Eye size={14} /> Reactivar</>
+                        : <><Pause size={14} /> Pausar plato</>}
+                  </button>
+                )}
               </div>
             </article>
           ))}

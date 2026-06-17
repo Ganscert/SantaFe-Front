@@ -50,6 +50,9 @@ export const db = {
     login:    (email, password) => req('/usuarios', 'POST', { action: 'login', email, password }),
     register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),
     list:     ()                => req('/usuarios'),
+    create:   (data)            => req('/usuarios', 'POST', { action: 'create', ...data }),
+    update:   (id, patch)       => req('/usuarios', 'PATCH', { id, ...patch }),
+    remove:   (id)              => req('/usuarios', 'DELETE', { id }),
   },
   pedidos: {
     listByMesa: (mesa_id, opts = {}) => {

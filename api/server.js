@@ -221,7 +221,54 @@ app.post('/api/usuarios', async (req, res) => {
       return res.json({ ok: true, user: row })
     }
 
+    if (action === 'create') {
+      if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
+      const cleanEmail = String(email).trim().toLowerCase()
+      const { data: row, error } = await db().from('usuarios')
+        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: password || 'santafe123', role: role || 'cliente' })
+        .select('id, nombre, email, role, activo, creado_en').single()
+      if (error) {
+        if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+          return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
+        }
+        throw error
+      }
+      return res.json({ ok: true, user: row })
+    }
+
     return res.status(400).json({ error: 'action no reconocida.' })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.patch('/api/usuarios', async (req, res) => {
+  try {
+    const { id, nombre, email, role, password } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const patch = { actualizado_en: new Date().toISOString() }
+    if (nombre !== undefined) patch.nombre = String(nombre).trim()
+    if (email !== undefined) patch.email = String(email).trim().toLowerCase()
+    if (role !== undefined) patch.role = role
+    if (password) patch.password_hash = password
+    const { data, error } = await db().from('usuarios')
+      .update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+      .select('id, nombre, email, role, activo').single()
+    if (error) {
+      if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
+      }
+      throw error
+    }
+    return res.json({ ok: true, user: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/usuarios', async (req, res) => {
+  try {
+    const { id } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const { error } = await db().from('usuarios').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    if (error) throw error
+    return res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -389,10 +436,10 @@ app.all('/api/pagos-azul', async (req, res) => {
   const c = azulConfig()
   try {
     if (action === 'session') {
-      const { mesa_id, monto } = req.body || {}
+      const { mesa_id, monto, returnTo } = req.body || {}
       if (!mesa_id || !(Number(monto) > 0)) return res.status(400).json({ error: 'mesa_id y monto (>0) requeridos.' })
       const orderNumber = 'SF' + Date.now().toString().slice(-12)
-      const built = buildAzulRequest({ orderNumber, amount: monto, mesaId: mesa_id })
+      const built = buildAzulRequest({ orderNumber, amount: monto, mesaId: mesa_id, returnTo })
       return res.json({ mode: azulIsLive() ? 'live' : 'sandbox', env: c.env, ...built })
     }
     if (action === 'sandbox-approve') {
@@ -405,14 +452,15 @@ app.all('/api/pagos-azul', async (req, res) => {
       const { valid, approved } = verifyAzulResponse(body)
       const mesa_id = body.CustomField1Value
       const monto   = (Number(body.Amount) || 0) / 100
+      const destBase = req.query?.returnTo === 'cliente' ? '/mi-mesa' : '/cajero/cobros'
       if (valid && approved && req.query?.estado === 'approved' && mesa_id && monto > 0) {
         try {
           await registrarPagoAzul({ mesa_id, monto, referencia: `AZUL:${body.OrderNumber}:${body.AuthorizationCode || ''}` })
         } catch (e) { console.error('[pagos-azul.callback]', e.message) }
-        return res.redirect(`${c.baseUrl}/cajero/cobros?azul=ok`)
+        return res.redirect(`${c.baseUrl}${destBase}?azul=ok`)
       }
       const motivo = req.query?.estado === 'cancel' ? 'cancelado' : 'rechazado'
-      return res.redirect(`${c.baseUrl}/cajero/cobros?azul=${motivo}`)
+      return res.redirect(`${c.baseUrl}${destBase}?azul=${motivo}`)
     }
     return res.status(400).json({ error: 'action no reconocida (session | sandbox-approve | callback).' })
   } catch (e) {

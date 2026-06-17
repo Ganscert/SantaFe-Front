@@ -5,7 +5,7 @@ import {
 import { useRoles } from '../../usecases/useRoles.js'
 import { useUsuarios } from '../../usecases/useUsuarios.js'
 
-const FORM_VACIO = { name: '', email: '', roleId: '' }
+const FORM_VACIO = { name: '', email: '', roleId: '', password: '' }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -21,12 +21,13 @@ function initials(name = '') {
 
 export default function AdminUsuarios() {
   const { roles, loading } = useRoles()
-  const { users, agregarUsuario, actualizarUsuario, eliminarUsuario } = useUsuarios(roles)
+  const { users, loading: loadingUsers, agregarUsuario, actualizarUsuario, eliminarUsuario } = useUsuarios(roles)
 
   const [form, setForm] = useState(FORM_VACIO)
   const [editandoId, setEditandoId] = useState(null)
   const [confirmar, setConfirmar] = useState(null)
   const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('Todos')
 
@@ -38,37 +39,44 @@ export default function AdminUsuarios() {
     setError('')
   }
 
-  function onSubmit(e) {
+  async function onSubmit(e) {
     e.preventDefault()
     setError('')
     const name = form.name.trim()
     const email = form.email.trim().toLowerCase()
+    const password = form.password.trim()
     if (!name) return setError('El nombre es obligatorio.')
     if (!emailRegex.test(email)) return setError('Ingresa un correo válido.')
     if (!form.roleId) return setError('Selecciona un rol.')
+    if (password && password.length < 4) return setError('La contraseña debe tener al menos 4 caracteres.')
 
     const duplicado = users.some(
       (u) => u.email.toLowerCase() === email && u.id !== editandoId,
     )
     if (duplicado) return setError('Ya existe un usuario con ese correo.')
 
-    if (editando) actualizarUsuario(editandoId, { name, email, roleId: form.roleId })
-    else agregarUsuario({ name, email, roleId: form.roleId })
+    setGuardando(true)
+    const res = editando
+      ? await actualizarUsuario(editandoId, { name, email, roleId: form.roleId, password })
+      : await agregarUsuario({ name, email, roleId: form.roleId, password })
+    setGuardando(false)
+    if (res?.ok === false) return setError(res.error || 'No se pudo guardar el usuario.')
     resetForm()
   }
 
   function cargarParaEditar(u) {
-    setForm({ name: u.name, email: u.email, roleId: u.roleId })
+    setForm({ name: u.name, email: u.email, roleId: u.roleId, password: '' })
     setEditandoId(u.id)
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function confirmarEliminar() {
+  async function confirmarEliminar() {
     if (!confirmar) return
     if (confirmar.id === editandoId) resetForm()
-    eliminarUsuario(confirmar.id)
+    const res = await eliminarUsuario(confirmar.id)
     setConfirmar(null)
+    if (res?.ok === false) setError(res.error || 'No se pudo eliminar el usuario.')
   }
 
   const visibles = useMemo(() => {
@@ -95,7 +103,7 @@ export default function AdminUsuarios() {
     }
   }, [loading, roles, form.roleId])
 
-  if (loading) {
+  if (loading || loadingUsers) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-500 dark:text-slate-400">
         Cargando…
@@ -182,6 +190,17 @@ export default function AdminUsuarios() {
               </Field>
             </div>
 
+            <Field label={editando ? 'Contraseña (déjala en blanco para no cambiarla)' : 'Contraseña de acceso'}>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder={editando ? '••••••••' : 'Por defecto: santafe123'}
+                autoComplete="new-password"
+                className={inputCls}
+              />
+            </Field>
+
             {error && (
               <div role="alert" className="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-3 py-2 text-sm font-semibold text-red-700 dark:text-red-300">
                 {error}
@@ -191,10 +210,11 @@ export default function AdminUsuarios() {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#A85638] text-white text-sm font-bold hover:bg-[#8F4527] transition-colors shadow-sm"
+                disabled={guardando}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#A85638] text-white text-sm font-bold hover:bg-[#8F4527] disabled:opacity-60 transition-colors shadow-sm"
               >
                 {editando ? <Save size={16} /> : <Plus size={16} />}
-                {editando ? 'Guardar cambios' : 'Crear usuario'}
+                {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear usuario'}
               </button>
               <button
                 type="button"
