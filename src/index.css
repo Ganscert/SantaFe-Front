@@ -2,6 +2,13 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ═══════════════════════════════════════════════════════════
+   SANTA FE · Sistema de diseño "Bohemio"
+   Tierra, arcilla, salvia, lino y ocre. Tipografía serif de
+   carácter (Fraunces) + humanista (Karla). Texturas suaves,
+   formas orgánicas y acentos artesanales.
+═══════════════════════════════════════════════════════════ */
+
 @keyframes slideIn {
   from { transform: translateX(-100%); }
   to   { transform: translateX(0); }
@@ -12,61 +19,126 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.route-fade {
-  animation: routeFade 140ms ease-out;
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Respeta usuarios con preferencia reduce-motion */
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.route-fade { animation: routeFade 140ms ease-out; }
+.toast-in   { animation: toastIn 180ms cubic-bezier(.21,1.02,.73,1); }
+.palette-in { animation: paletteIn 140ms ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
-  .route-fade { animation: none; }
+  .route-fade, .toast-in, .palette-in { animation: none; }
 }
 
 @theme {
-  --color-terracota:       #C1440E;
-  --color-terracota-dark:  #a33a0c;
-  --color-terracota-light: rgba(193,68,14,0.1);
-  --color-oliva:           #6B7C4F;
-  --color-oliva-dark:      #5a6842;
-  --color-crema:           #FDF6EC;
-  --color-dorado:          #D4A017;
+  /* ── Tipografías ── */
+  --font-sans:    'Karla', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
 
-  --color-estado-disponible:    #10b981;
-  --color-estado-disponible-bg: #ecfdf5;
-  --color-estado-ocupada:       #f59e0b;
-  --color-estado-ocupada-bg:    #fffbeb;
-  --color-estado-por-cobrar:    #6366f1;
-  --color-estado-por-cobrar-bg: #eef2ff;
-  --color-estado-listo:         #3b82f6;
-  --color-estado-listo-bg:      #eff6ff;
-  --color-estado-cancelado:     #ef4444;
-  --color-estado-cancelado-bg:  #fef2f2;
-  --color-estado-pendiente:     #f59e0b;
-  --color-estado-pendiente-bg:  #fffbeb;
-  --color-estado-preparacion:   #3b82f6;
-  --color-estado-preparacion-bg:#eff6ff;
-  --color-estado-atrasado:      #f97316;
-  --color-estado-atrasado-bg:   #fff7ed;
-  --color-estado-critico:       #dc2626;
-  --color-estado-critico-bg:    #fee2e2;
+  /* ── Paleta bohemia ── */
+  --color-arcilla:         #A85638;
+  --color-arcilla-dark:    #8F4527;
+  --color-arcilla-light:   rgba(168, 86, 56, 0.12);
+  --color-salvia:          #7D8B6A;
+  --color-salvia-dark:     #69765A;
+  --color-arena:           #F6EEE3;
+  --color-ocre:            #C99A3C;
+
+  /* Alias legacy (componentes antiguos) */
+  --color-terracota:       #A85638;
+  --color-terracota-dark:  #8F4527;
+  --color-terracota-light: rgba(168, 86, 56, 0.12);
+  --color-oliva:           #7D8B6A;
+  --color-oliva-dark:      #69765A;
+  --color-crema:           #F6EEE3;
+  --color-dorado:          #C99A3C;
+
+  /* ── Remapeo cálido: slate → piedra/café ──
+     Toda la app usa slate-*; redefinirlo aquí calienta cada
+     pantalla (incluido dark mode espresso) sin tocar JSX. */
+  --color-slate-50:  #FAF4EA;
+  --color-slate-100: #F1E8D9;
+  --color-slate-200: #E5D9C9;
+  --color-slate-300: #D2C2AC;
+  --color-slate-400: #A6937D;
+  --color-slate-500: #82705C;
+  --color-slate-600: #645546;
+  --color-slate-700: #4A3E33;
+  --color-slate-800: #352B22;
+  --color-slate-900: #261E17;
+  --color-slate-950: #191309;
+
+  /* indigo → ciruela polvorienta (estado "por cobrar") */
+  --color-indigo-50:  #F4EFF6;
+  --color-indigo-100: #E8DEED;
+  --color-indigo-200: #D4C2DE;
+  --color-indigo-300: #B89BC7;
+  --color-indigo-400: #9C77AD;
+  --color-indigo-500: #835D94;
+  --color-indigo-600: #6E4A7E;
+  --color-indigo-700: #5A3C67;
+  --color-indigo-800: #46304F;
+  --color-indigo-900: #33243A;
+  --color-indigo-950: #1F1523;
+
+  /* blue → verde azulado artesanal (cocina "en preparación") */
+  --color-blue-50:  #EDF4F1;
+  --color-blue-100: #D8E7E1;
+  --color-blue-200: #B3D0C5;
+  --color-blue-300: #88B3A4;
+  --color-blue-400: #639787;
+  --color-blue-500: #4D7F70;
+  --color-blue-600: #3E685C;
+  --color-blue-700: #33534A;
+  --color-blue-800: #283F39;
+  --color-blue-900: #1D2E29;
+  --color-blue-950: #121D1A;
+
+  /* ── Estados (entibiecidos) ── */
+  --color-estado-disponible:    #4F8A5B;
+  --color-estado-disponible-bg: #ECF5EC;
+  --color-estado-ocupada:       #C77F2E;
+  --color-estado-ocupada-bg:    #FBF2E2;
+  --color-estado-por-cobrar:    #835D94;
+  --color-estado-por-cobrar-bg: #F4EFF6;
+  --color-estado-listo:         #4D7F70;
+  --color-estado-listo-bg:      #EDF4F1;
+  --color-estado-cancelado:     #B3422F;
+  --color-estado-cancelado-bg:  #FBEDE9;
+  --color-estado-pendiente:     #C77F2E;
+  --color-estado-pendiente-bg:  #FBF2E2;
+  --color-estado-preparacion:   #4D7F70;
+  --color-estado-preparacion-bg:#EDF4F1;
+  --color-estado-atrasado:      #C2622E;
+  --color-estado-atrasado-bg:   #FAEEDF;
+  --color-estado-critico:       #B3422F;
+  --color-estado-critico-bg:    #FBE4DE;
 }
 
 /* ── Base ─────────────────────────────────────────── */
 :root {
-  --text:         #5a4d42;
-  --text-h:       #1a0f0a;
-  --bg:           #fff;
-  --border:       #e8e0d8;
-  --accent:       #C1440E;
-  --accent-bg:    rgba(193,68,14,0.1);
-  --accent-border:rgba(193,68,14,0.35);
-  --shadow:       rgba(0,0,0,0.09) 0 10px 15px -3px, rgba(0,0,0,0.05) 0 4px 6px -2px;
+  --text:         #5C4B3C;
+  --text-h:       #2C2118;
+  --bg:           #F6EEE3;
+  --border:       #E5D9C9;
+  --accent:       #A85638;
+  --accent-bg:    rgba(168, 86, 56, 0.12);
+  --accent-border:rgba(168, 86, 56, 0.35);
+  --shadow:       rgba(60, 42, 28, 0.10) 0 12px 24px -8px, rgba(60, 42, 28, 0.06) 0 4px 8px -4px;
 
-  --sans:    system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans:    'Karla', ui-sans-serif, system-ui, sans-serif;
+  --heading: 'Fraunces', Georgia, serif;
   --mono:    ui-monospace, Consolas, monospace;
 
-  font: 16px/1.5 var(--sans);
-  letter-spacing: 0.01em;
+  font: 16px/1.55 var(--sans);
+  letter-spacing: 0.005em;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -78,7 +150,18 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-body  { margin: 0; }
+body {
+  margin: 0;
+  background-color: #F6EEE3;
+  /* puntilleo artesanal sutil, visible en todas las pantallas */
+  background-image: radial-gradient(rgba(168, 86, 56, 0.05) 1px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+
+.dark body {
+  background-color: #191309;
+  background-image: radial-gradient(rgba(201, 154, 60, 0.06) 1px, transparent 1.5px);
+}
 
 #root {
   min-height: 100svh;
@@ -86,15 +169,64 @@ body  { margin: 0; }
   flex-direction: column;
 }
 
+/* Serif de carácter en todos los títulos — sello bohemio global */
 h1, h2, h3 {
   font-family: var(--heading);
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--text-h);
   margin: 0;
 }
 
+:where(.dark) h1,
+:where(.dark) h2,
+:where(.dark) h3 { color: #F4EBDD; }
+
 p { margin: 0; }
 
-/* ── Login card ───────────────────────────────────── */
+::selection { background: rgba(201, 154, 60, 0.35); }
+
+/* Scrollbar cálido */
+* { scrollbar-width: thin; scrollbar-color: #D2C2AC transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #D2C2AC; border-radius: 99px; }
+:where(.dark) *::-webkit-scrollbar-thumb { background: #4A3E33; }
+
+/* ── Adornos bohemios ─────────────────────────────── */
+.boho-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #C99A3C;
+}
+.boho-divider::before,
+.boho-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D2C2AC);
+}
+.boho-divider::after {
+  background: linear-gradient(90deg, #D2C2AC, transparent);
+}
+
+/* Arco boho: forma orgánica para avatares/marcas */
+.boho-arch { border-radius: 999px 999px 18px 18px; }
+
+kbd {
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  background: #FAF4EA;
+  color: #82705C;
+}
+:where(.dark) kbd { background: #352B22; border-color: #4A3E33; color: #D2C2AC; }
+
+/* ── Login / page shell ───────────────────────────── */
 .page-shell {
   min-height: 100vh;
   display: flex;
@@ -102,49 +234,48 @@ p { margin: 0; }
   justify-content: center;
   padding: 32px 20px;
   background:
-    radial-gradient(circle at 15% 20%, rgba(193,68,14,0.13), transparent 32%),
-    radial-gradient(circle at 85% 80%, rgba(107,124,79,0.11), transparent 30%),
-    #FDF6EC;
+    radial-gradient(circle at 12% 18%, rgba(168, 86, 56, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 82%, rgba(125, 139, 106, 0.13), transparent 32%),
+    radial-gradient(circle at 80% 12%, rgba(201, 154, 60, 0.10), transparent 26%);
 }
 
 :where(.dark) .page-shell {
   background:
-    radial-gradient(circle at 15% 20%, rgba(193,68,14,0.18), transparent 32%),
-    radial-gradient(circle at 85% 80%, rgba(212,160,23,0.12), transparent 30%),
-    #020617;
+    radial-gradient(circle at 12% 18%, rgba(168, 86, 56, 0.22), transparent 34%),
+    radial-gradient(circle at 88% 82%, rgba(201, 154, 60, 0.10), transparent 30%);
 }
 
 .card {
   width: min(460px, 100%);
   padding: 36px;
-  background: rgba(255,255,255,0.94);
+  background: rgba(255, 252, 245, 0.94);
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 26px;
   box-shadow: var(--shadow);
   text-align: left;
   backdrop-filter: blur(12px);
 }
 
 :where(.dark) .card {
-  background: rgba(15, 23, 42, 0.85);
-  border-color: rgb(30, 41, 59);
-  color: rgb(241, 245, 249);
+  background: rgba(38, 30, 23, 0.88);
+  border-color: #352B22;
+  color: #F1E8D9;
 }
 
-:where(.dark) .login-title { color: rgb(248, 250, 252); }
-:where(.dark) .subtitle    { color: rgb(148, 163, 184); }
-:where(.dark) .form-label  { color: rgb(226, 232, 240); }
+:where(.dark) .login-title { color: #F4EBDD; }
+:where(.dark) .subtitle    { color: #A6937D; }
+:where(.dark) .form-label  { color: #E5D9C9; }
 :where(.dark) .form-input  {
-  background: rgb(2, 6, 23);
-  border-color: rgb(51, 65, 85);
-  color: rgb(241, 245, 249);
+  background: #191309;
+  border-color: #4A3E33;
+  color: #F1E8D9;
 }
 :where(.dark) .form-input:focus {
-  border-color: #D4A017;
-  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.18);
+  border-color: #C99A3C;
+  box-shadow: 0 0 0 3px rgba(201, 154, 60, 0.18);
 }
-:where(.dark) .btn-ghost { color: rgb(148, 163, 184); }
-:where(.dark) .btn-ghost:hover { color: rgb(241, 245, 249); }
+:where(.dark) .btn-ghost { color: #A6937D; }
+:where(.dark) .btn-ghost:hover { color: #F1E8D9; }
 
 .card-head { margin-bottom: 24px; }
 
@@ -158,21 +289,22 @@ p { margin: 0; }
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #C1440E;
-  background: rgba(193,68,14,0.09);
-  border: 1px solid rgba(193,68,14,0.22);
+  color: #A85638;
+  background: rgba(168, 86, 56, 0.09);
+  border: 1px solid rgba(168, 86, 56, 0.22);
   margin-bottom: 14px;
 }
 
 .login-title {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-family: var(--heading);
+  font-size: 1.9rem;
+  font-weight: 600;
   margin: 0 0 8px;
   color: var(--text-h);
 }
 
 .subtitle {
-  color: #7a6a5a;
+  color: #82705C;
   font-size: 0.9rem;
   line-height: 1.6;
 }
@@ -183,7 +315,7 @@ p { margin: 0; }
 .form-label {
   display: grid;
   gap: 7px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.875rem;
   color: var(--text-h);
 }
@@ -192,17 +324,17 @@ p { margin: 0; }
   width: 100%;
   padding: 12px 15px;
   border: 1.5px solid var(--border);
-  border-radius: 11px;
+  border-radius: 14px;
   font: inherit;
   font-size: 0.95rem;
   outline: none;
-  background: #fff;
+  background: #FFFCF5;
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .form-input:focus {
-  border-color: #C1440E;
-  box-shadow: 0 0 0 3px rgba(193,68,14,0.12);
+  border-color: #A85638;
+  box-shadow: 0 0 0 3px rgba(168, 86, 56, 0.12);
 }
 
 /* ── Buttons ──────────────────────────────────────── */
@@ -212,7 +344,7 @@ p { margin: 0; }
   justify-content: center;
   gap: 8px;
   border: none;
-  border-radius: 11px;
+  border-radius: 14px;
   padding: 12px 20px;
   font: inherit;
   font-weight: 700;
@@ -222,19 +354,19 @@ p { margin: 0; }
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
-.btn:hover  { opacity: 0.9; transform: translateY(-1px); }
-.btn:active { opacity: 1;   transform: translateY(0); }
+.btn:hover  { opacity: 0.92; transform: translateY(-1px); }
+.btn:active { opacity: 1;    transform: translateY(0); }
 
 .btn-primary {
   width: 100%;
-  color: #fff;
-  background: linear-gradient(135deg, #C1440E 0%, #d4550f 100%);
-  box-shadow: 0 4px 14px rgba(193,68,14,0.28);
+  color: #FFFCF5;
+  background: linear-gradient(135deg, #A85638 0%, #BE6A45 100%);
+  box-shadow: 0 4px 14px rgba(168, 86, 56, 0.30);
 }
-.btn-primary:hover { box-shadow: 0 6px 20px rgba(193,68,14,0.38); }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(168, 86, 56, 0.40); }
 
 .btn-ghost {
-  color: #7a6a5a;
+  color: #82705C;
   background: transparent;
   font-weight: 500;
   font-size: 0.85rem;
@@ -246,10 +378,30 @@ p { margin: 0; }
 
 /* ── Error ────────────────────────────────────────── */
 .error-msg {
-  color: #b91c1c;
+  color: #9C3324;
   font-size: 0.85rem;
   padding: 10px 13px;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  border-radius: 9px;
+  background: #FBEDE9;
+  border: 1px solid #E4A18F;
+  border-radius: 11px;
+}
+
+/* ── Ticket de impresión (caja) ───────────────────── */
+.print-ticket { display: none; }
+
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden; }
+  .print-ticket, .print-ticket * { visibility: visible; }
+  .print-ticket {
+    display: block;
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: 80mm;
+    padding: 8mm 6mm;
+    background: #fff;
+    color: #000;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
 }

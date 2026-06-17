@@ -106,9 +106,29 @@ export function PlatosProvider({ children }) {
     }
   }, [])
 
+  // Cambia sólo la disponibilidad conservando el resto de campos del plato.
+  // (El PATCH reescribe la fila, así que reenviamos todos los datos actuales.)
+  const setDisponible = useCallback(async (id, disponible) => {
+    const actual = platos.find(p => p.id === id)
+    if (!actual) return { ok: false, error: 'Plato no encontrado' }
+    // Optimista
+    setPlatos(prev => prev.map(p => p.id === id ? { ...p, disponible } : p))
+    try {
+      await db.platos.update(id, toRow({
+        nombre: actual.nombre, precio: actual.precio, categoria: actual.categoria,
+        ingredientes: actual.ingredientes, imagenUrl: actual.imagenUrl, disponible,
+      }))
+      return { ok: true }
+    } catch (e) {
+      console.error('[platos.setDisponible]', e.message)
+      setPlatos(prev => prev.map(p => p.id === id ? { ...p, disponible: actual.disponible } : p))
+      return { ok: false, error: e.message }
+    }
+  }, [platos])
+
   const value = useMemo(
-    () => ({ platos, agregarPlato, actualizarPlato, eliminarPlato }),
-    [platos, agregarPlato, actualizarPlato, eliminarPlato],
+    () => ({ platos, agregarPlato, actualizarPlato, eliminarPlato, setDisponible }),
+    [platos, agregarPlato, actualizarPlato, eliminarPlato, setDisponible],
   )
 
   return <PlatosCtx.Provider value={value}>{children}</PlatosCtx.Provider>

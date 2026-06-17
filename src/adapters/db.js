@@ -40,6 +40,12 @@ export const db = {
     list:   (mesa_id) => req(`/pagos${mesa_id ? `?mesa_id=${encodeURIComponent(mesa_id)}` : ''}`),
     insert: (data)    => req('/pagos', 'POST', data),
   },
+  azul: {
+    // Crea la sesión de pago: devuelve { mode, url, fields, orderNumber }.
+    session:        (data) => req('/pagos-azul?action=session', 'POST', { action: 'session', ...data }),
+    // Aprobación simulada (sólo modo sandbox).
+    sandboxApprove: (data) => req('/pagos-azul?action=sandbox-approve', 'POST', { action: 'sandbox-approve', ...data }),
+  },
   usuarios: {
     login:    (email, password) => req('/usuarios', 'POST', { action: 'login', email, password }),
     register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),

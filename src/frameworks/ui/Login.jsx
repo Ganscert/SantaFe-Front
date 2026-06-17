@@ -75,11 +75,11 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
+    <main className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C1440E]/10 dark:bg-[#C1440E]/20 text-[#C1440E] dark:text-[#FDF6EC] text-xs font-bold mb-3">
-            <span className="w-2 h-2 rounded-full bg-[#C1440E]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#F6EEE3] text-xs font-bold mb-3">
+            <span className="w-2 h-2 rounded-full bg-[#A85638]" />
             Restaurante Santa Fe
           </div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-slate-50">Bienvenido</h1>
@@ -95,9 +95,9 @@ export default function Login() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-[#e8e0d8] dark:border-slate-800">
+          <div className="flex border-b border-[#E5D9C9] dark:border-slate-800">
             <TabBtn active={tab === 'login'}    onClick={() => { setTab('login'); setError('') }}    icon={LogIn}    label="Iniciar sesión" />
             <TabBtn active={tab === 'register'} onClick={() => { setTab('register'); setError('') }} icon={UserPlus} label="Crear cuenta" />
           </div>
@@ -158,8 +158,8 @@ export default function Login() {
                       onClick={() => setRole(r)}
                       className={`px-2 py-2 rounded-xl text-xs font-bold border transition-colors ${
                         role === r
-                          ? 'bg-[#C1440E] text-white border-[#C1440E]'
-                          : 'border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'bg-[#A85638] text-white border-[#A85638]'
+                          : 'border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {ROLE_LABEL[r]}
@@ -183,7 +183,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-sm"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-sm"
             >
               {tab === 'login' ? <LogIn size={16} /> : <UserPlus size={16} />}
               {tab === 'login' ? 'Ingresar' : 'Crear y entrar'}
@@ -217,7 +217,7 @@ export default function Login() {
 /* ──────── helpers ──────── */
 
 const inputCls =
-  'w-full px-3 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E] transition-colors'
+  'w-full px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638] transition-colors'
 
 function Field({ label, children }) {
   return (
@@ -237,7 +237,7 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
       onClick={onClick}
       className={`flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-2 transition-colors ${
         active
-          ? 'border-[#C1440E] text-[#C1440E] dark:text-[#D4A017]'
+          ? 'border-[#A85638] text-[#A85638] dark:text-[#C99A3C]'
           : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
       }`}
     >
@@ -251,7 +251,7 @@ function DemoBtn({ icon: Icon, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-[#C1440E]/5 dark:hover:bg-[#C1440E]/10 hover:border-[#C1440E] transition-colors"
+      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-[#A85638]/5 dark:hover:bg-[#A85638]/10 hover:border-[#A85638] transition-colors"
     >
       <Icon size={12} /> {label}
     </button>

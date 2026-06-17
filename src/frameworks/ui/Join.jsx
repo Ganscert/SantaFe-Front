@@ -183,11 +183,11 @@ export default function Join() {
   if (!session) return <Navigate to="/" replace />
 
   return (
-    <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center">
+    <main className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-6 text-center">
         {status === 'checking' && (
           <>
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#C1440E]/10 text-[#C1440E] flex items-center justify-center mb-3">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#A85638]/10 text-[#A85638] flex items-center justify-center mb-3">
               <Loader2 size={28} className="animate-spin" />
             </div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">Procesando código…</h1>
@@ -215,7 +215,7 @@ export default function Join() {
             <button
               type="button"
               onClick={() => navigate(session?.role === ROLES.CLIENTE ? '/mi-mesa' : '/tablero-mesas')}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold"
             >
               <QrCode size={14} /> Volver
             </button>

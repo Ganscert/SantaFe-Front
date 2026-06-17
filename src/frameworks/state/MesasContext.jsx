@@ -101,9 +101,41 @@ export function MesasProvider({ children }) {
     })
   }, [syncMesas])
 
+  // Flujo "mesero envía a caja": marca la mesa por_cobrar Y registra la
+  // solicitud de cobro de todas las cuentas abiertas que aún no pidieron la
+  // cuenta (las solicitudes previas de clientes via QR se conservan).
+  // Así la mesa aparece en el panel principal de Cobros con todas sus cuentas.
+  const enviarACobro = useCallback((numeroMesa) => {
+    lastOptimisticAtRef.current = Date.now()
+    setMesas(current => {
+      const next = current.map(m => {
+        if (m.numeroMesa !== numeroMesa) return m
+        const previas = m.solicitudesCuenta ?? []
+        const idsPrevios     = new Set(previas.map(s => s.userId))
+        const nombresPrevios = new Set(previas.map(s => String(s.nombre || '').trim().toLowerCase()))
+        const ahora = Date.now()
+        const delMesero = (m.cuentas ?? [])
+          .filter(c => c.abierta !== false
+            && !idsPrevios.has(`cuenta-${c.id}`)
+            && !nombresPrevios.has(String(c.nombre || '').trim().toLowerCase()))
+          .map(c => ({ userId: `cuenta-${c.id}`, nombre: c.nombre, solicitadoEn: ahora, origen: 'mesero' }))
+        let solicitudes = [...previas, ...delMesero]
+        // Mesa sin cuentas registradas → solicitud genérica a nombre de la mesa
+        if (solicitudes.length === 0) {
+          solicitudes = [{ userId: `mesero-${m.id}`, nombre: `Mesa ${m.numeroMesa}`, solicitadoEn: ahora, origen: 'mesero' }]
+        }
+        return { ...m, estado: 'por_cobrar', solicitudesCuenta: solicitudes }
+      })
+      syncMesas(next)
+      const mesa = next.find(m => m.numeroMesa === numeroMesa)
+      if (mesa) db.mesas.update(mesa.id, 'por_cobrar').catch(e => console.error('[mesas.update]', e.message))
+      return next
+    })
+  }, [syncMesas])
+
   const value = useMemo(
-    () => ({ mesas, cambiarEstadoA, actualizarMesa }),
-    [mesas, cambiarEstadoA, actualizarMesa],
+    () => ({ mesas, cambiarEstadoA, actualizarMesa, enviarACobro }),
+    [mesas, cambiarEstadoA, actualizarMesa, enviarACobro],
   )
 
   return <MesasContext.Provider value={value}>{children}</MesasContext.Provider>

@@ -78,6 +78,7 @@ export const PedidosProvider = ({ children }) => {
       mesa: Number(pedido.mesa),
       cuentaId: pedido.cuentaId ?? null,
       cliente_nombre: pedido.cliente_nombre ?? null,
+      nota: String(pedido.nota || '').trim() || null,
       items: pedido.items.map(i => ({ ...i, id: uid(), estado: 'pendiente' })),
       estado: 'pendiente',
       creadoEn: Date.now(),

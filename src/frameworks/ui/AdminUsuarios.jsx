@@ -104,12 +104,12 @@ export default function AdminUsuarios() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950">
-      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#e8e0d8] dark:border-slate-800 shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen">
+      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E5D9C9] dark:border-slate-800 shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-5 pl-16 lg:pl-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="w-11 h-11 rounded-xl bg-[#C1440E] text-white flex items-center justify-center shadow-sm shrink-0">
+              <span className="w-11 h-11 rounded-xl bg-[#A85638] text-white flex items-center justify-center shadow-sm shrink-0">
                 <Users size={22} />
               </span>
               <div className="min-w-0">
@@ -118,7 +118,7 @@ export default function AdminUsuarios() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <span className="px-3 py-1.5 rounded-full bg-[#6B7C4F]/10 text-[#6B7C4F] dark:text-[#a3b48a] font-bold text-sm">
+              <span className="px-3 py-1.5 rounded-full bg-[#7D8B6A]/10 text-[#7D8B6A] dark:text-[#AEBC97] font-bold text-sm">
                 {stats.total} {stats.total === 1 ? 'usuario' : 'usuarios'}
               </span>
             </div>
@@ -128,8 +128,8 @@ export default function AdminUsuarios() {
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* FORMULARIO */}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#e8e0d8] dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+        <section className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#E5D9C9] dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="font-bold text-slate-900 dark:text-slate-50 text-lg">
                 {editando ? 'Editar usuario' : 'Nuevo usuario'}
@@ -142,7 +142,7 @@ export default function AdminUsuarios() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-sm font-semibold text-slate-500 hover:text-[#C1440E] dark:text-slate-400 inline-flex items-center gap-1"
+                className="text-sm font-semibold text-slate-500 hover:text-[#A85638] dark:text-slate-400 inline-flex items-center gap-1"
               >
                 <RotateCcw size={14} /> Cancelar edición
               </button>
@@ -191,7 +191,7 @@ export default function AdminUsuarios() {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#C1440E] text-white text-sm font-bold hover:bg-[#a33a0c] transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#A85638] text-white text-sm font-bold hover:bg-[#8F4527] transition-colors shadow-sm"
               >
                 {editando ? <Save size={16} /> : <Plus size={16} />}
                 {editando ? 'Guardar cambios' : 'Crear usuario'}
@@ -199,7 +199,7 @@ export default function AdminUsuarios() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Limpiar
               </button>
@@ -219,13 +219,13 @@ export default function AdminUsuarios() {
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   placeholder="Buscar nombre o correo"
-                  className="pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#e8e0d8] dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E]"
+                  className="pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E5D9C9] dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
                 />
               </div>
               <select
                 value={filtroRol}
                 onChange={(e) => setFiltroRol(e.target.value)}
-                className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#e8e0d8] dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E]"
+                className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E5D9C9] dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
               >
                 <option value="Todos">Todos los roles</option>
                 {roles.map((r) => (
@@ -240,8 +240,8 @@ export default function AdminUsuarios() {
           ) : visibles.length === 0 ? (
             <EmptyState titulo="Sin resultados" texto="Ajusta el filtro o la búsqueda." />
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
-              <ul className="divide-y divide-[#e8e0d8] dark:divide-slate-800">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+              <ul className="divide-y divide-[#E5D9C9] dark:divide-slate-800">
                 {visibles.map((u) => {
                   const role = roles.find((r) => r.id === u.roleId)
                   const enEdicion = editandoId === u.id
@@ -249,7 +249,7 @@ export default function AdminUsuarios() {
                     <li
                       key={u.id}
                       className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                        enEdicion ? 'bg-[#C1440E]/5 dark:bg-[#C1440E]/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        enEdicion ? 'bg-[#A85638]/5 dark:bg-[#A85638]/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       }`}
                     >
                       <div
@@ -318,7 +318,7 @@ export default function AdminUsuarios() {
           aria-modal="true"
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmar(null)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
             <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center">
@@ -335,7 +335,7 @@ export default function AdminUsuarios() {
               <button
                 type="button"
                 onClick={() => setConfirmar(null)}
-                className="px-4 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancelar
               </button>
@@ -357,7 +357,7 @@ export default function AdminUsuarios() {
 /* ─────────── helpers ─────────── */
 
 const inputCls =
-  'w-full px-3 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E] transition-colors'
+  'w-full px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638] transition-colors'
 
 function Field({ label, children }) {
   return (
@@ -372,7 +372,7 @@ function Field({ label, children }) {
 
 function EmptyState({ titulo, texto }) {
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-[#e8e0d8] dark:ring-slate-800 px-6 py-16 text-center">
+    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-6 py-16 text-center">
       <Users size={42} className="mx-auto text-slate-300 dark:text-slate-600" />
       <p className="mt-3 font-bold text-slate-700 dark:text-slate-200">{titulo}</p>
       <p className="text-sm text-slate-500 dark:text-slate-400">{texto}</p>

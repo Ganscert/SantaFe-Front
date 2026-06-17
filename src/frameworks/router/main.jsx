@@ -17,6 +17,7 @@ import AppShell from '../ui/AppShell.jsx'
 import Join from '../ui/Join.jsx'
 import MesaCliente from '../ui/MesaCliente.jsx'
 import CajeroCobros from '../ui/CajeroCobros.jsx'
+import Reservas from '../ui/Reservas.jsx'
 import RequireAuth from '../ui/RequireAuth.jsx'
 import { MesasProvider } from '../state/MesasContext.jsx'
 import { PedidosProvider } from '../state/PedidosContext.jsx'
@@ -25,6 +26,7 @@ import { ThemeProvider } from '../state/ThemeContext.jsx'
 import { PlatosProvider } from '../state/PlatosContext.jsx'
 import { AuthProvider } from '../state/AuthContext.jsx'
 import { TokensProvider } from '../state/TokensContext.jsx'
+import { ToastProvider } from '../state/ToastContext.jsx'
 import { rolesFor } from '../ui/roleAccess.js'
 
 const router = createBrowserRouter([
@@ -36,6 +38,7 @@ const router = createBrowserRouter([
       { path: '/mi-mesa',           element: <RequireAuth roles={rolesFor('/mi-mesa')}><MesaCliente /></RequireAuth> },
       { path: '/menu',              element: <RequireAuth roles={rolesFor('/menu')}><Menu /></RequireAuth> },
       { path: '/tablero-mesas',     element: <RequireAuth roles={rolesFor('/tablero-mesas')}><TableroMesas /></RequireAuth> },
+      { path: '/reservas',          element: <RequireAuth roles={rolesFor('/reservas')}><Reservas /></RequireAuth> },
       { path: '/mesa/:id',          element: <RequireAuth roles={rolesFor('/mesa/:id')}><MesaDetalle /></RequireAuth> },
       { path: '/pedidos/nuevo',     element: <RequireAuth roles={rolesFor('/pedidos/nuevo')}><AgregarPedido /></RequireAuth> },
       { path: '/pedidos/agregar',   element: <RequireAuth roles={rolesFor('/pedidos/agregar')}><AgregarPedido /></RequireAuth> },
@@ -59,7 +62,9 @@ createRoot(document.getElementById('root')).render(
             <PedidosProvider>
               <PlatosProvider>
                 <TokensProvider>
-                  <RouterProvider router={router} />
+                  <ToastProvider>
+                    <RouterProvider router={router} />
+                  </ToastProvider>
                 </TokensProvider>
               </PlatosProvider>
             </PedidosProvider>

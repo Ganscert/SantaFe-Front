@@ -7,6 +7,7 @@ export const ROUTE_ACCESS = {
   '/admin/roles':       ['admin'],
   '/admin/platos':      ['admin', 'gerente'],
   '/tablero-mesas':     ['admin', 'gerente', 'recepcionista', 'mesero', 'cajero'],
+  '/reservas':          ['admin', 'gerente', 'recepcionista', 'mesero'],
   '/cocina/pendientes': ['admin', 'gerente', 'mesero', 'cocinero'],
   '/cajero/cobros':     ['admin', 'gerente', 'cajero', 'recepcionista'],
   '/pedidos/nuevo':     ['admin', 'gerente', 'recepcionista', 'mesero'],

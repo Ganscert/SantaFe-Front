@@ -34,7 +34,7 @@ function RoleCard({ role, permissionsByCategory, onTogglePerm, onUpdate, onRemov
     <article className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
       <div
         className="px-5 py-4 flex items-start justify-between gap-3 border-l-4"
-        style={{ borderLeftColor: role.color || '#C1440E' }}
+        style={{ borderLeftColor: role.color || '#A85638' }}
       >
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -42,13 +42,13 @@ function RoleCard({ role, permissionsByCategory, onTogglePerm, onUpdate, onRemov
               <input
                 value={draft.label}
                 onChange={e => setDraft(d => ({ ...d, label: e.target.value }))}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-bold focus:outline-none focus:border-[#C1440E]"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-bold focus:outline-none focus:border-[#A85638]"
               />
               <input
                 value={draft.description}
                 onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
                 placeholder="Descripción"
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-[#C1440E]"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-[#A85638]"
               />
             </div>
           ) : (
@@ -110,11 +110,11 @@ function RoleCard({ role, permissionsByCategory, onTogglePerm, onUpdate, onRemov
                       key={p.id}
                       className={`flex items-start gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
                         enabled
-                          ? 'bg-[#C1440E]/8 dark:bg-[#C1440E]/15 ring-1 ring-[#C1440E]/30'
+                          ? 'bg-[#A85638]/8 dark:bg-[#A85638]/15 ring-1 ring-[#A85638]/30'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                     >
-                      <input type="checkbox" checked={enabled} onChange={() => onTogglePerm(p.id)} className="mt-0.5 accent-[#C1440E]" />
+                      <input type="checkbox" checked={enabled} onChange={() => onTogglePerm(p.id)} className="mt-0.5 accent-[#A85638]" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{p.label}</p>
                         <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate">{p.id}</p>
@@ -177,7 +177,7 @@ function UserRow({ user, roles, totalPerms, onChangeRole, onOpenDetail, onReset 
 
       {/* Métrica permisos */}
       <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
-        <span className="text-[#C1440E] dark:text-[#D4A017] font-black text-base leading-none">{effective}</span>
+        <span className="text-[#A85638] dark:text-[#C99A3C] font-black text-base leading-none">{effective}</span>
         <span>/ {totalPerms}</span>
       </div>
 
@@ -187,7 +187,7 @@ function UserRow({ user, roles, totalPerms, onChangeRole, onOpenDetail, onReset 
           value={user.roleId}
           onChange={e => onChangeRole(e.target.value)}
           aria-label={`Cambiar rol de ${user.name}`}
-          className="text-xs font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#C1440E] cursor-pointer max-w-[8rem] sm:max-w-none"
+          className="text-xs font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638] cursor-pointer max-w-[8rem] sm:max-w-none"
         >
           {roles.map(r => (
             <option key={r.id} value={r.id}>{r.label}</option>
@@ -239,7 +239,7 @@ function UserPermsModal({ user, roles, permissionsByCategory, onTogglePerm, onCl
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email} · {role?.label}</p>
           </div>
           <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-            <span className="text-[#C1440E] dark:text-[#D4A017] font-black text-lg leading-none">
+            <span className="text-[#A85638] dark:text-[#C99A3C] font-black text-lg leading-none">
               {user.effectivePermissions.length}
             </span>
             <span>/ {totalPerms}</span>
@@ -277,11 +277,11 @@ function UserPermsModal({ user, roles, permissionsByCategory, onTogglePerm, onCl
                       key={p.id}
                       className={`flex items-start gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
                         enabled
-                          ? 'bg-[#C1440E]/8 dark:bg-[#C1440E]/15 ring-1 ring-[#C1440E]/30'
+                          ? 'bg-[#A85638]/8 dark:bg-[#A85638]/15 ring-1 ring-[#A85638]/30'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                     >
-                      <input type="checkbox" checked={enabled} onChange={() => onTogglePerm(p.id)} className="mt-0.5 accent-[#C1440E]" />
+                      <input type="checkbox" checked={enabled} onChange={() => onTogglePerm(p.id)} className="mt-0.5 accent-[#A85638]" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{p.label}</p>
                         {badge && (
@@ -301,7 +301,7 @@ function UserPermsModal({ user, roles, permissionsByCategory, onTogglePerm, onCl
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold transition-colors"
+            className="px-4 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors"
           >
             Listo
           </button>
@@ -365,11 +365,11 @@ export default function Roles() {
   const usersWithOverrides = users.filter(u => u.hasOverrides).length
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
       <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-5xl mx-auto px-4 lg:pl-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 pl-12 lg:pl-0">
-            <span className="w-7 h-7 rounded-xl bg-[#C1440E] flex items-center justify-center text-white">
+            <span className="w-7 h-7 rounded-xl bg-[#A85638] flex items-center justify-center text-white">
               <ShieldCheck size={14} />
             </span>
             <h1 className="text-base font-bold truncate">Roles y permisos</h1>
@@ -395,7 +395,7 @@ export default function Roles() {
             {tab === 'roles' && (
               <button
                 onClick={() => addRole({ label: 'Rol nuevo' })}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-xs font-bold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors"
               >
                 <Plus size={13} /> Crear rol
               </button>
@@ -409,7 +409,7 @@ export default function Roles() {
             onClick={() => setTab('roles')}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
               tab === 'roles'
-                ? 'border-[#C1440E] text-[#C1440E] dark:text-[#D4A017]'
+                ? 'border-[#A85638] text-[#A85638] dark:text-[#C99A3C]'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -419,7 +419,7 @@ export default function Roles() {
             onClick={() => setTab('usuarios')}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${
               tab === 'usuarios'
-                ? 'border-[#C1440E] text-[#C1440E] dark:text-[#D4A017]'
+                ? 'border-[#A85638] text-[#A85638] dark:text-[#C99A3C]'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -432,7 +432,7 @@ export default function Roles() {
         {tab === 'roles' ? (
           <>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#C1440E] dark:text-[#D4A017]">Administración</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Administración</p>
               <h2 className="text-2xl sm:text-3xl font-black mt-1">Configuración de roles</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
                 Edita los permisos de cada rol. Los cambios afectan a todos los usuarios con ese rol, salvo overrides individuales.
@@ -455,7 +455,7 @@ export default function Roles() {
           <>
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#C1440E] dark:text-[#D4A017]">Administración</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Administración</p>
                 <h2 className="text-2xl sm:text-3xl font-black mt-1">Usuarios del sistema</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
                   Asigna roles y abre el panel de cada persona para editar permisos individuales.
@@ -463,7 +463,7 @@ export default function Roles() {
               </div>
               <Link
                 to="/admin/usuarios"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-xs font-bold transition-colors shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors shrink-0"
               >
                 <Plus size={13} /> Crear / Eliminar
               </Link>
@@ -481,7 +481,7 @@ export default function Roles() {
                     onClick={() => setUserRoleFilter(active ? 'Todos' : r.id)}
                     className={`rounded-2xl px-3 py-2.5 text-left transition-all ring-1 ${
                       active
-                        ? 'ring-[#C1440E] bg-white dark:bg-slate-900 shadow-sm'
+                        ? 'ring-[#A85638] bg-white dark:bg-slate-900 shadow-sm'
                         : 'ring-slate-200 dark:ring-slate-800 bg-white/60 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900'
                     }`}
                   >
@@ -504,14 +504,14 @@ export default function Roles() {
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                   placeholder="Buscar nombre o correo"
-                  className="w-full pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E]"
+                  className="w-full pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
                 />
               </div>
               {userRoleFilter !== 'Todos' && (
                 <button
                   type="button"
                   onClick={() => setUserRoleFilter('Todos')}
-                  className="text-xs font-semibold text-slate-500 hover:text-[#C1440E] inline-flex items-center gap-1 shrink-0"
+                  className="text-xs font-semibold text-slate-500 hover:text-[#A85638] inline-flex items-center gap-1 shrink-0"
                 >
                   <X size={12} /> Limpiar filtro de rol
                 </button>

@@ -65,9 +65,9 @@ export default function GenerarQR({ mesa, onClose }) {
       aria-labelledby="qr-title"
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#e8e0d8] dark:border-slate-800 flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-[#C1440E] text-white flex items-center justify-center shrink-0">
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E5D9C9] dark:border-slate-800 flex items-center gap-3">
+          <span className="w-10 h-10 rounded-2xl bg-[#A85638] text-white flex items-center justify-center shrink-0">
             <QrCode size={20} />
           </span>
           <div className="min-w-0 flex-1">
@@ -91,7 +91,7 @@ export default function GenerarQR({ mesa, onClose }) {
         <div className="p-5">
           {/* QR */}
           <div className="flex items-center justify-center mb-4">
-            <div className="p-4 rounded-2xl bg-white ring-1 ring-[#e8e0d8]">
+            <div className="p-4 rounded-2xl bg-white ring-1 ring-[#E5D9C9]">
               {token ? (
                 <QRCodeSVG value={url} size={220} bgColor="#FFFFFF" fgColor="#0F172A" level="M" />
               ) : (
@@ -111,7 +111,7 @@ export default function GenerarQR({ mesa, onClose }) {
           </div>
 
           {/* URL */}
-          <div className="rounded-xl bg-[#FDF6EC] dark:bg-slate-800 px-3 py-2 flex items-center gap-2 mb-3">
+          <div className="rounded-xl bg-[#F6EEE3] dark:bg-slate-800 px-3 py-2 flex items-center gap-2 mb-3">
             <code className="flex-1 text-[11px] font-mono text-slate-600 dark:text-slate-300 truncate" title={url}>
               {url}
             </code>
@@ -131,8 +131,8 @@ export default function GenerarQR({ mesa, onClose }) {
 
           {/* Código de 6 dígitos (alternativa al QR) */}
           {token?.codigo && (
-            <div className="rounded-2xl bg-[#C1440E]/5 dark:bg-[#C1440E]/10 ring-1 ring-[#C1440E]/20 px-4 py-3 mb-3 text-center">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-[#C1440E] dark:text-[#D4A017] mb-1">
+            <div className="rounded-2xl bg-[#A85638]/5 dark:bg-[#A85638]/10 ring-1 ring-[#A85638]/20 px-4 py-3 mb-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-[#A85638] dark:text-[#C99A3C] mb-1">
                 O ingresa este código
               </p>
               <p className="text-3xl font-black tracking-[0.4em] text-slate-900 dark:text-slate-50 font-mono">
@@ -151,14 +151,14 @@ export default function GenerarQR({ mesa, onClose }) {
             <button
               type="button"
               onClick={regenerar}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <RotateCcw size={14} /> Regenerar
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors"
             >
               Listo
             </button>

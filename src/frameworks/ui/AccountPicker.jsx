@@ -38,7 +38,7 @@ export default function AccountPicker({ numeroMesa, onSelect, onClose, asModal =
     <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-xl w-full max-w-md overflow-hidden">
       <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#C1440E] dark:text-[#D4A017]">Mesa {mesa.numeroMesa}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Mesa {mesa.numeroMesa}</p>
           <h3 className="text-lg font-black text-slate-900 dark:text-slate-50 mt-0.5">Selecciona una cuenta</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Capacidad de la mesa: {capacidadMaxima} cuenta{capacidadMaxima !== 1 ? 's' : ''} · {cuentasAbiertas.length} activa{cuentasAbiertas.length !== 1 ? 's' : ''}
@@ -70,36 +70,36 @@ export default function AccountPicker({ numeroMesa, onSelect, onClose, asModal =
           <button
             key={c.id}
             onClick={() => onSelect?.(c)}
-            className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-[#C1440E] dark:hover:ring-[#C1440E] hover:bg-[#C1440E]/5 dark:hover:bg-[#C1440E]/10 transition-all px-4 py-3 flex items-center gap-3 group"
+            className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-[#A85638] dark:hover:ring-[#A85638] hover:bg-[#A85638]/5 dark:hover:bg-[#A85638]/10 transition-all px-4 py-3 flex items-center gap-3 group"
           >
-            <span className="w-9 h-9 rounded-xl bg-[#C1440E]/10 dark:bg-[#C1440E]/20 text-[#C1440E] dark:text-[#FDF6EC] flex items-center justify-center font-black text-sm">
+            <span className="w-9 h-9 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#F6EEE3] flex items-center justify-center font-black text-sm">
               {c.nombre.charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{c.nombre}</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Acumulado: {fmt(totalesPorCuenta[c.id] || 0)}</p>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 group-hover:text-[#C1440E] dark:group-hover:text-[#FDF6EC] transition-colors">
+            <span className="text-[10px] font-bold text-slate-400 group-hover:text-[#A85638] dark:group-hover:text-[#F6EEE3] transition-colors">
               Seleccionar →
             </span>
           </button>
         ))}
 
         {creando ? (
-          <div className="rounded-2xl ring-1 ring-[#C1440E] bg-[#C1440E]/5 dark:bg-[#C1440E]/10 p-3 space-y-2">
+          <div className="rounded-2xl ring-1 ring-[#A85638] bg-[#A85638]/5 dark:bg-[#A85638]/10 p-3 space-y-2">
             <input
               autoFocus
               value={nombreNuevo}
               onChange={(e) => setNombreNuevo(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCrear()}
               placeholder={sugerirNombre()}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:border-[#C1440E]"
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:border-[#A85638]"
               style={{ fontSize: '16px' }}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleCrear}
-                className="flex-1 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white py-2 text-sm font-bold transition-colors"
+                className="flex-1 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white py-2 text-sm font-bold transition-colors"
               >
                 Crear y seleccionar
               </button>
@@ -115,7 +115,7 @@ export default function AccountPicker({ numeroMesa, onSelect, onClose, asModal =
           <button
             onClick={() => setCreando(true)}
             disabled={!puedeAgregar}
-            className="w-full rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#C1440E] dark:hover:border-[#C1440E] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-300 dark:disabled:hover:border-slate-700 transition-colors px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-300 hover:text-[#C1440E] dark:hover:text-[#FDF6EC]"
+            className="w-full rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#A85638] dark:hover:border-[#A85638] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-300 dark:disabled:hover:border-slate-700 transition-colors px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-300 hover:text-[#A85638] dark:hover:text-[#F6EEE3]"
           >
             <UserPlus size={16} />
             {puedeAgregar

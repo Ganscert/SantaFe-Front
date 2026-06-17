@@ -1,7 +1,32 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { Volume2, VolumeX, StickyNote } from 'lucide-react'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useMesas } from '../state/MesasContext.jsx'
+
+const SONIDO_KEY = 'santa-fe:cocina-sonido'
+
+// Campana de dos tonos via Web Audio — sin assets externos.
+function campanaNuevoPedido() {
+  try {
+    const Ctor = window.AudioContext || window.webkitAudioContext
+    if (!Ctor) return
+    const ctx = new Ctor()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.18)
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.6)
+    setTimeout(() => ctx.close().catch(() => {}), 800)
+  } catch { /* sin soporte de audio */ }
+}
 
 function ms(d) { return Math.max(0, Date.now() - d) }
 function fmt(d) {
@@ -33,7 +58,7 @@ function Card({ pedido, onAccion, labelAccion }) {
         <div className="min-w-0">
           <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">Mesa {pedido.mesa}</h3>
           {quienPidio && (
-            <p className="text-[11px] font-bold text-[#C1440E] dark:text-[#D4A017] truncate" title="Cliente">
+            <p className="text-[11px] font-bold text-[#A85638] dark:text-[#C99A3C] truncate" title="Cliente">
               👤 {quienPidio}
             </p>
           )}
@@ -54,9 +79,16 @@ function Card({ pedido, onAccion, labelAccion }) {
         ))}
       </ul>
 
+      {pedido.nota && (
+        <p className="mb-3 -mt-1 text-xs text-slate-700 dark:text-slate-200 bg-[#C99A3C]/15 ring-1 ring-[#C99A3C]/30 rounded-xl px-3 py-2 flex items-start gap-1.5">
+          <StickyNote size={12} className="mt-0.5 shrink-0 text-[#C99A3C]" />
+          <span>{pedido.nota}</span>
+        </p>
+      )}
+
       <button
         onClick={() => onAccion(pedido.id)}
-        className="w-full rounded-xl bg-[#C1440E] text-white py-2.5 text-sm font-bold hover:bg-[#a33a0c] active:scale-95 transition-all"
+        className="w-full rounded-xl bg-[#A85638] text-white py-2.5 text-sm font-bold hover:bg-[#8F4527] active:scale-95 transition-all"
       >
         {labelAccion}
       </button>
@@ -131,7 +163,7 @@ function VistaAgrupada({ pedidos }) {
         <article key={g.nombre} className="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800">
           <header className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">{g.nombre}</h3>
-            <span className="flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-full bg-[#C1440E] text-white">
+            <span className="flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-full bg-[#A85638] text-white">
               × {g.total}
             </span>
           </header>
@@ -144,7 +176,7 @@ function VistaAgrupada({ pedidos }) {
                   <span className="text-slate-700 dark:text-slate-200 truncate">
                     <strong className="text-slate-900 dark:text-slate-50">{d.cantidad}×</strong>{' '}
                     Mesa {d.mesa}
-                    {quien && <span className="text-[#C1440E] dark:text-[#D4A017] ml-1">· 👤 {quien}</span>}
+                    {quien && <span className="text-[#A85638] dark:text-[#C99A3C] ml-1">· 👤 {quien}</span>}
                   </span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cfg.bg}`}>
                     {cfg.label}
@@ -166,6 +198,20 @@ function CocinaPendientes() {
   } = usePedidos()
   const { mesas } = useMesas()
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
+
+  // ── Aviso sonoro al entrar un pedido nuevo ──
+  const [sonido, setSonido] = useState(() => {
+    try { return localStorage.getItem(SONIDO_KEY) !== 'off' } catch { return true }
+  })
+  const prevPendientesRef = useRef(pedidosPendientes.length)
+  useEffect(() => {
+    if (pedidosPendientes.length > prevPendientesRef.current && sonido) campanaNuevoPedido()
+    prevPendientesRef.current = pedidosPendientes.length
+  }, [pedidosPendientes.length, sonido])
+  const toggleSonido = () => setSonido(s => {
+    try { localStorage.setItem(SONIDO_KEY, s ? 'off' : 'on') } catch { /* almacenamiento no disponible */ }
+    return !s
+  })
 
   // ── Filtros ──
   const [filtroPlatillo, setFiltroPlatillo] = useState('')
@@ -232,7 +278,7 @@ function CocinaPendientes() {
   const limpiarFiltros = () => { setFiltroPlatillo(''); setFiltroMesa('todas') }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen">
       {/* Topbar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
@@ -253,6 +299,18 @@ function CocinaPendientes() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSonido}
+              title={sonido ? 'Silenciar aviso de pedidos nuevos' : 'Activar aviso sonoro'}
+              aria-label={sonido ? 'Silenciar aviso' : 'Activar aviso sonoro'}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center ring-1 transition-colors ${
+                sonido
+                  ? 'bg-[#C99A3C]/15 text-[#C99A3C] ring-[#C99A3C]/30'
+                  : 'text-slate-400 ring-slate-200 dark:ring-slate-700 hover:text-slate-600'
+              }`}
+            >
+              {sonido ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            </button>
             {totalReal > 0 && (
               <button
                 onClick={() => setConfirmLimpiar(true)}
@@ -280,7 +338,7 @@ function CocinaPendientes() {
               onChange={e => setFiltroPlatillo(e.target.value)}
               placeholder="Buscar platillo (ej. ceviche, lomo…)"
               style={{ fontSize: '16px' }}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-[#C1440E] focus:ring-2 focus:ring-[#C1440E]/10 transition-all"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10 transition-all"
             />
           </div>
 
@@ -293,7 +351,7 @@ function CocinaPendientes() {
               value={filtroMesa}
               onChange={e => setFiltroMesa(e.target.value)}
               style={{ fontSize: '14px' }}
-              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-[#C1440E] focus:ring-2 focus:ring-[#C1440E]/10 transition-all"
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10 transition-all"
             >
               <option value="todas">Todas</option>
               {mesasConActivos.map(n => (
@@ -307,7 +365,7 @@ function CocinaPendientes() {
             onClick={() => setAgrupar(v => !v)}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
               agrupar
-                ? 'bg-[#C1440E] text-white hover:bg-[#a33a0c]'
+                ? 'bg-[#A85638] text-white hover:bg-[#8F4527]'
                 : 'bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
             title="Agrupar por platillo para preparar en bloque"
@@ -338,7 +396,7 @@ function CocinaPendientes() {
             <span className="text-6xl">🍳</span>
             <p className="text-slate-700 dark:text-slate-200 font-bold text-lg">Cocina al día</p>
             <p className="text-sm text-slate-400 dark:text-slate-500">Cuando un mesero envíe un pedido aparecerá aquí.</p>
-            <Link to="/pedidos/nuevo" className="mt-2 rounded-xl bg-[#C1440E] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#a33a0c] transition-colors">
+            <Link to="/pedidos/nuevo" className="mt-2 rounded-xl bg-[#A85638] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#8F4527] transition-colors">
               Crear pedido de prueba
             </Link>
           </div>
