@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Utensils, Plus, Minus, ShoppingBag, Check, X, LogOut, ImageIcon, Clock, ChefHat,
-  Users, Receipt, Loader2, KeyRound,
+  Users, Receipt, Loader2, KeyRound, CreditCard, CircleDollarSign, Upload, ShieldCheck,
 } from 'lucide-react'
 import ingredientes from '../assets/data/ingredientes.js'
 import { useAuth } from '../state/AuthContext.jsx'
@@ -11,7 +11,45 @@ import { usePedidos } from '../state/PedidosContext.jsx'
 import { usePlatos } from '../state/PlatosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { useToast } from '../state/ToastContext.jsx'
 import { db } from '../../adapters/db.js'
+import { supabase } from '../../adapters/supabase.js'
+
+const BUCKET_COMPROBANTES = 'imagenes-menu' // bucket público existente; los comprobantes van en comprobantes/
+
+// POST de formulario clásico → redirige el navegador a la Página de Pagos de Azul (modo live).
+function postRedirect(url, fields) {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = url
+  Object.entries(fields).forEach(([k, v]) => {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = k
+    input.value = v ?? ''
+    form.appendChild(input)
+  })
+  document.body.appendChild(form)
+  form.submit()
+}
+
+const slugify = (s = '') =>
+  s.toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+// Sube el comprobante de transferencia al Storage y devuelve { url } o { error }.
+async function subirComprobante(mesaId, file) {
+  if (!supabase) return { error: 'Almacenamiento no configurado.' }
+  if (!file)     return { error: 'Archivo vacío.' }
+  const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const path = `comprobantes/transfer-${slugify(String(mesaId)).slice(0, 8) || 'mesa'}-${Date.now()}.${ext}`
+  const { error: upErr } = await supabase.storage.from(BUCKET_COMPROBANTES).upload(path, file, {
+    contentType: file.type, upsert: false,
+  })
+  if (upErr) return { error: upErr.message }
+  const { data } = supabase.storage.from(BUCKET_COMPROBANTES).getPublicUrl(path)
+  return { url: data?.publicUrl, path }
+}
 
 const ACTIVE_CLIENT_MESA_KEY = 'santa-fe:client-mesa'
 const CATEGORIAS = ['Todos', 'Entrada', 'Plato Principal', 'Postre', 'Bebida']
@@ -39,7 +77,8 @@ export default function MesaCliente() {
   const [cancelError, setCancelError]   = useState('')
   const { platos: platosAdmin } = usePlatos()
   useTokens() // mantiene el contexto activo para sincronización
-  const { serverState } = useLiveSync()
+  const { serverState, sendMessage } = useLiveSync()
+  const toast = useToast()
 
   // Leer localStorage una sola vez (no cambia durante la vida del componente).
   const activaRef = useRef(leerMesaActiva())
@@ -54,6 +93,8 @@ export default function MesaCliente() {
   const [confirma, setConfirma]   = useState(false)
   const [ultimo, setUltimo]       = useState(null) // último pedido enviado (mostrar feedback)
   const [cuentaSolicitada, setCuentaSolicitada] = useState(false)
+  const [pagoModalOpen, setPagoModalOpen] = useState(false)
+  const [pagoExito, setPagoExito] = useState(null) // { metodo } tras un pago confirmado
   const [mesaLiberada, setMesaLiberada] = useState(false)
   const [saliendoError, setSaliendoError] = useState('')
   const [verificandoSalida, setVerificandoSalida] = useState(false)
@@ -147,14 +188,18 @@ export default function MesaCliente() {
       imagen: p.imagen,
       ingredientes: p.ingredientes,
     }))
-    const extra = (platosAdmin || []).map((p) => ({
-      key: `admin-${p.id}`,
-      nombre: p.nombre,
-      precio: p.precio,
-      categoria: p.categoria,
-      imagen: p.imagenData || null,
-      ingredientes: p.ingredientes,
-    }))
+    // El cliente sólo ve platos disponibles: los marcados como no disponibles
+    // por un usuario autorizado quedan ocultos al elegir su pedido.
+    const extra = (platosAdmin || [])
+      .filter((p) => p.disponible !== false)
+      .map((p) => ({
+        key: `admin-${p.id}`,
+        nombre: p.nombre,
+        precio: p.precio,
+        categoria: p.categoria,
+        imagen: p.imagenData || null,
+        ingredientes: p.ingredientes,
+      }))
     return [...extra, ...base]
   }, [platosAdmin])
 
@@ -373,8 +418,9 @@ export default function MesaCliente() {
     refetchPedidosDB().catch(() => {})
   }
 
-  function pedirCuenta() {
+  function pedirCuenta(opts = {}) {
     if (!mesa) return
+    const { metodoPreferido = null, rnc = null } = opts
     const solicitudesCuenta = mesa.solicitudesCuenta || []
     if (solicitudesCuenta.some((s) => s.userId === session?.id)) {
       setCuentaSolicitada(true)
@@ -382,7 +428,7 @@ export default function MesaCliente() {
     }
     const nuevasSolicitudes = [
       ...solicitudesCuenta,
-      { userId: session.id, nombre: session.name, solicitadoEn: Date.now() },
+      { userId: session.id, nombre: session.name, solicitadoEn: Date.now(), metodoPreferido, rnc },
     ]
     actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: nuevasSolicitudes })
 
@@ -398,11 +444,44 @@ export default function MesaCliente() {
     setCuentaSolicitada(true)
   }
 
+  // Llamado por el modal de pago del cliente.
+  // - Efectivo: no registra pago (se paga al personal); sólo solicita la cuenta con el método y RNC.
+  // - Tarjeta (Azul sandbox) / Transferencia: el pago YA quedó registrado en DB; aquí limpiamos la
+  //   cuenta del cliente, avisamos al personal vía Pusher y marcamos al comensal como pagado.
+  async function onPagadoCliente({ pagado, metodo, rnc }) {
+    if (!pagado) {
+      pedirCuenta({ metodoPreferido: metodo, rnc })
+      setPagoModalOpen(false)
+      return
+    }
+    setPagoModalOpen(false)
+    setReseteando(true)
+    try { sendMessage?.({ type: 'sync:pago', mesa_id: mesa.id, at: Date.now() }) } catch {}
+    db.comensales.marcarPagado(mesa.id).catch(() => {})
+
+    const nuevoJoinedAt = Date.now()
+    try {
+      const next = { ...(activaRef.current || {}), joinedAt: nuevoJoinedAt }
+      activaRef.current = next
+      localStorage.setItem(ACTIVE_CLIENT_MESA_KEY, JSON.stringify(next))
+    } catch {}
+    setJoinedAt(nuevoJoinedAt)
+    setCarrito([])
+    setConfirma(false)
+    setCuentaSolicitada(false)
+    await refetchPedidosDB()
+    setReseteando(false)
+    setPagoExito({ metodo })
+    toast.success(metodo === 'transferencia'
+      ? 'Transferencia registrada con tu comprobante. ¡Gracias!'
+      : 'Pago con tarjeta aprobado. ¡Gracias!')
+  }
+
   // Mesa liberada por el personal → pantalla de despedida antes del logout automático
   if (mesaLiberada) {
     return (
-      <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center">
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-6 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
             <LogOut size={28} />
           </div>
@@ -421,9 +500,9 @@ export default function MesaCliente() {
   // Si activa existe pero mesas aún no cargaron del WS → mostrar loading en vez de "sin mesa"
   if (activa && !mesa) {
     return (
-      <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#C1440E]/10 text-[#C1440E] flex items-center justify-center mb-3">
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-6 text-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#A85638]/10 text-[#A85638] flex items-center justify-center mb-3">
             <Loader2 size={28} className="animate-spin" />
           </div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">Sincronizando…</h1>
@@ -438,11 +517,11 @@ export default function MesaCliente() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 pb-32">
+    <div className="min-h-screen pb-32">
       {/* Overlay bloqueante durante el hard-reset post-cobro */}
       {reseteando && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-2xl p-6 text-center max-w-xs w-full">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-2xl p-6 text-center max-w-xs w-full">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
               <Loader2 size={26} className="animate-spin" />
             </div>
@@ -453,11 +532,11 @@ export default function MesaCliente() {
           </div>
         </div>
       )}
-      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#e8e0d8] dark:border-slate-800 shadow-sm sticky top-0 z-20">
+      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E5D9C9] dark:border-slate-800 shadow-sm sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-[#C1440E] dark:text-[#D4A017]">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-[#A85638] dark:text-[#C99A3C]">
                 Mesa {mesa.numeroMesa}
               </p>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-50 truncate">
@@ -469,7 +548,7 @@ export default function MesaCliente() {
                 type="button"
                 onClick={cambiarMesa}
                 title="Cambiar de mesa"
-                className="px-2.5 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-2.5 py-2 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Cambiar mesa
               </button>
@@ -498,7 +577,7 @@ export default function MesaCliente() {
                   key={int.userId}
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
                     int.userId === session?.id
-                      ? 'bg-[#C1440E]/15 text-[#C1440E] dark:bg-[#C1440E]/25 dark:text-[#FDF6EC]'
+                      ? 'bg-[#A85638]/15 text-[#A85638] dark:bg-[#A85638]/25 dark:text-[#F6EEE3]'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                   }`}
                 >
@@ -517,7 +596,7 @@ export default function MesaCliente() {
                 onClick={() => setCategoria(c)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
                   categoria === c
-                    ? 'bg-[#C1440E] text-white'
+                    ? 'bg-[#A85638] text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -563,22 +642,47 @@ export default function MesaCliente() {
           </div>
         )}
 
-        {/* Pedir la cuenta */}
+        {/* Pedir la cuenta / pagar */}
         <div className="mb-4">
-          {(cuentaSolicitada || (mesa.solicitudesCuenta || []).some((s) => s.userId === session?.id)) ? (
-            <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 px-4 py-3 flex items-center gap-3">
-              <span className="w-9 h-9 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
-                <Receipt size={16} />
+          {pagoExito ? (
+            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-4 py-3 flex items-center gap-3">
+              <span className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                <Check size={16} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-indigo-800 dark:text-indigo-200">Cuenta solicitada</p>
-                <p className="text-xs text-indigo-700 dark:text-indigo-300/80">El personal fue notificado.</p>
+                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Pago realizado</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300/80">
+                  {pagoExito.metodo === 'transferencia'
+                    ? 'Tu transferencia y comprobante quedaron registrados.'
+                    : 'Tu pago con tarjeta fue aprobado. ¡Gracias!'}
+                </p>
               </div>
+            </div>
+          ) : (cuentaSolicitada || (mesa.solicitudesCuenta || []).some((s) => s.userId === session?.id)) ? (
+            <div className="space-y-2">
+              <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 px-4 py-3 flex items-center gap-3">
+                <span className="w-9 h-9 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
+                  <Receipt size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-indigo-800 dark:text-indigo-200">Cuenta solicitada</p>
+                  <p className="text-xs text-indigo-700 dark:text-indigo-300/80">El personal fue notificado.</p>
+                </div>
+              </div>
+              {totalPorPagar > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPagoModalOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors"
+                >
+                  <CreditCard size={15} /> Pagar en línea ({formatPEN(totalPorPagar)})
+                </button>
+              )}
             </div>
           ) : (
             <button
               type="button"
-              onClick={pedirCuenta}
+              onClick={() => setPagoModalOpen(true)}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-indigo-300 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-300 text-sm font-bold hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
             >
               <Receipt size={15} /> Pedir la cuenta
@@ -606,7 +710,7 @@ export default function MesaCliente() {
                     className={`bg-white dark:bg-slate-900 rounded-2xl ring-1 px-4 py-3 ${
                       pago && !pago.cobrado
                         ? 'ring-amber-300 dark:ring-amber-500/40'
-                        : 'ring-[#e8e0d8] dark:ring-slate-800'
+                        : 'ring-[#E5D9C9] dark:ring-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -636,9 +740,9 @@ export default function MesaCliente() {
                         </li>
                       ))}
                     </ul>
-                    <div className="mt-2 pt-2 border-t border-[#e8e0d8] dark:border-slate-800 flex justify-between text-sm font-bold">
+                    <div className="mt-2 pt-2 border-t border-[#E5D9C9] dark:border-slate-800 flex justify-between text-sm font-bold">
                       <span className="text-slate-500 dark:text-slate-400">Total</span>
-                      <span className="text-[#C1440E] dark:text-[#D4A017]">{formatPEN(total)}</span>
+                      <span className="text-[#A85638] dark:text-[#C99A3C]">{formatPEN(total)}</span>
                     </div>
                     {/* Cancelar (sólo si aún pendiente y no cobrado) */}
                     {estado === 'pendiente' && !(pago && pago.cobrado) && (
@@ -672,8 +776,8 @@ export default function MesaCliente() {
             {filtrados.map((plato) => {
               const enCarrito = carrito.find((c) => c.nombre === plato.nombre)
               return (
-                <article key={plato.key} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden flex">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 bg-[#FDF6EC] dark:bg-slate-800 flex items-center justify-center shrink-0 relative">
+                <article key={plato.key} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden flex">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 bg-[#F6EEE3] dark:bg-slate-800 flex items-center justify-center shrink-0 relative">
                     {plato.imagen ? (
                       <img src={plato.imagen} alt={plato.nombre} className="absolute inset-0 w-full h-full object-cover" />
                     ) : (
@@ -683,10 +787,10 @@ export default function MesaCliente() {
                   <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
                     <div className="min-w-0">
                       <h3 className="font-bold text-sm text-slate-900 dark:text-slate-50 truncate">{plato.nombre}</h3>
-                      <p className="text-[10px] text-[#6B7C4F] dark:text-[#a3b48a] font-bold uppercase tracking-wider">{plato.categoria}</p>
+                      <p className="text-[10px] text-[#7D8B6A] dark:text-[#AEBC97] font-bold uppercase tracking-wider">{plato.categoria}</p>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[#C1440E] dark:text-[#D4A017] font-black text-sm">{formatPEN(plato.precio)}</span>
+                      <span className="text-[#A85638] dark:text-[#C99A3C] font-black text-sm">{formatPEN(plato.precio)}</span>
                       {enCarrito ? (
                         <div className="inline-flex items-center gap-1">
                           <button
@@ -702,7 +806,7 @@ export default function MesaCliente() {
                             type="button"
                             onClick={() => cambiarCantidad(plato.nombre, 1)}
                             aria-label={`Agregar uno más de ${plato.nombre}`}
-                            className="w-7 h-7 rounded-lg bg-[#C1440E] text-white flex items-center justify-center hover:bg-[#a33a0c]"
+                            className="w-7 h-7 rounded-lg bg-[#A85638] text-white flex items-center justify-center hover:bg-[#8F4527]"
                           >
                             <Plus size={12} />
                           </button>
@@ -711,7 +815,7 @@ export default function MesaCliente() {
                         <button
                           type="button"
                           onClick={() => agregarAlCarrito(plato)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C1440E] hover:bg-[#a33a0c] text-white text-xs font-bold transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors"
                         >
                           <Plus size={12} /> Agregar
                         </button>
@@ -730,7 +834,7 @@ export default function MesaCliente() {
         <button
           type="button"
           onClick={() => setConfirma(true)}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold shadow-xl"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold shadow-xl"
         >
           <ShoppingBag size={16} />
           <span>{itemsCarrito} ítem{itemsCarrito !== 1 ? 's' : ''}</span>
@@ -744,14 +848,14 @@ export default function MesaCliente() {
       {confirma && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirma(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#e8e0d8] dark:border-slate-800 flex items-center justify-between">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#E5D9C9] dark:border-slate-800 flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-slate-50 text-lg">Tu pedido</h3>
               <button onClick={() => setConfirma(false)} aria-label="Cerrar" className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center">
                 <X size={15} />
               </button>
             </div>
-            <ul className="px-5 py-3 max-h-72 overflow-y-auto divide-y divide-[#e8e0d8] dark:divide-slate-800">
+            <ul className="px-5 py-3 max-h-72 overflow-y-auto divide-y divide-[#E5D9C9] dark:divide-slate-800">
               {carrito.map((it) => (
                 <li key={it.nombre} className="py-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -761,20 +865,20 @@ export default function MesaCliente() {
                   <div className="inline-flex items-center gap-1 shrink-0">
                     <button onClick={() => cambiarCantidad(it.nombre, -1)} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 flex items-center justify-center"><Minus size={12} /></button>
                     <span className="w-6 text-center text-sm font-black">{it.cantidad}</span>
-                    <button onClick={() => cambiarCantidad(it.nombre, 1)} className="w-7 h-7 rounded-lg bg-[#C1440E] text-white flex items-center justify-center"><Plus size={12} /></button>
+                    <button onClick={() => cambiarCantidad(it.nombre, 1)} className="w-7 h-7 rounded-lg bg-[#A85638] text-white flex items-center justify-center"><Plus size={12} /></button>
                   </div>
                 </li>
               ))}
             </ul>
-            <div className="px-5 py-3 border-t border-[#e8e0d8] dark:border-slate-800 flex items-center justify-between">
+            <div className="px-5 py-3 border-t border-[#E5D9C9] dark:border-slate-800 flex items-center justify-between">
               <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Total</span>
-              <span className="text-xl font-black text-[#C1440E] dark:text-[#D4A017]">{formatPEN(totalCarrito)}</span>
+              <span className="text-xl font-black text-[#A85638] dark:text-[#C99A3C]">{formatPEN(totalCarrito)}</span>
             </div>
             <div className="px-5 pb-5 flex flex-col-reverse sm:flex-row gap-2">
               <button
                 type="button"
                 onClick={vaciarCarrito}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Vaciar
               </button>
@@ -782,7 +886,7 @@ export default function MesaCliente() {
                 type="button"
                 onClick={enviarPedido}
                 disabled={enviandoPedido}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-wait"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-wait"
               >
                 {enviandoPedido
                   ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
@@ -792,6 +896,244 @@ export default function MesaCliente() {
           </div>
         </div>
       )}
+
+      {/* Modal de pago del cliente al pedir la cuenta */}
+      {pagoModalOpen && (
+        <ModalPagoCliente
+          mesa={mesa}
+          total={totalPorPagar}
+          onClose={() => setPagoModalOpen(false)}
+          onResult={onPagadoCliente}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Modal de pago del cliente. Permite elegir RNC (comprobante fiscal) y método:
+ *  - Efectivo: avisa al personal (paga en caja); no registra pago en DB.
+ *  - Tarjeta (Azul): pasarela. En sandbox aprueba y registra; en live redirige a Azul.
+ *  - Transferencia: adjunta el comprobante (obligatorio), lo sube a Storage y registra el pago.
+ */
+function ModalPagoCliente({ mesa, total, onClose, onResult }) {
+  const [metodo, setMetodo] = useState('efectivo')
+  const [rnc, setRnc] = useState('')
+  const [file, setFile] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [procesando, setProcesando] = useState(false)
+  const [redirigiendo, setRedirigiendo] = useState(false)
+  const [error, setError] = useState('')
+  const submittedRef = useRef(false)
+  const fileInputRef = useRef(null)
+
+  const sinMonto = !(total > 0)
+  const rncLimpio = rnc.trim()
+  const refRnc = rncLimpio ? `|RNC:${rncLimpio}` : ''
+
+  function elegirArchivo(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const okTipo = f.type.startsWith('image/') || f.type === 'application/pdf'
+    if (!okTipo) { setError('El comprobante debe ser una imagen o PDF.'); return }
+    setError('')
+    setFile(f)
+    setPreview(f.type.startsWith('image/') ? URL.createObjectURL(f) : null)
+  }
+
+  async function pagarConAzul() {
+    const sesion = await db.azul.session({ mesa_id: mesa.id, monto: total, returnTo: 'cliente' })
+    if (sesion.mode === 'live') {
+      setRedirigiendo(true)
+      postRedirect(sesion.url, sesion.fields) // el navegador navega a Azul
+      return true // no cerrar: estamos saliendo de la página
+    }
+    const ap = await db.azul.sandboxApprove({ orderNumber: sesion.orderNumber })
+    if (!ap.ok) throw new Error('Azul (sandbox) rechazó el pago.')
+    await db.pagos.insert({
+      mesa_id: mesa.id, monto: total, metodo: 'tarjeta',
+      referencia: `AZUL:${sesion.orderNumber}:${ap.AuthorizationCode}${refRnc}`,
+    })
+    return false
+  }
+
+  async function pagarTransferencia() {
+    if (!file) throw new Error('Adjunta el comprobante de la transferencia.')
+    const up = await subirComprobante(mesa.id, file)
+    if (up.error) throw new Error(`No se pudo subir el comprobante: ${up.error}`)
+    await db.pagos.insert({
+      mesa_id: mesa.id, monto: total, metodo: 'transferencia',
+      referencia: `TRANSF:${up.url}${refRnc}`,
+    })
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (submittedRef.current) return
+    setError('')
+
+    // Efectivo: no requiere monto/pasarela — sólo notifica al personal.
+    if (metodo === 'efectivo') {
+      onResult({ pagado: false, metodo: 'efectivo', rnc: rncLimpio || null })
+      return
+    }
+    if (sinMonto) return setError('No tienes consumo pendiente de pago.')
+
+    submittedRef.current = true
+    setProcesando(true)
+    try {
+      if (metodo === 'azul') {
+        const saliendo = await pagarConAzul()
+        if (saliendo) return // redirigiendo a Azul
+        onResult({ pagado: true, metodo: 'tarjeta', rnc: rncLimpio || null })
+      } else {
+        await pagarTransferencia()
+        onResult({ pagado: true, metodo: 'transferencia', rnc: rncLimpio || null })
+      }
+    } catch (err) {
+      submittedRef.current = false
+      setError(err.message || 'No se pudo procesar el pago.')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const OPCIONES = [
+    { id: 'efectivo',      label: 'Efectivo',      desc: 'Pagas en caja al personal',          Icon: CircleDollarSign },
+    { id: 'azul',          label: 'Tarjeta',       desc: 'Crédito/débito · pasarela Azul',     Icon: CreditCard },
+    { id: 'transferencia', label: 'Transferencia', desc: 'Adjunta tu comprobante al instante', Icon: Receipt },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={procesando ? undefined : onClose} />
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="px-5 py-4 border-b border-[#E5D9C9] dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-lg">Pagar la cuenta</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Mesa {mesa.numeroMesa}</p>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" disabled={procesando} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center disabled:opacity-50">
+            <X size={15} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
+          {/* Total */}
+          <div className="rounded-2xl bg-[#F6EEE3] dark:bg-slate-800 px-4 py-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Total a pagar</span>
+            <span className="text-xl font-black text-[#A85638] dark:text-[#C99A3C]">{formatPEN(total)}</span>
+          </div>
+
+          {/* RNC */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">
+              RNC (comprobante fiscal) · opcional
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={rnc}
+              onChange={(e) => setRnc(e.target.value.replace(/[^0-9-]/g, '').slice(0, 15))}
+              placeholder="Ej. 1-31-12345-6"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
+            />
+          </div>
+
+          {/* Método */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Método de pago</p>
+            <div className="space-y-2">
+              {OPCIONES.map(({ id, label, desc, Icon }) => {
+                const activo = metodo === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setMetodo(id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ring-1 ${
+                      activo
+                        ? 'bg-[#A85638] text-white ring-[#8F4527] shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-[#A85638]/50'
+                    }`}
+                  >
+                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${activo ? 'bg-white/20' : 'bg-[#F6EEE3] dark:bg-slate-700 text-[#A85638] dark:text-[#C99A3C]'}`}>
+                      <Icon size={17} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold leading-tight">{label}</span>
+                      <span className={`block text-[11px] leading-tight ${activo ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>{desc}</span>
+                    </span>
+                    {activo && <Check size={16} className="shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Adjuntar comprobante (sólo transferencia) */}
+          {metodo === 'transferencia' && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+                Comprobante de transferencia <span className="text-red-500">*</span>
+              </p>
+              {preview ? (
+                <div className="relative rounded-2xl overflow-hidden ring-1 ring-[#E5D9C9] dark:ring-slate-700">
+                  <img src={preview} alt="Comprobante" className="w-full max-h-56 object-contain bg-slate-50 dark:bg-slate-800" />
+                  <button
+                    type="button"
+                    onClick={() => { setFile(null); setPreview(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                    aria-label="Quitar comprobante"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : file ? (
+                <div className="rounded-xl bg-[#F6EEE3] dark:bg-slate-800 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2">
+                  <span className="truncate">📎 {file.name}</span>
+                  <button type="button" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-slate-400 hover:text-red-500"><X size={14} /></button>
+                </div>
+              ) : (
+                <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-colors">
+                  <Upload size={16} />
+                  <span>Adjuntar comprobante (imagen o PDF)</span>
+                  <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={elegirArchivo} />
+                </label>
+              )}
+              <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                Sube la captura/PDF de tu transferencia interbancaria inmediata.
+              </p>
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-500 dark:text-red-400 font-semibold">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={procesando}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={procesando || (metodo !== 'efectivo' && sinMonto) || (metodo === 'transferencia' && !file)}
+              className="flex-1 py-2.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+            >
+              {(procesando || redirigiendo)
+                ? <><Loader2 size={14} className="animate-spin" /> {redirigiendo ? 'Redirigiendo a Azul…' : 'Procesando…'}</>
+                : metodo === 'efectivo'
+                  ? <><CircleDollarSign size={14} /> Solicitar la cuenta</>
+                  : metodo === 'azul'
+                    ? <><ShieldCheck size={14} /> Pagar {formatPEN(total)}</>
+                    : <><Receipt size={14} /> Registrar transferencia</>}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
@@ -820,12 +1162,12 @@ function UnirseConCodigo({ onSalir }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center p-4">
+    <main className="min-h-screen flex items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-sm p-6 text-center"
+        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-6 text-center"
       >
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#C1440E]/10 text-[#C1440E] dark:text-[#D4A017] flex items-center justify-center mb-3">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#A85638]/10 text-[#A85638] dark:text-[#C99A3C] flex items-center justify-center mb-3">
           <KeyRound size={28} />
         </div>
         <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">
@@ -845,7 +1187,7 @@ function UnirseConCodigo({ onSalir }) {
           onChange={handleChange}
           placeholder="000000"
           aria-label="Código de 6 dígitos"
-          className="mt-5 w-full text-center text-3xl font-black tracking-[0.4em] font-mono px-3 py-3 rounded-xl border border-[#e8e0d8] dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C1440E]/30 focus:border-[#C1440E]"
+          className="mt-5 w-full text-center text-3xl font-black tracking-[0.4em] font-mono px-3 py-3 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
         />
 
         {error && (
@@ -857,7 +1199,7 @@ function UnirseConCodigo({ onSalir }) {
         <button
           type="submit"
           disabled={codigo.length !== 6}
-          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
         >
           Unirme a la mesa
         </button>
@@ -869,7 +1211,7 @@ function UnirseConCodigo({ onSalir }) {
         <button
           type="button"
           onClick={onSalir}
-          className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+          className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
         >
           <LogOut size={12} /> Cerrar sesión
         </button>

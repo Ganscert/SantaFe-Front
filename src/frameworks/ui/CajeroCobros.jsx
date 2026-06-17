@@ -1,16 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Receipt, Users, Clock, CheckCircle2, Wifi, WifiOff, CircleDollarSign,
-  AlertCircle, Timer, Hourglass,
+  AlertCircle, Timer, Hourglass, Printer, CreditCard, Loader2, ShieldCheck,
 } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { useToast } from '../state/ToastContext.jsx'
 import { db } from '../../adapters/db.js'
 
 const METODOS = ['efectivo', 'tarjeta', 'yape', 'plin', 'transferencia']
+
+// Envía un POST de formulario clásico (redirige el navegador a la Página de Pagos de Azul).
+function postRedirect(url, fields) {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = url
+  Object.entries(fields).forEach(([k, v]) => {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = k
+    input.value = v ?? ''
+    form.appendChild(input)
+  })
+  document.body.appendChild(form)
+  form.submit()
+}
 
 const formatPEN = (n) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0)
@@ -32,14 +49,76 @@ function formatMinutos(min) {
   return rem > 0 ? `${h}h ${rem}min` : `${h}h`
 }
 
+const PROPINAS = [0, 5, 10, 15]
+
+// Agrupa los items de una lista de pedidos por nombre (suma cantidades).
+function agruparItems(pedidos) {
+  const grouped = pedidos.flatMap((p) => p.items || []).reduce((acc, it) => {
+    const k = it.nombre
+    if (!acc[k]) acc[k] = { nombre: k, precio: it.precio || 0, cantidad: 0 }
+    acc[k].cantidad += it.cantidad || 1
+    return acc
+  }, {})
+  return Object.values(grouped)
+}
+
+/* ── Ticket para impresora de 80mm (visible solo al imprimir) ── */
+function TicketImpresion({ ticket }) {
+  if (!ticket) return null
+  return (
+    <div className="print-ticket">
+      <p style={{ textAlign: 'center', fontWeight: 700 }}>RESTAURANTE SANTA FE</p>
+      <p style={{ textAlign: 'center' }}>· comida con alma ·</p>
+      <p style={{ textAlign: 'center' }}>{'='.repeat(32)}</p>
+      <p>Mesa: {ticket.numeroMesa}</p>
+      <p>Fecha: {ticket.fecha.toLocaleString('es-PE')}</p>
+      <p>{'-'.repeat(32)}</p>
+      {ticket.items.map((it) => (
+        <p key={it.nombre}>
+          {it.cantidad} x {it.nombre} — {formatPEN(it.precio * it.cantidad)}
+        </p>
+      ))}
+      <p>{'-'.repeat(32)}</p>
+      <p style={{ fontWeight: 700 }}>TOTAL: {formatPEN(ticket.total)}</p>
+      <p style={{ textAlign: 'center', marginTop: 8 }}>¡Gracias por su visita!</p>
+    </div>
+  )
+}
+
 /* ── Modal de cobro ── */
 function ModalPago({ mesa, total, onConfirm, onClose }) {
   const [metodo, setMetodo] = useState('efectivo')
+  const [propinaPct, setPropinaPct] = useState(0)
   const [monto, setMonto] = useState(total > 0 ? total.toFixed(2) : '')
   const [loading, setLoading] = useState(false)
+  const [redirigiendo, setRedirigiendo] = useState(false)
   const [error, setError] = useState('')
   const submittedRef = useRef(false)
   const sinPendientes = total <= 0
+  const propina = total * (propinaPct / 100)
+  const esAzul = metodo === 'azul'
+
+  function elegirPropina(pct) {
+    setPropinaPct(pct)
+    if (total > 0) setMonto((total * (1 + pct / 100)).toFixed(2))
+  }
+
+  // Flujo Azul: crea la sesión de pago. En modo live redirige a la Página de Pagos;
+  // en sandbox simula la aprobación y registra el cobro como tarjeta + referencia.
+  async function pagarConAzul(montoNum) {
+    const sesion = await db.azul.session({ mesa_id: mesa.id, monto: montoNum })
+    if (sesion.mode === 'live') {
+      setRedirigiendo(true)
+      postRedirect(sesion.url, sesion.fields)
+      return // el navegador navega a Azul; no cerramos el modal
+    }
+    // Sandbox: aprobación simulada
+    const ap = await db.azul.sandboxApprove({ orderNumber: sesion.orderNumber })
+    if (!ap.ok) throw new Error('Azul (sandbox) rechazó el pago.')
+    const referencia = `AZUL:${sesion.orderNumber}:${ap.AuthorizationCode}`
+    await onConfirm('tarjeta', montoNum, { referencia, gateway: 'azul' })
+    onClose()
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -50,8 +129,8 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
     submittedRef.current = true
     setLoading(true)
     try {
-      await onConfirm(metodo, montoNum)
-      onClose()
+      if (esAzul) await pagarConAzul(montoNum)
+      else { await onConfirm(metodo, montoNum); onClose() }
     } catch (err) {
       submittedRef.current = false
       setError(err.message || 'Error al registrar el cobro.')
@@ -62,7 +141,7 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 shadow-xl p-6">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-xl p-6">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mb-0.5">Registrar cobro</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Mesa {mesa.numeroMesa}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,6 +165,53 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
                 </button>
               ))}
             </div>
+            {/* Pasarela de pago con tarjeta */}
+            <button
+              type="button"
+              onClick={() => setMetodo('azul')}
+              className={`mt-2 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ring-1 ${
+                esAzul
+                  ? 'bg-sky-600 text-white ring-sky-700 shadow-sm'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-sky-400'
+              }`}
+            >
+              <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${esAzul ? 'bg-white/20' : 'bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300'}`}>
+                <CreditCard size={16} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold leading-tight">Pagar con Azul</span>
+                <span className={`block text-[11px] leading-tight ${esAzul ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>
+                  Tarjeta crédito/débito · pasarela segura
+                </span>
+              </span>
+              {esAzul && <CheckCircle2 size={16} className="ml-auto shrink-0" />}
+            </button>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+              Propina
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {PROPINAS.map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => elegirPropina(pct)}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all ring-1 ${
+                    propinaPct === pct
+                      ? 'bg-[#C99A3C] text-white ring-[#C99A3C]'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-[#C99A3C]/60'
+                  }`}
+                >
+                  {pct === 0 ? 'Sin' : `${pct}%`}
+                </button>
+              ))}
+            </div>
+            {propinaPct > 0 && total > 0 && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Cuenta {formatPEN(total)} + propina {formatPEN(propina)} = <strong className="text-slate-900 dark:text-slate-50">{formatPEN(total + propina)}</strong>
+              </p>
+            )}
           </div>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-1.5">
@@ -113,9 +239,14 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
             <button
               type="submit"
               disabled={loading || sinPendientes}
-              className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 ${
+                esAzul ? 'bg-sky-600 hover:bg-sky-700' : 'bg-indigo-500 hover:bg-indigo-600'
+              }`}
             >
-              {loading ? 'Guardando…' : sinPendientes ? 'Sin pendientes' : 'Confirmar cobro'}
+              {esAzul && !loading && <ShieldCheck size={14} />}
+              {(loading || redirigiendo)
+                ? <><Loader2 size={14} className="animate-spin" /> {redirigiendo ? 'Redirigiendo a Azul…' : 'Procesando…'}</>
+                : sinPendientes ? 'Sin pendientes' : esAzul ? 'Pagar con Azul' : 'Confirmar cobro'}
             </button>
           </div>
         </form>
@@ -129,8 +260,23 @@ export default function CajeroCobros() {
   const { pedidos } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { connected, sendMessage } = useLiveSync()
+  const toast = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Retorno desde la Página de Pagos de Azul (modo live): muestra el resultado.
+  useEffect(() => {
+    const azul = searchParams.get('azul')
+    if (!azul) return
+    if (azul === 'ok') toast.success('Pago con Azul aprobado y registrado.')
+    else if (azul === 'cancelado') toast.info('El pago con Azul fue cancelado.')
+    else toast.error('El pago con Azul fue rechazado.')
+    searchParams.delete('azul')
+    setSearchParams(searchParams, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
+  const [ticket, setTicket] = useState(null) // datos del ticket a imprimir
   const [tiempoComensales, setTiempoComensales] = useState([])
   const [pedidosDBMap, setPedidosDBMap] = useState({}) // { [mesa_id]: pedido[] }
   const [cobrandoSet, setCobrandoSet] = useState(() => new Set()) // mesa.id que están en cobro
@@ -185,7 +331,7 @@ export default function CajeroCobros() {
     return pedidos.filter(p => Number(p.mesa) === mesa.numeroMesa)
   }
 
-  async function registrarCobro(mesa, metodo, monto) {
+  async function registrarCobro(mesa, metodo, monto, opts = {}) {
     // Guard contra doble cobro: si ya hay un cobro en curso para esta mesa, abortar
     if (cobrandoRef.current.has(mesa.id)) {
       throw new Error('Ya hay un cobro en curso para esta mesa.')
@@ -194,7 +340,7 @@ export default function CajeroCobros() {
     setCobrandoSet(prev => new Set(prev).add(mesa.id))
     try {
       if (monto > 0) {
-        await db.pagos.insert({ mesa_id: mesa.id, monto, metodo })
+        await db.pagos.insert({ mesa_id: mesa.id, monto, metodo, referencia: opts.referencia ?? null })
         await db.comensales.marcarPagado(mesa.id).catch(() => {})
       }
       // Notificar a clientes de esta mesa para que hagan hard-reset (sin esperar polling).
@@ -225,18 +371,23 @@ export default function CajeroCobros() {
   }
 
   function calcularTotal(mesa) {
-    const items = pedidosDeMesa(mesa).flatMap((p) => p.items || [])
-    const grouped = items.reduce((acc, it) => {
-      const k = it.nombre
-      if (!acc[k]) acc[k] = { precio: it.precio || 0, cantidad: 0 }
-      acc[k].cantidad += it.cantidad || 1
-      return acc
-    }, {})
-    return Object.values(grouped).reduce((s, it) => s + it.precio * it.cantidad, 0)
+    return agruparItems(pedidosDeMesa(mesa)).reduce((s, it) => s + it.precio * it.cantidad, 0)
+  }
+
+  function imprimirTicket(mesa) {
+    const items = agruparItems(pedidosDeMesa(mesa))
+    setTicket({
+      numeroMesa: mesa.numeroMesa,
+      items,
+      total: items.reduce((s, it) => s + it.precio * it.cantidad, 0),
+      fecha: new Date(),
+    })
+    // Espera el render del ticket antes de abrir el diálogo de impresión
+    setTimeout(() => window.print(), 80)
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950">
+    <div className="min-h-screen">
       <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
           <div className="flex items-center gap-2.5">
@@ -271,7 +422,7 @@ export default function CajeroCobros() {
           </div>
 
           {mesasConSolicitud.length === 0 ? (
-            <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#e8e0d8] dark:ring-slate-800 p-10 text-center">
+            <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 p-10 text-center">
               <CheckCircle2 size={36} className="mx-auto text-emerald-400 dark:text-emerald-500 mb-3" />
               <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Sin solicitudes pendientes</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
@@ -287,6 +438,7 @@ export default function CajeroCobros() {
                   pedidosDeMesa={pedidosDeMesa(mesa)}
                   cobrando={cobrandoSet.has(mesa.id)}
                   onCobrar={() => setPagoModal(mesa)}
+                  onTicket={() => imprimirTicket(mesa)}
                   onAtender={() => actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })}
                 />
               ))}
@@ -306,7 +458,7 @@ export default function CajeroCobros() {
                 return (
                 <div
                   key={mesa.id}
-                  className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 px-4 py-3 flex items-center justify-between gap-3"
+                  className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-4 py-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-black text-sm">
@@ -329,7 +481,7 @@ export default function CajeroCobros() {
                     )}
                     <Link
                       to={`/mesa/${mesa.numeroMesa}`}
-                      className="text-xs font-bold text-[#C1440E] dark:text-[#D4A017] hover:underline"
+                      className="text-xs font-bold text-[#A85638] dark:text-[#C99A3C] hover:underline"
                     >
                       Ver →
                     </Link>
@@ -351,14 +503,14 @@ export default function CajeroCobros() {
               <Hourglass size={12} />
               Comensales con más tiempo en mesa
             </h2>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#e8e0d8] dark:ring-slate-800 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
               {tiempoComensales.slice(0, 10).map((c, i) => {
                 const min = Math.round(Number(c.minutos_en_mesa) || 0)
                 const esLargo = min > 90
                 return (
                   <div
                     key={c.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#e8e0d8] dark:border-slate-800' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#E5D9C9] dark:border-slate-800' : ''}`}
                   >
                     <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center text-[10px] font-black">
                       {i + 1}
@@ -388,28 +540,25 @@ export default function CajeroCobros() {
         <ModalPago
           mesa={pagoModal}
           total={calcularTotal(pagoModal)}
-          onConfirm={(metodo, monto) => registrarCobro(pagoModal, metodo, monto)}
+          onConfirm={(metodo, monto, opts) => registrarCobro(pagoModal, metodo, monto, opts)}
           onClose={() => setPagoModal(null)}
         />
       )}
+
+      {/* Ticket — solo visible en la impresión */}
+      <TicketImpresion ticket={ticket} />
     </div>
   )
 }
 
 /* ── Tarjeta de cobro individual ── */
-function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
+function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onTicket, onAtender }) {
   const solicitudes   = mesa.solicitudesCuenta || []
   const integrantes   = mesa.integrantes || []
   const todosHanPedido = integrantes.length > 0 && solicitudes.length >= integrantes.length
+  const enviadaPorMesero = solicitudes.some((s) => s.origen === 'mesero')
 
-  const allItems = pedidosDeMesa.flatMap((p) => p.items || [])
-  const grouped = allItems.reduce((acc, it) => {
-    const k = it.nombre
-    if (!acc[k]) acc[k] = { nombre: k, precio: it.precio || 0, cantidad: 0 }
-    acc[k].cantidad += it.cantidad || 1
-    return acc
-  }, {})
-  const itemsList = Object.values(grouped)
+  const itemsList = agruparItems(pedidosDeMesa)
   const total = itemsList.reduce((s, it) => s + it.precio * it.cantidad, 0)
 
   return (
@@ -439,7 +588,9 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
             }`}>
               {todosHanPedido
                 ? `✓ Todos pidieron la cuenta (${solicitudes.length}/${integrantes.length})`
-                : `${solicitudes.length} de ${integrantes.length || '?'} comensales solicitaron`}
+                : enviadaPorMesero
+                  ? `Enviada a caja por el mesero · ${solicitudes.length} cuenta${solicitudes.length !== 1 ? 's' : ''}`
+                  : `${solicitudes.length} de ${integrantes.length || '?'} comensales solicitaron`}
             </p>
           </div>
         </div>
@@ -453,9 +604,9 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
       </div>
 
       {/* Quién solicitó */}
-      <div className="bg-white dark:bg-slate-900 px-4 py-3 border-b border-[#e8e0d8] dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 px-4 py-3 border-b border-[#E5D9C9] dark:border-slate-800">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
-          <Users size={9} /> Solicitaron la cuenta
+          <Users size={9} /> {enviadaPorMesero ? 'Cuentas por cobrar' : 'Solicitaron la cuenta'}
         </p>
         <div className="flex flex-wrap gap-2">
           {solicitudes.map((s) => (
@@ -495,9 +646,9 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
             ))}
           </ul>
         )}
-        <div className="flex justify-between items-center pt-2.5 border-t border-[#e8e0d8] dark:border-slate-800">
+        <div className="flex justify-between items-center pt-2.5 border-t border-[#E5D9C9] dark:border-slate-800">
           <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Total</span>
-          <span className="text-xl font-black text-[#C1440E] dark:text-[#D4A017]">{formatPEN(total)}</span>
+          <span className="text-xl font-black text-[#A85638] dark:text-[#C99A3C]">{formatPEN(total)}</span>
         </div>
       </div>
 
@@ -517,15 +668,24 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onAtender }) {
           </span>
         )}
         <div className="flex gap-2">
+          {itemsList.length > 0 && (
+            <button
+              onClick={onTicket}
+              title="Imprimir ticket de consumo"
+              className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
+            >
+              <Printer size={13} /> Ticket
+            </button>
+          )}
           <Link
             to={`/mesa/${mesa.numeroMesa}`}
-            className="px-3 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center"
+            className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center"
           >
             Ver hoja →
           </Link>
           <button
             onClick={onAtender}
-            className="px-3 py-2.5 rounded-xl border border-[#e8e0d8] dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Marcar como atendido sin registrar cobro"
           >
             Solo atender

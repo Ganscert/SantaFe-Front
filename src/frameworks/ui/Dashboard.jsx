@@ -15,7 +15,7 @@ import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
 
-const PALETA = ['#C1440E', '#6B7C4F', '#D4A017', '#3b82f6', '#8b5cf6', '#ec4899']
+const PALETA = ['#A85638', '#7D8B6A', '#C99A3C', '#4D7F70', '#835D94', '#C2622E']
 const PERIODOS = [
   { id: 'today', label: 'Hoy' },
   { id: 'week',  label: 'Semana' },
@@ -78,7 +78,7 @@ function PeriodSwitch({ value, onChange }) {
           onClick={() => onChange(p.id)}
           className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
             value === p.id
-              ? 'bg-white dark:bg-slate-700 text-[#C1440E] dark:text-[#FDF6EC] shadow-sm'
+              ? 'bg-white dark:bg-slate-700 text-[#A85638] dark:text-[#F6EEE3] shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -111,15 +111,15 @@ function VentasChart({ data, theme }) {
       <AreaChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -10 }}>
         <defs>
           <linearGradient id="grad-ventas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#C1440E" stopOpacity={0.45} />
-            <stop offset="100%" stopColor="#C1440E" stopOpacity={0} />
+            <stop offset="0%"   stopColor="#A85638" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="#A85638" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="time" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
         <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `S/${v}`} />
         <Tooltip content={<ChartTooltip formatter={fmtMoney} />} />
-        <Area type="monotone" dataKey="ventas" name="Ventas" stroke="#C1440E" strokeWidth={2.5} fill="url(#grad-ventas)" animationDuration={700} />
+        <Area type="monotone" dataKey="ventas" name="Ventas" stroke="#A85638" strokeWidth={2.5} fill="url(#grad-ventas)" animationDuration={700} />
       </AreaChart>
     </ResponsiveContainer>
   )
@@ -221,7 +221,7 @@ export default function Dashboard() {
   const periodLabel = PERIODOS.find(p => p.id === period)?.label.toLowerCase()
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
       {/* Topbar */}
       <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
@@ -231,7 +231,7 @@ export default function Dashboard() {
             </Link>
             <span className="hidden sm:block text-slate-300 dark:text-slate-700">|</span>
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-7 h-7 rounded-xl bg-[#C1440E] flex items-center justify-center text-white">
+              <span className="w-7 h-7 rounded-xl bg-[#A85638] flex items-center justify-center text-white">
                 <LayoutDashboard size={14} />
               </span>
               <h1 className="text-base font-bold truncate">Dashboard de Supervisión</h1>
@@ -249,7 +249,7 @@ export default function Dashboard() {
         {/* Header strip */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#C1440E] dark:text-[#D4A017]">Restaurante Santa Fe</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Restaurante Santa Fe</p>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">Resumen operativo</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
               <Calendar size={13} />
@@ -261,7 +261,7 @@ export default function Dashboard() {
             <button
               onClick={() => descargarCSV(csv, period)}
               disabled={isEmpty}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#C1440E] hover:bg-[#a33a0c] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
             >
               <Download size={14} /> CSV
             </button>
@@ -275,7 +275,7 @@ export default function Dashboard() {
             label="Ventas totales"
             value={fmtMoney(kpis.totalVentas)}
             sub={`${kpis.totalPedidos} pedidos`}
-            accent="bg-[#C1440E]/10 text-[#C1440E] dark:bg-[#C1440E]/20"
+            accent="bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20"
           />
           <Kpi
             icon={Activity}
@@ -289,7 +289,7 @@ export default function Dashboard() {
             label="Ticket promedio"
             value={fmtMoney(kpis.ticketPromedio)}
             sub="por pedido"
-            accent="bg-[#6B7C4F]/15 text-[#6B7C4F] dark:text-[#a3b48a]"
+            accent="bg-[#7D8B6A]/15 text-[#7D8B6A] dark:text-[#AEBC97]"
           />
           <Kpi
             icon={Users}
@@ -352,7 +352,7 @@ export default function Dashboard() {
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{it.nombre}</p>
                       <p className="text-xs text-slate-400">{it.categoria ?? 'Plato'} · {fmtMoney(it.total)}</p>
                     </div>
-                    <span className="text-sm font-black text-[#C1440E] dark:text-[#D4A017]">×{it.cantidad}</span>
+                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">×{it.cantidad}</span>
                   </li>
                 ))}
               </ul>
@@ -373,7 +373,7 @@ export default function Dashboard() {
           </div>
 
           {/* Tarjeta info / accesos rápidos */}
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-[#C1440E] to-[#a33a0c] dark:from-[#6B7C4F] dark:to-[#5a6842] text-white p-5 shadow-sm flex flex-col justify-between">
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-[#A85638] to-[#8F4527] dark:from-[#7D8B6A] dark:to-[#69765A] text-white p-5 shadow-sm flex flex-col justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest opacity-80">Accesos rápidos</p>
               <h3 className="text-lg font-black mt-2">¿Listo para el siguiente turno?</h3>
@@ -402,7 +402,7 @@ export default function Dashboard() {
               </div>
               <Link
                 to="/admin/meseros"
-                className="text-xs font-bold text-[#C1440E] hover:underline"
+                className="text-xs font-bold text-[#A85638] hover:underline"
               >
                 Ver panel completo →
               </Link>
@@ -434,14 +434,14 @@ export default function Dashboard() {
               <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                 {cuentasActivas.map(c => (
                   <li key={c.id} className="flex items-center gap-3 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-2">
-                    <span className="w-9 h-9 rounded-xl bg-[#C1440E]/10 dark:bg-[#C1440E]/20 text-[#C1440E] dark:text-[#FDF6EC] flex items-center justify-center font-black text-xs flex-shrink-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#F6EEE3] flex items-center justify-center font-black text-xs flex-shrink-0">
                       {c.nombre.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{c.nombre}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">Mesa {c.mesa} · {c.pedidos} pedido{c.pedidos !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className="text-sm font-black text-[#C1440E] dark:text-[#D4A017]">{fmtMoney(c.total)}</span>
+                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">{fmtMoney(c.total)}</span>
                   </li>
                 ))}
               </ul>
@@ -470,7 +470,7 @@ export default function Dashboard() {
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">Mesa {p.mesa} · {p.nItems} ítem{p.nItems !== 1 ? 's' : ''} · {p.estado}</p>
                     </div>
-                    <span className="text-sm font-black text-[#C1440E] dark:text-[#D4A017]">{fmtMoney(p.total)}</span>
+                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">{fmtMoney(p.total)}</span>
                   </li>
                 ))}
               </ul>

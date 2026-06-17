@@ -20,9 +20,13 @@ try {
 
 import express from 'express'
 import { createClient } from '@supabase/supabase-js'
+import {
+  azulIsLive, buildAzulRequest, verifyAzulResponse, azulSandboxApproval, azulConfig,
+} from './_azul.js'
 
 const app = express()
 app.use(express.json())
+app.use(express.urlencoded({ extended: true })) // Azul postea el callback como form-urlencoded
 
 const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
 let _sb = null
@@ -217,7 +221,54 @@ app.post('/api/usuarios', async (req, res) => {
       return res.json({ ok: true, user: row })
     }
 
+    if (action === 'create') {
+      if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
+      const cleanEmail = String(email).trim().toLowerCase()
+      const { data: row, error } = await db().from('usuarios')
+        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: password || 'santafe123', role: role || 'cliente' })
+        .select('id, nombre, email, role, activo, creado_en').single()
+      if (error) {
+        if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+          return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
+        }
+        throw error
+      }
+      return res.json({ ok: true, user: row })
+    }
+
     return res.status(400).json({ error: 'action no reconocida.' })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.patch('/api/usuarios', async (req, res) => {
+  try {
+    const { id, nombre, email, role, password } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const patch = { actualizado_en: new Date().toISOString() }
+    if (nombre !== undefined) patch.nombre = String(nombre).trim()
+    if (email !== undefined) patch.email = String(email).trim().toLowerCase()
+    if (role !== undefined) patch.role = role
+    if (password) patch.password_hash = password
+    const { data, error } = await db().from('usuarios')
+      .update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+      .select('id, nombre, email, role, activo').single()
+    if (error) {
+      if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
+      }
+      throw error
+    }
+    return res.json({ ok: true, user: data })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/usuarios', async (req, res) => {
+  try {
+    const { id } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const { error } = await db().from('usuarios').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    if (error) throw error
+    return res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -357,6 +408,65 @@ app.patch('/api/pedidos', async (req, res) => {
 
     res.json({ id: item.id, estado: item.estado })
   } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ─── PAGOS · AZUL (Página de Pagos) ───────────────────────────────────────────
+async function registrarPagoAzul({ mesa_id, monto, referencia }) {
+  const sixtySecsAgo = new Date(Date.now() - 60_000).toISOString()
+  const { data: existing } = await db().from('pagos')
+    .select('id, mesa_id, monto, metodo, referencia, creado_en')
+    .eq('restaurante_id', RESTAURANTE_ID).eq('mesa_id', mesa_id)
+    .eq('monto', monto).eq('metodo', 'tarjeta').gt('creado_en', sixtySecsAgo)
+    .limit(1).maybeSingle()
+  if (existing) return existing
+  const { data, error } = await db().from('pagos')
+    .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo: 'tarjeta', referencia })
+    .select('id, mesa_id, monto, metodo, referencia, creado_en').single()
+  if (error) throw error
+  const { error: rpcErr } = await db().rpc('marcar_pedidos_cobrados', { p_mesa_id: mesa_id, p_pago_id: data.id })
+  if (rpcErr) {
+    await db().from('pedidos').update({ cobrado_en: new Date().toISOString(), pago_id: data.id })
+      .eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID).is('cobrado_en', null)
+  }
+  return data
+}
+
+app.all('/api/pagos-azul', async (req, res) => {
+  const action = req.query?.action || req.body?.action
+  const c = azulConfig()
+  try {
+    if (action === 'session') {
+      const { mesa_id, monto, returnTo } = req.body || {}
+      if (!mesa_id || !(Number(monto) > 0)) return res.status(400).json({ error: 'mesa_id y monto (>0) requeridos.' })
+      const orderNumber = 'SF' + Date.now().toString().slice(-12)
+      const built = buildAzulRequest({ orderNumber, amount: monto, mesaId: mesa_id, returnTo })
+      return res.json({ mode: azulIsLive() ? 'live' : 'sandbox', env: c.env, ...built })
+    }
+    if (action === 'sandbox-approve') {
+      if (azulIsLive()) return res.status(400).json({ error: 'Azul está en modo live; usa la redirección real.' })
+      const approval = azulSandboxApproval(req.body?.orderNumber)
+      return res.json({ ok: true, ...approval })
+    }
+    if (action === 'callback') {
+      const body = { ...req.query, ...req.body }
+      const { valid, approved } = verifyAzulResponse(body)
+      const mesa_id = body.CustomField1Value
+      const monto   = (Number(body.Amount) || 0) / 100
+      const destBase = req.query?.returnTo === 'cliente' ? '/mi-mesa' : '/cajero/cobros'
+      if (valid && approved && req.query?.estado === 'approved' && mesa_id && monto > 0) {
+        try {
+          await registrarPagoAzul({ mesa_id, monto, referencia: `AZUL:${body.OrderNumber}:${body.AuthorizationCode || ''}` })
+        } catch (e) { console.error('[pagos-azul.callback]', e.message) }
+        return res.redirect(`${c.baseUrl}${destBase}?azul=ok`)
+      }
+      const motivo = req.query?.estado === 'cancel' ? 'cancelado' : 'rechazado'
+      return res.redirect(`${c.baseUrl}${destBase}?azul=${motivo}`)
+    }
+    return res.status(400).json({ error: 'action no reconocida (session | sandbox-approve | callback).' })
+  } catch (e) {
+    console.error('[api/pagos-azul]', e.message)
+    return res.status(500).json({ error: e.message })
+  }
 })
 
 const PORT = process.env.API_PORT || 3001

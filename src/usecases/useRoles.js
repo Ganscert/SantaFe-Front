@@ -78,7 +78,7 @@ export function useRoles() {
 
   const addRole = useCallback((role) => {
     const id = role.id || `rol-${Date.now()}`
-    const newRole = { id, label: role.label || 'Rol nuevo', description: '', system: false, color: '#6B7C4F', permissions: [], ...role }
+    const newRole = { id, label: role.label || 'Rol nuevo', description: '', system: false, color: '#7D8B6A', permissions: [], ...role }
     const nextOver = { ...(override || {}), roles: [...(override?.roles || []), newRole] }
     persist(nextOver)
     return id

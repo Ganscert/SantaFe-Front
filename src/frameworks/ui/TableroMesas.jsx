@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { QrCode, Receipt, Users, LogOut } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
+import { useToast } from '../state/ToastContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useAuth, ROLES } from '../state/AuthContext.jsx'
@@ -36,7 +37,7 @@ const BORDER_ESTADO = {
 
 function TarjetaMesa({ mesa, seleccionada, onSelect }) {
   const border = BORDER_ESTADO[mesa.estado] ?? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
-  const ring   = seleccionada ? 'ring-2 ring-[#C1440E] ring-offset-2 dark:ring-offset-slate-950' : ''
+  const ring   = seleccionada ? 'ring-2 ring-[#A85638] ring-offset-2 dark:ring-offset-slate-950' : ''
   const integrantes = mesa.integrantes || []
   return (
     <article
@@ -76,7 +77,7 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
       <Link
         to={`/mesa/${mesa.numeroMesa}`}
         onClick={e => e.stopPropagation()}
-        className="text-xs font-semibold text-[#C1440E] dark:text-[#D4A017] hover:underline"
+        className="text-xs font-semibold text-[#A85638] dark:text-[#C99A3C] hover:underline"
       >
         Ver detalle →
       </Link>
@@ -229,7 +230,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
           </p>
           <div className="flex flex-wrap gap-1.5">
             {integrantes.map(int => (
-              <span key={int.userId} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#C1440E]/10 text-[#C1440E] dark:bg-[#C1440E]/20 dark:text-[#FDF6EC] ring-1 ring-[#C1440E]/20">
+              <span key={int.userId} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] ring-1 ring-[#A85638]/20">
                 {int.nombre}
               </span>
             ))}
@@ -262,14 +263,14 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
       <div className="grid gap-2">
         <button
           onClick={() => onPedirCuenta?.(mesa)}
-          className="w-full rounded-xl bg-[#C1440E] text-white py-2.5 text-sm font-semibold hover:bg-[#a33a0c] transition-colors"
+          className="w-full rounded-xl bg-[#A85638] text-white py-2.5 text-sm font-semibold hover:bg-[#8F4527] transition-colors"
         >
           + Nuevo pedido para esta mesa
         </button>
         {puedeGenerarQR && (
           <button
             onClick={() => onGenerarQR?.(mesa)}
-            className="w-full rounded-xl border-2 border-[#C1440E] text-[#C1440E] dark:text-[#D4A017] dark:border-[#D4A017] py-2 text-sm font-bold hover:bg-[#C1440E]/5 dark:hover:bg-[#C1440E]/10 transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full rounded-xl border-2 border-[#A85638] text-[#A85638] dark:text-[#C99A3C] dark:border-[#C99A3C] py-2 text-sm font-bold hover:bg-[#A85638]/5 dark:hover:bg-[#A85638]/10 transition-colors inline-flex items-center justify-center gap-2"
           >
             <QrCode size={15} /> Generar código QR
           </button>
@@ -358,14 +359,33 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
   )
 }
 
+/* ── Chip-filtro de la topbar: clic activa/desactiva el filtro ── */
+function FiltroChip({ estado, count, label, cls, filtroEstado, onToggle }) {
+  const activo = filtroEstado === estado
+  return (
+    <button
+      onClick={() => onToggle(estado)}
+      aria-pressed={activo}
+      title={activo ? 'Quitar filtro' : `Ver solo mesas ${label.toLowerCase()}`}
+      className={`px-2.5 py-1 rounded-full font-semibold ring-1 transition-all ${cls} ${
+        activo ? 'ring-2 scale-105 shadow-sm' : 'ring-inset opacity-90 hover:opacity-100'
+      }`}
+    >
+      {count} {label}
+    </button>
+  )
+}
+
 /* ── Componente principal ─────────────────────────── */
 function TableroMesas() {
-  const { mesas, cambiarEstadoA, actualizarMesa } = useMesas()
+  const { mesas, cambiarEstadoA, actualizarMesa, enviarACobro } = useMesas()
   const { pedidos, contarActivosMesa } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { session } = useAuth()
+  const toast = useToast()
   const navigate                 = useNavigate()
   const [selectedMesa, setSelectedMesa] = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState('todas')
   const [pickerMesa, setPickerMesa] = useState(null)
   const [qrMesa, setQrMesa] = useState(null)
   const [comensalesDB, setComensalesDB] = useState([])
@@ -409,7 +429,13 @@ function TableroMesas() {
   const handleSetEstado = (numeroMesa, estado) => {
     const activos = contarActivosMesa(numeroMesa)
     if ((estado === 'por_cobrar' || estado === 'disponible') && activos > 0) {
-      alert(`No se puede cambiar a "${estado === 'por_cobrar' ? 'Por cobrar' : 'Disponible'}": la mesa tiene ${activos} pedido(s) sin entregar.`)
+      toast.error(`No se puede cambiar a “${estado === 'por_cobrar' ? 'Por cobrar' : 'Disponible'}”: hay ${activos} pedido(s) sin entregar.`)
+      return
+    }
+    // "Por cobrar" envía la mesa a caja con todas sus cuentas
+    if (estado === 'por_cobrar') {
+      enviarACobro(numeroMesa)
+      toast.success(`Mesa ${numeroMesa} enviada a caja — ya aparece en Cobros con sus cuentas.`)
       return
     }
     cambiarEstadoA(numeroMesa, estado)
@@ -418,9 +444,15 @@ function TableroMesas() {
   const countDisponibles = mesas.filter(m => m.estado === 'disponible').length
   const countOcupadas    = mesas.filter(m => m.estado === 'ocupada').length
   const countPorCobrar   = mesas.filter(m => m.estado === 'por_cobrar').length
+  const ocupacionPct     = mesas.length ? Math.round(((countOcupadas + countPorCobrar) / mesas.length) * 100) : 0
+
+  const mesasFiltradas = useMemo(
+    () => (filtroEstado === 'todas' ? mesas : mesas.filter(m => m.estado === filtroEstado)),
+    [mesas, filtroEstado],
+  )
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950">
+    <div className="min-h-screen">
       {/* ── Topbar ── */}
       <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
@@ -429,22 +461,37 @@ function TableroMesas() {
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold ring-1 ring-emerald-200 dark:ring-emerald-500/30">
-              {countDisponibles} libre{countDisponibles !== 1 ? 's' : ''}
-            </span>
-            <span className="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold ring-1 ring-amber-200 dark:ring-amber-500/30">
-              {countOcupadas} ocupada{countOcupadas !== 1 ? 's' : ''}
-            </span>
-            <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-200 dark:ring-indigo-500/30">
-              {countPorCobrar} por cobrar
-            </span>
+            <FiltroChip
+              filtroEstado={filtroEstado}
+              onToggle={(e) => setFiltroEstado(f => (f === e ? 'todas' : e))}
+              estado="disponible"
+              count={countDisponibles}
+              label={`libre${countDisponibles !== 1 ? 's' : ''}`}
+              cls="bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/30"
+            />
+            <FiltroChip
+              filtroEstado={filtroEstado}
+              onToggle={(e) => setFiltroEstado(f => (f === e ? 'todas' : e))}
+              estado="ocupada"
+              count={countOcupadas}
+              label={`ocupada${countOcupadas !== 1 ? 's' : ''}`}
+              cls="bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/30"
+            />
+            <FiltroChip
+              filtroEstado={filtroEstado}
+              onToggle={(e) => setFiltroEstado(f => (f === e ? 'todas' : e))}
+              estado="por_cobrar"
+              count={countPorCobrar}
+              label="por cobrar"
+              cls="bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-500/30"
+            />
           </div>
 
           <nav className="flex items-center gap-2">
 
             {/* ── Desktop: dos botones normales ── */}
             <Link to="/pedidos/nuevo"
-              className="hidden lg:flex rounded-xl bg-[#C1440E] text-white px-4 py-2 text-sm font-bold hover:bg-[#a33a0c] transition-colors">
+              className="hidden lg:flex rounded-xl bg-[#A85638] text-white px-4 py-2 text-sm font-bold hover:bg-[#8F4527] transition-colors">
               + Nuevo pedido
             </Link>
             <Link to="/cocina/pendientes"
@@ -456,7 +503,7 @@ function TableroMesas() {
             <div className="lg:hidden relative">
               <button
                 onClick={() => setFabOpen(o => !o)}
-                className="w-9 h-9 rounded-full bg-[#C1440E] text-white flex items-center justify-center text-xl font-bold shadow-md hover:bg-[#a33a0c] transition-all active:scale-95"
+                className="w-9 h-9 rounded-full bg-[#A85638] text-white flex items-center justify-center text-xl font-bold shadow-md hover:bg-[#8F4527] transition-all active:scale-95"
                 aria-label="Acciones"
               >
                 {fabOpen ? '✕' : '+'}
@@ -475,16 +522,16 @@ function TableroMesas() {
                     <Link
                       to="/pedidos/nuevo"
                       onClick={() => setFabOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#FDF6EC] transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#F6EEE3] transition-colors"
                     >
-                      <span className="w-8 h-8 rounded-xl bg-[#C1440E]/10 text-[#C1440E] flex items-center justify-center text-base">+</span>
+                      <span className="w-8 h-8 rounded-xl bg-[#A85638]/10 text-[#A85638] flex items-center justify-center text-base">+</span>
                       Nuevo pedido
                     </Link>
                     <div className="h-px bg-slate-100 mx-3" />
                     <Link
                       to="/cocina/pendientes"
                       onClick={() => setFabOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#FDF6EC] transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#F6EEE3] transition-colors"
                     >
                       <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base">🍳</span>
                       Ver cocina
@@ -503,9 +550,31 @@ function TableroMesas() {
 
         {/* Grid de mesas */}
         <section>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Mesas</h1>
+          <div className="flex items-end justify-between gap-4 mb-2">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Mesas</h1>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+              {ocupacionPct}% de ocupación
+            </span>
+          </div>
+          {/* Barra de ocupación de sala */}
+          <div className="h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden mb-4" role="img" aria-label={`Ocupación de sala: ${ocupacionPct}%`}>
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#7D8B6A] via-[#C99A3C] to-[#A85638] transition-all duration-500"
+              style={{ width: `${ocupacionPct}%` }}
+            />
+          </div>
+
+          {filtroEstado !== 'todas' && (
+            <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Mostrando {mesasFiltradas.length} de {mesas.length} mesas ·{' '}
+              <button onClick={() => setFiltroEstado('todas')} className="text-[#A85638] dark:text-[#C99A3C] underline underline-offset-2">
+                ver todas
+              </button>
+            </p>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {mesas.map(mesa => (
+            {mesasFiltradas.map(mesa => (
               <TarjetaMesa
                 key={mesa.id}
                 mesa={mesa}
@@ -514,6 +583,11 @@ function TableroMesas() {
               />
             ))}
           </div>
+          {mesasFiltradas.length === 0 && (
+            <div className="rounded-3xl bg-[#FFFCF5] dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-6 py-12 text-center">
+              <p className="font-display text-slate-600 dark:text-slate-300">Ninguna mesa en este estado</p>
+            </div>
+          )}
         </section>
 
         {/* Panel híbrido desktop/móvil */}

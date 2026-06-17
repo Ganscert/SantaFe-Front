@@ -1,6 +1,7 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
+import { useToast } from '../state/ToastContext.jsx'
 
 const ESTADO_CFG = {
   disponible: { bg: 'bg-emerald-50 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-200 dark:ring-emerald-500/30', label: 'Disponible'  },
@@ -28,8 +29,9 @@ function EstadoBadge({ estado }) {
 function MesaDetalle() {
   const { id }     = useParams()
   const navigate   = useNavigate()
-  const { mesas, cambiarEstadoA } = useMesas()
+  const { mesas, cambiarEstadoA, enviarACobro } = useMesas()
   const { pedidos } = usePedidos()
+  const toast = useToast()
   const numeroMesa = Number(id)
   const mesa = mesas.find(m => m.numeroMesa === numeroMesa)
 
@@ -38,21 +40,27 @@ function MesaDetalle() {
 
   const handleSetEstado = (estado) => {
     if ((estado === 'por_cobrar' || estado === 'disponible') && pedidosActivos.length > 0) {
-      alert(`No se puede cambiar a "${estado === 'por_cobrar' ? 'Por cobrar' : 'Disponible'}": la mesa tiene ${pedidosActivos.length} pedido(s) sin entregar.`)
+      toast.error(`No se puede cambiar a “${estado === 'por_cobrar' ? 'Por cobrar' : 'Disponible'}”: hay ${pedidosActivos.length} pedido(s) sin entregar.`)
+      return
+    }
+    // "Por cobrar" envía la mesa a caja con todas sus cuentas
+    if (estado === 'por_cobrar') {
+      enviarACobro(numeroMesa)
+      toast.success(`Mesa ${numeroMesa} enviada a caja — ya aparece en Cobros con sus cuentas.`)
       return
     }
     cambiarEstadoA(numeroMesa, estado)
   }
 
   if (!mesa) return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-8 text-center max-w-sm">
         <p className="text-4xl mb-4">🔍</p>
         <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Mesa no encontrada</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">La mesa {id} no existe en el sistema.</p>
         <button
           onClick={() => navigate('/tablero-mesas')}
-          className="rounded-xl bg-[#C1440E] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#a33a0c] transition-colors"
+          className="rounded-xl bg-[#A85638] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#8F4527] transition-colors"
         >
           ← Volver al tablero
         </button>
@@ -67,7 +75,7 @@ function MesaDetalle() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF6EC] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100">
       {/* Topbar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3 pl-16 lg:pl-4">
@@ -91,7 +99,7 @@ function MesaDetalle() {
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pedidos activos</h2>
             <Link
               to={`/pedidos/nuevo?mesa=${numeroMesa}`}
-              className="rounded-xl bg-[#C1440E] text-white px-4 py-2 text-sm font-bold hover:bg-[#a33a0c] transition-colors"
+              className="rounded-xl bg-[#A85638] text-white px-4 py-2 text-sm font-bold hover:bg-[#8F4527] transition-colors"
             >
               + Agregar pedido
             </Link>
@@ -114,7 +122,7 @@ function MesaDetalle() {
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-xs text-slate-400 dark:text-slate-500">{pedido.hora}</span>
                         {cuenta && (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#C1440E]/10 text-[#C1440E] dark:bg-[#C1440E]/20 dark:text-[#FDF6EC] truncate">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] truncate">
                             {cuenta.nombre}
                           </span>
                         )}
@@ -177,7 +185,7 @@ function MesaDetalle() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Cuentas abiertas</p>
               <div className="flex flex-wrap gap-1.5">
                 {mesa.cuentas.filter(c => c.abierta !== false).map(c => (
-                  <span key={c.id} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#C1440E]/10 text-[#C1440E] dark:bg-[#C1440E]/20 dark:text-[#FDF6EC] ring-1 ring-[#C1440E]/20">
+                  <span key={c.id} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] ring-1 ring-[#A85638]/20">
                     {c.nombre}
                   </span>
                 ))}
