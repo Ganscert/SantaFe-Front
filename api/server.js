@@ -357,7 +357,7 @@ app.get('/api/pedidos', async (req, res) => {
 
 app.post('/api/pedidos', async (req, res) => {
   try {
-    const { numero_mesa, mesa_id: directMesaId, items = [], cliente_nombre = null, comensal_id = null } = req.body
+    const { numero_mesa, mesa_id: directMesaId, items = [], comensal_id = null } = req.body
     if (!items.length) return res.status(400).json({ error: 'Sin ítems' })
     let mesa_id = directMesaId
     if (!mesa_id && numero_mesa) {
@@ -366,8 +366,8 @@ app.post('/api/pedidos', async (req, res) => {
       mesa_id = m.id
     }
     const { data: pedido, error: pedidoError } = await db().from('pedidos')
-      .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, cliente_nombre, comensal_id })
-      .select('id, mesa_id, estado, total, cliente_nombre, creado_en').single()
+      .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, comensal_id })
+      .select('id, mesa_id, estado, total, creado_en').single()
     if (pedidoError) throw pedidoError
     const { error: itemsError } = await db().from('pedido_items')
       .insert(items.map(item => ({ pedido_id: pedido.id, nombre: item.nombre, precio_unitario: item.precio, cantidad: item.cantidad })))

@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const {
         numero_mesa, mesa_id: directMesaId, items = [],
-        cliente_nombre = null, comensal_id = null,
+        comensal_id = null,
       } = req.body
       if (!items.length) return res.status(400).json({ error: 'Sin ítems' })
 
@@ -87,8 +87,8 @@ export default async function handler(req, res) {
 
       const { data: pedido, error: pedidoError } = await sb
         .from('pedidos')
-        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, cliente_nombre, comensal_id })
-        .select('id, mesa_id, estado, total, cliente_nombre, creado_en')
+        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, comensal_id })
+        .select('id, mesa_id, estado, total, creado_en')
         .single()
       if (pedidoError) throw pedidoError
 

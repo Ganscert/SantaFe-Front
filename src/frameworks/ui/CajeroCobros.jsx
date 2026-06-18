@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Receipt, Users, Clock, CheckCircle2, Wifi, WifiOff, CircleDollarSign,
-  AlertCircle, Timer, Hourglass, Printer, CreditCard, Loader2, ShieldCheck,
+  AlertCircle, Timer, History, Printer, CreditCard, Loader2, ShieldCheck,
 } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
@@ -39,14 +39,6 @@ function tiempoRelativo(ts) {
   const min = Math.floor(diff / 60000)
   if (min < 60) return `hace ${min} min`
   return `hace ${Math.floor(min / 60)}h`
-}
-
-function formatMinutos(min) {
-  const m = Math.round(Number(min) || 0)
-  if (m < 60) return `${m} min`
-  const h = Math.floor(m / 60)
-  const rem = m % 60
-  return rem > 0 ? `${h}h ${rem}min` : `${h}h`
 }
 
 const PROPINAS = [0, 5, 10, 15]
@@ -277,14 +269,9 @@ export default function CajeroCobros() {
 
   const [pagoModal, setPagoModal] = useState(null) // mesa seleccionada para pago
   const [ticket, setTicket] = useState(null) // datos del ticket a imprimir
-  const [tiempoComensales, setTiempoComensales] = useState([])
   const [pedidosDBMap, setPedidosDBMap] = useState({}) // { [mesa_id]: pedido[] }
   const [cobrandoSet, setCobrandoSet] = useState(() => new Set()) // mesa.id que están en cobro
   const cobrandoRef = useRef(new Set())
-
-  useEffect(() => {
-    db.comensales.listTiempo().then(setTiempoComensales).catch(() => {})
-  }, [])
 
   const mesasConSolicitud = useMemo(() => {
     return mesas
@@ -403,6 +390,12 @@ export default function CajeroCobros() {
                 {mesasConSolicitud.length} solicitando
               </span>
             )}
+            <Link
+              to="/cajero/historial"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-indigo-300 dark:hover:ring-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+            >
+              <History size={12} /> Historial
+            </Link>
             <span className={`text-xs font-semibold inline-flex items-center gap-1.5 ${connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
               {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
               {connected ? 'En vivo' : 'Sin conexión'}
@@ -496,43 +489,6 @@ export default function CajeroCobros() {
           </section>
         )}
 
-        {/* ── Tiempo en mesa ── */}
-        {tiempoComensales.length > 0 && (
-          <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-              <Hourglass size={12} />
-              Comensales con más tiempo en mesa
-            </h2>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
-              {tiempoComensales.slice(0, 10).map((c, i) => {
-                const min = Math.round(Number(c.minutos_en_mesa) || 0)
-                const esLargo = min > 90
-                return (
-                  <div
-                    key={c.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#E5D9C9] dark:border-slate-800' : ''}`}
-                  >
-                    <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center text-[10px] font-black">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{c.username}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">Mesa {c.numero_mesa}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-                      esLargo
-                        ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                    }`}>
-                      <Clock size={10} />
-                      {formatMinutos(c.minutos_en_mesa)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
       </div>
 
       {/* Modal de pago */}

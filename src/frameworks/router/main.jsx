@@ -17,6 +17,7 @@ import AppShell from '../ui/AppShell.jsx'
 import Join from '../ui/Join.jsx'
 import MesaCliente from '../ui/MesaCliente.jsx'
 import CajeroCobros from '../ui/CajeroCobros.jsx'
+import HistorialCobros from '../ui/HistorialCobros.jsx'
 import Reservas from '../ui/Reservas.jsx'
 import RequireAuth from '../ui/RequireAuth.jsx'
 import { MesasProvider } from '../state/MesasContext.jsx'
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { path: '/pedidos/agregar',   element: <RequireAuth roles={rolesFor('/pedidos/agregar')}><AgregarPedido /></RequireAuth> },
       { path: '/cocina/pendientes', element: <RequireAuth roles={rolesFor('/cocina/pendientes')}><CocinaPendientes /></RequireAuth> },
       { path: '/cajero/cobros',     element: <RequireAuth roles={rolesFor('/cajero/cobros')}><CajeroCobros /></RequireAuth> },
+      { path: '/cajero/historial',  element: <RequireAuth roles={rolesFor('/cajero/historial')}><HistorialCobros /></RequireAuth> },
       { path: '/admin/dashboard',   element: <RequireAuth roles={rolesFor('/admin/dashboard')}><Dashboard /></RequireAuth> },
       { path: '/admin/meseros',     element: <RequireAuth roles={rolesFor('/admin/meseros')}><RendimientoMeseros /></RequireAuth> },
       { path: '/admin/roles',       element: <RequireAuth roles={rolesFor('/admin/roles')}><Roles /></RequireAuth> },
