@@ -2,14 +2,27 @@
 // Reemplaza @supabase/supabase-js para acceso a datos.
 export const RESTAURANTE_ID = import.meta.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
 
+const SESSION_KEY = 'santa-fe:session'
+
+export function authToken() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY))?.token || null } catch { return null }
+}
+
 async function req(path, method = 'GET', body) {
   const opts = { method, headers: {} }
+  const token = authToken()
+  if (token) opts.headers.Authorization = `Bearer ${token}`
   if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'
     opts.body = JSON.stringify(body)
   }
   const res = await fetch(`/api${path}`, opts)
   if (!res.ok) {
+    // Token expirado o inválido → cerrar sesión y volver al login.
+    if (res.status === 401 && token) {
+      try { localStorage.removeItem(SESSION_KEY) } catch { /* noop */ }
+      window.location.assign('/')
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error || res.statusText)
   }

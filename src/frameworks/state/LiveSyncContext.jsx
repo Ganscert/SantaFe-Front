@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import Pusher from 'pusher-js'
+import { authToken } from '../../adapters/db.js'
 
 const LiveSyncContext = createContext(null)
 
@@ -84,9 +85,13 @@ export const LiveSyncProvider = ({ children }) => {
   const sendMessage = useCallback(async (message) => {
     if (!PUSHER_KEY) return
     try {
+      const token = authToken()
       await fetch('/api/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ ...message, socket_id: socketIdRef.current }),
         keepalive: true,
       })

@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLiveSync } from './LiveSyncContext.jsx'
 import { db } from '../../adapters/db.js'
 
-const POLL_MS = 5000
+// La carta cambia poco; 30s de refresco es suficiente como respaldo del
+// sync en vivo (sync:platos) y evita martillar la API con cada usuario.
+const POLL_MS = 30000
 const PlatosCtx = createContext(null)
 
 function mapRow(row) {
@@ -48,9 +50,9 @@ export function PlatosProvider({ children }) {
   // Carga inicial
   useEffect(() => { cargar() }, [])
 
-  // Polling
+  // Polling (pausado con la pestaña oculta)
   useEffect(() => {
-    const id = setInterval(cargar, POLL_MS)
+    const id = setInterval(() => { if (!document.hidden) cargar() }, POLL_MS)
     return () => clearInterval(id)
   }, [])
 

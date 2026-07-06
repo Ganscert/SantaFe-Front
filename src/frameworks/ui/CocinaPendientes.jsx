@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Volume2, VolumeX, StickyNote } from 'lucide-react'
 import { usePedidos } from '../state/PedidosContext.jsx'
 import { useMesas } from '../state/MesasContext.jsx'
+import { useAuth } from '../state/AuthContext.jsx'
+import { rolesFor } from './roleAccess.js'
 
 const SONIDO_KEY = 'santa-fe:cocina-sonido'
 
@@ -197,6 +199,9 @@ function CocinaPendientes() {
     marcarPreparando, marcarListo, marcarEntregado, limpiarCocina,
   } = usePedidos()
   const { mesas } = useMesas()
+  const { session } = useAuth()
+  // El cocinero no tiene acceso a /pedidos/nuevo; no le ofrezcas el CTA.
+  const puedeCrearPedido = rolesFor('/pedidos/nuevo').includes(session?.role)
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
 
   // ── Aviso sonoro al entrar un pedido nuevo ──
@@ -220,7 +225,7 @@ function CocinaPendientes() {
 
   const [, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000)
+    const id = setInterval(() => { if (!document.hidden) setTick(t => t + 1) }, 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -396,9 +401,11 @@ function CocinaPendientes() {
             <span className="text-6xl">🍳</span>
             <p className="text-slate-700 dark:text-slate-200 font-bold text-lg">Cocina al día</p>
             <p className="text-sm text-slate-400 dark:text-slate-500">Cuando un mesero envíe un pedido aparecerá aquí.</p>
-            <Link to="/pedidos/nuevo" className="mt-2 rounded-xl bg-[#A85638] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#8F4527] transition-colors">
-              Crear pedido de prueba
-            </Link>
+            {puedeCrearPedido && (
+              <Link to="/pedidos/nuevo" className="mt-2 rounded-xl bg-[#A85638] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#8F4527] transition-colors">
+                Crear pedido
+              </Link>
+            )}
           </div>
         ) : agrupar ? (
           <VistaAgrupada pedidos={[...pP, ...pE, ...pL]} />

@@ -9,16 +9,6 @@ import { defaultHomeForRole } from './RequireAuth.jsx'
 
 const PENDING_TOKEN_KEY = 'santa-fe:pending-join-token'
 
-const ROLE_LABEL = {
-  [ROLES.ADMIN]:         'Administrador',
-  [ROLES.GERENTE]:       'Gerente',
-  [ROLES.RECEPCIONISTA]: 'Recepcionista',
-  [ROLES.MESERO]:        'Mesero',
-  [ROLES.COCINERO]:      'Cocinero',
-  [ROLES.CAJERO]:        'Cajero',
-  [ROLES.CLIENTE]:       'Cliente',
-}
-
 export default function Login() {
   const { login, register, session } = useAuth()
   const navigate = useNavigate()
@@ -28,7 +18,6 @@ export default function Login() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [name, setName]         = useState('')
-  const [role, setRole]         = useState(ROLES.CLIENTE)
   const [showPwd, setShowPwd]   = useState(false)
   const [error, setError]       = useState('')
   const [busy, setBusy]         = useState(false)
@@ -54,9 +43,11 @@ export default function Login() {
     setError('')
     setBusy(true)
     try {
+      // El registro público siempre crea cuentas de cliente; el personal
+      // se da de alta desde Administración → Usuarios.
       const result = tab === 'login'
         ? await login(email, password)
-        : await register({ name, email, password, role })
+        : await register({ name, email, password, role: ROLES.CLIENTE })
       if (!result.ok) setError(result.error)
       // Si ok → el efecto arriba redirige
     } catch (err) {
@@ -132,7 +123,7 @@ export default function Login() {
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={tab === 'register' ? 'Mínimo 4 caracteres' : '••••••••'}
+                  placeholder={tab === 'register' ? 'Mínimo 6 caracteres' : '••••••••'}
                   className={`${inputCls} pr-10`}
                   autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
                   required
@@ -149,29 +140,10 @@ export default function Login() {
             </Field>
 
             {tab === 'register' && (
-              <Field label="Rol">
-                <div className="grid grid-cols-3 gap-2">
-                  {[ROLES.CLIENTE, ROLES.MESERO, ROLES.RECEPCIONISTA].map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRole(r)}
-                      className={`px-2 py-2 rounded-xl text-xs font-bold border transition-colors ${
-                        role === r
-                          ? 'bg-[#A85638] text-white border-[#A85638]'
-                          : 'border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {ROLE_LABEL[r]}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                  {role === ROLES.CLIENTE && 'Se une a una mesa vía código QR.'}
-                  {role === ROLES.MESERO && 'Atiende mesas, toma pedidos y genera QR.'}
-                  {role === ROLES.RECEPCIONISTA && 'Recibe clientes y genera códigos QR.'}
-                </p>
-              </Field>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Tu cuenta será de <strong>cliente</strong>: podrás unirte a una mesa con el código QR.
+                El personal del restaurante se registra desde Administración.
+              </p>
             )}
 
             {error && (
@@ -190,24 +162,27 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Accesos demo */}
-          <div className="px-5 pb-5">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 mb-2">
-              Cuentas demo
-            </p>
-            <div className="grid grid-cols-2 gap-1.5">
-              <DemoBtn icon={Crown}             label="Admin"     onClick={() => loginAs('admin@santafe.pe')} />
-              <DemoBtn icon={Briefcase}         label="Gerente"   onClick={() => loginAs('gerente@santafe.pe')} />
-              <DemoBtn icon={ShieldCheck}       label="Recepción" onClick={() => loginAs('recepcion@santafe.pe')} />
-              <DemoBtn icon={Utensils}          label="Mesero"    onClick={() => loginAs('mesero@santafe.pe')} />
-              <DemoBtn icon={ChefHat}           label="Cocinero"  onClick={() => loginAs('cocinero@santafe.pe')} />
-              <DemoBtn icon={CircleDollarSign}  label="Cajero"    onClick={() => loginAs('cajero@santafe.pe')} />
-              <DemoBtn icon={Users}             label="Cliente"   onClick={() => loginAs('cliente@santafe.pe')} />
+          {/* Accesos demo — sólo en build de desarrollo (en prod la DB real
+              no tiene estas cuentas y los botones sólo generaban errores) */}
+          {import.meta.env.DEV && (
+            <div className="px-5 pb-5">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 mb-2">
+                Cuentas demo (dev)
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <DemoBtn icon={Crown}             label="Admin"     onClick={() => loginAs('admin@santafe.pe')} />
+                <DemoBtn icon={Briefcase}         label="Gerente"   onClick={() => loginAs('gerente@santafe.pe')} />
+                <DemoBtn icon={ShieldCheck}       label="Recepción" onClick={() => loginAs('recepcion@santafe.pe')} />
+                <DemoBtn icon={Utensils}          label="Mesero"    onClick={() => loginAs('mesero@santafe.pe')} />
+                <DemoBtn icon={ChefHat}           label="Cocinero"  onClick={() => loginAs('cocinero@santafe.pe')} />
+                <DemoBtn icon={CircleDollarSign}  label="Cajero"    onClick={() => loginAs('cajero@santafe.pe')} />
+                <DemoBtn icon={Users}             label="Cliente"   onClick={() => loginAs('cliente@santafe.pe')} />
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-mono text-center">
+                clave: demo1234
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-mono text-center">
-              clave: demo1234
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </main>

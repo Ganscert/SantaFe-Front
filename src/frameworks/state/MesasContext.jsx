@@ -57,6 +57,7 @@ export function MesasProvider({ children }) {
   useEffect(() => {
     if (connected) return
     const id = setInterval(() => {
+      if (document.hidden) return
       // No pisar estado durante una ventana de optimistic update reciente.
       if (Date.now() - lastOptimisticAtRef.current < OPTIMISTIC_GUARD_MS) return
       setMesas(prev => { prevRef.current = prev; return prev })

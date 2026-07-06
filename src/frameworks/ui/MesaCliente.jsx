@@ -128,7 +128,7 @@ export default function MesaCliente() {
         .catch(() => {})
     }
     fetchPedidos()
-    const id = setInterval(fetchPedidos, 10000)
+    const id = setInterval(() => { if (!document.hidden) fetchPedidos() }, 10000)
     return () => { cancelled = true; clearInterval(id) }
   }, [mesa?.id])
 

@@ -23,10 +23,44 @@ import { createClient } from '@supabase/supabase-js'
 import {
   azulIsLive, buildAzulRequest, verifyAzulResponse, azulSandboxApproval, azulConfig,
 } from './_azul.js'
+import {
+  signToken, requireAuth, hashPassword, verifyPassword,
+  loginRateLimited, loginRateClear, serverError,
+} from './_auth.js'
+import { dashboardRows } from './_dashboard.js'
 
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true })) // Azul postea el callback como form-urlencoded
+
+// ─── AUTH GUARD ──────────────────────────────────────────────────────────────
+// Espeja los requireAuth de las funciones de Vercel (api/*.js).
+const ROLES_ADMIN  = ['admin', 'gerente']
+const ROLES_COBROS = ['admin', 'gerente', 'cajero', 'recepcionista']
+
+app.use('/api', (req, res, next) => {
+  const { path, method } = req
+  const action = req.query?.action || req.body?.action
+
+  const isOpen =
+    (method === 'GET' && ['/mesas', '/platos', '/comensales'].includes(path)) ||
+    (method === 'GET' && path === '/pedidos' && !(req.query.dashboard === '1' || req.query.dashboard === 'true')) ||
+    (path === '/usuarios' && method === 'POST' && (action === 'login' || action === 'register')) ||
+    (path === '/pagos-azul' && action === 'callback')
+  if (isOpen) return next()
+
+  let roles = null
+  if (path === '/usuarios') roles = ROLES_ADMIN
+  else if (path === '/platos') roles = ROLES_ADMIN
+  else if (path === '/mesas' && method === 'POST') roles = ROLES_ADMIN
+  else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
+  else if (path === '/pedidos' && method === 'GET') roles = ROLES_ADMIN // dashboard
+
+  const user = requireAuth(req, res, roles)
+  if (!user) return
+  req.auth = user
+  next()
+})
 
 const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
 let _sb = null
@@ -41,7 +75,7 @@ app.get('/api/mesas', async (req, res) => {
     const { data, error } = await db().from('mesas').select('id, numero_mesa, estado, capacidad').eq('restaurante_id', RESTAURANTE_ID).order('numero_mesa')
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/mesas', async (req, res) => {
@@ -52,7 +86,7 @@ app.post('/api/mesas', async (req, res) => {
       .select('id, numero_mesa, estado, capacidad').maybeSingle()
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.patch('/api/mesas', async (req, res) => {
@@ -77,7 +111,7 @@ app.patch('/api/mesas', async (req, res) => {
     const { data, error } = await db().from('mesas').update({ estado }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad').single()
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── PLATOS ──────────────────────────────────────────────────────────────────
@@ -88,7 +122,7 @@ app.get('/api/platos', async (req, res) => {
       .eq('restaurante_id', RESTAURANTE_ID).is('eliminado_en', null).order('creado_en', { ascending: false })
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/platos', async (req, res) => {
@@ -99,7 +133,7 @@ app.post('/api/platos', async (req, res) => {
       .select().single()
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.patch('/api/platos', async (req, res) => {
@@ -110,7 +144,7 @@ app.patch('/api/platos', async (req, res) => {
       .eq('id', id).eq('restaurante_id', RESTAURANTE_ID).is('eliminado_en', null).select().single()
     if (error) throw error
     res.json(data ?? null)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.delete('/api/platos', async (req, res) => {
@@ -119,7 +153,7 @@ app.delete('/api/platos', async (req, res) => {
     const { error } = await db().from('platos').update({ eliminado_en: new Date().toISOString() }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
     if (error) throw error
     res.json({ ok: true })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── COMENSALES ───────────────────────────────────────────────────────────────
@@ -145,7 +179,7 @@ app.get('/api/comensales', async (req, res) => {
       .eq('mesa_id', mesa_id).eq('activo', true)
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/comensales', async (req, res) => {
@@ -162,7 +196,7 @@ app.post('/api/comensales', async (req, res) => {
       .select('id, mesa_id, username, total_cuenta, activo').single()
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.patch('/api/comensales', async (req, res) => {
@@ -178,7 +212,7 @@ app.patch('/api/comensales', async (req, res) => {
     const { error } = await q
     if (error) throw error
     res.json({ ok: true })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── USUARIOS ─────────────────────────────────────────────────────────────────
@@ -189,7 +223,7 @@ app.get('/api/usuarios', async (req, res) => {
       .eq('restaurante_id', RESTAURANTE_ID).order('creado_en', { ascending: false })
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/usuarios', async (req, res) => {
@@ -198,19 +232,31 @@ app.post('/api/usuarios', async (req, res) => {
 
     if (action === 'login') {
       if (!email || !password) return res.json({ ok: false, error: 'Email y contraseña requeridos.' })
+      const cleanEmail = String(email).trim().toLowerCase()
+      const rateKey = `${req.ip}|${cleanEmail}`
+      if (loginRateLimited(rateKey)) return res.status(429).json({ ok: false, error: 'Demasiados intentos. Espera unos minutos.' })
       const { data: user, error } = await db().from('usuarios')
-        .select('id, nombre, email, role')
-        .eq('email', String(email).trim().toLowerCase()).eq('password_hash', password).eq('activo', true).maybeSingle()
+        .select('id, nombre, email, role, password_hash')
+        .eq('email', cleanEmail).eq('activo', true).maybeSingle()
       if (error) throw error
-      if (!user) return res.json({ ok: false, error: 'Credenciales incorrectas.' })
-      return res.json({ ok: true, user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role } })
+      const check = user ? verifyPassword(password, user.password_hash) : { ok: false }
+      if (!user || !check.ok) return res.json({ ok: false, error: 'Credenciales incorrectas.' })
+      loginRateClear(rateKey)
+      if (check.legacy) {
+        const { error: upErr } = await db().from('usuarios').update({ password_hash: hashPassword(password) }).eq('id', user.id)
+        if (upErr) console.warn('[usuarios.login] upgrade hash:', upErr.message)
+      }
+      const safe = { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+      return res.json({ ok: true, user: safe, token: signToken(safe) })
     }
 
     if (action === 'register') {
       if (!nombre || !email || !password) return res.json({ ok: false, error: 'Nombre, email y contraseña son requeridos.' })
+      if (String(password).length < 6) return res.json({ ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' })
       const cleanEmail = String(email).trim().toLowerCase()
+      // El registro público SIEMPRE crea clientes.
       const { data: row, error } = await db().from('usuarios')
-        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: password, role: role || 'cliente' })
+        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password), role: 'cliente' })
         .select('id, nombre, email, role, creado_en').single()
       if (error) {
         if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
@@ -218,14 +264,14 @@ app.post('/api/usuarios', async (req, res) => {
         }
         throw error
       }
-      return res.json({ ok: true, user: row })
+      return res.json({ ok: true, user: row, token: signToken(row) })
     }
 
     if (action === 'create') {
       if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
       const cleanEmail = String(email).trim().toLowerCase()
       const { data: row, error } = await db().from('usuarios')
-        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: password || 'santafe123', role: role || 'cliente' })
+        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password || 'santafe123'), role: role || 'cliente' })
         .select('id, nombre, email, role, activo, creado_en').single()
       if (error) {
         if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
@@ -237,7 +283,7 @@ app.post('/api/usuarios', async (req, res) => {
     }
 
     return res.status(400).json({ error: 'action no reconocida.' })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.patch('/api/usuarios', async (req, res) => {
@@ -248,7 +294,7 @@ app.patch('/api/usuarios', async (req, res) => {
     if (nombre !== undefined) patch.nombre = String(nombre).trim()
     if (email !== undefined) patch.email = String(email).trim().toLowerCase()
     if (role !== undefined) patch.role = role
-    if (password) patch.password_hash = password
+    if (password) patch.password_hash = hashPassword(password)
     const { data, error } = await db().from('usuarios')
       .update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
       .select('id, nombre, email, role, activo').single()
@@ -259,17 +305,18 @@ app.patch('/api/usuarios', async (req, res) => {
       throw error
     }
     return res.json({ ok: true, user: data })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.delete('/api/usuarios', async (req, res) => {
   try {
     const { id } = req.body || {}
     if (!id) return res.status(400).json({ error: 'id requerido.' })
+    if (id === req.auth?.sub) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' })
     const { error } = await db().from('usuarios').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
     if (error) throw error
     return res.json({ ok: true })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── PAGOS ────────────────────────────────────────────────────────────────────
@@ -282,7 +329,7 @@ app.get('/api/pagos', async (req, res) => {
     const { data, error } = await query
     if (error) throw error
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/pagos', async (req, res) => {
@@ -315,7 +362,7 @@ app.post('/api/pagos', async (req, res) => {
         .eq('mesa_id', mesa_id).eq('restaurante_id', RESTAURANTE_ID).is('cobrado_en', null)
     }
     res.json(data)
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── PEDIDOS ─────────────────────────────────────────────────────────────────
@@ -324,12 +371,7 @@ app.get('/api/pedidos', async (req, res) => {
     const { numero_mesa, mesa_id, solo_no_cobrados, dashboard, desde, hasta } = req.query
 
     if (dashboard === '1' || dashboard === 'true') {
-      let q = db().from('v_dashboard_resumen').select('*').eq('restaurante_id', RESTAURANTE_ID).order('creado_en', { ascending: false })
-      if (desde) q = q.gte('creado_en', new Date(Number(desde) || desde).toISOString())
-      if (hasta) q = q.lte('creado_en', new Date(Number(hasta) || hasta).toISOString())
-      const { data, error } = await q
-      if (error) throw error
-      return res.json(data || [])
+      return res.json(await dashboardRows(db(), RESTAURANTE_ID, { desde, hasta }))
     }
 
     let mid = mesa_id
@@ -347,12 +389,11 @@ app.get('/api/pedidos', async (req, res) => {
 
     const { data, error } = await pedidosQuery
     if (error) throw error
-    res.json(data.map(p => {
-      const items = (p.pedido_items || []).map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio_unitario, estado: i.estado, subtotal: i.subtotal }))
-      const { pedido_items: _, ...rest } = p
-      return { ...rest, items }
-    }))
-  } catch (e) { res.status(500).json({ error: e.message }) }
+    res.json(data.map(({ pedido_items: rawItems = [], ...rest }) => ({
+      ...rest,
+      items: rawItems.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio_unitario, estado: i.estado, subtotal: i.subtotal })),
+    })))
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.post('/api/pedidos', async (req, res) => {
@@ -373,7 +414,7 @@ app.post('/api/pedidos', async (req, res) => {
       .insert(items.map(item => ({ pedido_id: pedido.id, nombre: item.nombre, precio_unitario: item.precio, cantidad: item.cantidad })))
     if (itemsError) throw itemsError
     res.json({ ...pedido, items })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.patch('/api/pedidos', async (req, res) => {
@@ -407,7 +448,7 @@ app.patch('/api/pedidos', async (req, res) => {
     }
 
     res.json({ id: item.id, estado: item.estado })
-  } catch (e) { res.status(500).json({ error: e.message }) }
+  } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 // ─── PAGOS · AZUL (Página de Pagos) ───────────────────────────────────────────
@@ -464,8 +505,7 @@ app.all('/api/pagos-azul', async (req, res) => {
     }
     return res.status(400).json({ error: 'action no reconocida (session | sandbox-approve | callback).' })
   } catch (e) {
-    console.error('[api/pagos-azul]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/pagos-azul]', e)
   }
 })
 

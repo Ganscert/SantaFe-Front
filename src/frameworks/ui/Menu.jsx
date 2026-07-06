@@ -12,6 +12,11 @@ const ROLES_PAUSA = ['admin', 'gerente']
 const CATEGORIAS = ['Todos', 'Favoritos', 'Entrada', 'Plato Principal', 'Postre', 'Bebida']
 const FAVORITOS_KEY = 'santa-fe:menu-favoritos'
 
+// Un plato sólo se marca como "Nuevo" si fue creado en los últimos 7 días.
+const MS_NUEVO = 7 * 24 * 60 * 60 * 1000
+const esPlatoNuevo = (plato) =>
+  plato.origen === 'admin' && plato.creadoEn && (Date.now() - plato.creadoEn) < MS_NUEVO
+
 function leerFavoritos() {
   try {
     const raw = JSON.parse(localStorage.getItem(FAVORITOS_KEY))
@@ -80,6 +85,7 @@ function Menu() {
       imagen: p.imagenData || null,
       ingredientes: p.ingredientes,
       disponible: p.disponible !== false,
+      creadoEn: p.creadoEn ?? null,
       origen: 'admin',
     }))
     // Los admin van primero para que se vean los recién agregados.
@@ -184,7 +190,7 @@ function Menu() {
                 ) : (
                   <ImageIcon size={44} className="text-slate-300 dark:text-slate-600" />
                 )}
-                {plato.origen === 'admin' && (
+                {esPlatoNuevo(plato) && (
                   <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#C99A3C] text-white shadow-sm">
                     Nuevo
                   </span>

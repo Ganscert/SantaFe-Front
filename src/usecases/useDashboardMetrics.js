@@ -60,7 +60,7 @@ export function useDashboardMetrics(period = 'today') {
         .catch(() => {})
     }
     cargar()
-    const id = setInterval(cargar, 30000)
+    const id = setInterval(() => { if (!document.hidden) cargar() }, 30000)
     return () => { cancelled = true; clearInterval(id) }
   }, [period])
 

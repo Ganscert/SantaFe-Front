@@ -1,9 +1,8 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { requireAuth, serverError } from './_auth.js'
+import { dashboardRows } from './_dashboard.js'
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
@@ -13,15 +12,8 @@ export default async function handler(req, res) {
 
       // Modo dashboard: lista todos los pedidos del restaurante en una ventana.
       if (dashboard === '1' || dashboard === 'true') {
-        let q = sb.from('v_dashboard_resumen')
-          .select('*')
-          .eq('restaurante_id', RESTAURANTE_ID)
-          .order('creado_en', { ascending: false })
-        if (desde) q = q.gte('creado_en', new Date(Number(desde) || desde).toISOString())
-        if (hasta) q = q.lte('creado_en', new Date(Number(hasta) || hasta).toISOString())
-        const { data, error } = await q
-        if (error) throw error
-        return res.json(data || [])
+        if (!requireAuth(req, res, ['admin', 'gerente'])) return
+        return res.json(await dashboardRows(sb, RESTAURANTE_ID, { desde, hasta }))
       }
 
       let mid = mesa_id
@@ -51,22 +43,22 @@ export default async function handler(req, res) {
       const { data, error } = await pedidosQuery
       if (error) throw error
 
-      const rows = data.map(p => {
-        const items = (p.pedido_items || []).map(i => ({
+      const rows = data.map(({ pedido_items: rawItems = [], ...rest }) => ({
+        ...rest,
+        items: rawItems.map(i => ({
           id: i.id,
           nombre: i.nombre,
           cantidad: i.cantidad,
           precio: i.precio_unitario,
           estado: i.estado,
           subtotal: i.subtotal,
-        }))
-        const { pedido_items: _, ...rest } = p
-        return { ...rest, items }
-      })
+        })),
+      }))
       return res.json(rows)
     }
 
     if (req.method === 'POST') {
+      if (!requireAuth(req, res)) return
       const {
         numero_mesa, mesa_id: directMesaId, items = [],
         comensal_id = null,
@@ -106,6 +98,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
+      if (!requireAuth(req, res)) return
       const { id, estado, accion, pedido_id, cancelado_por, motivo } = req.body
 
       // Cancelar pedido entero (bloquea si la cocina ya empezó)
@@ -150,7 +143,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST, PATCH')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
-    console.error('[api/pedidos]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/pedidos]', e)
   }
 }

@@ -1,14 +1,15 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { requireAuth, serverError } from './_auth.js'
+
+const ROLES_COBROS = ['admin', 'gerente', 'cajero', 'recepcionista']
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
     const sb = getDB()
     if (req.method === 'GET') {
+      if (!requireAuth(req, res, ROLES_COBROS)) return
       const { mesa_id } = req.query
       let query = sb
         .from('pagos')
@@ -23,7 +24,11 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      if (!requireAuth(req, res)) return
       const { mesa_id, monto, metodo, referencia = null } = req.body
+      if (!mesa_id || !(Number(monto) > 0) || !metodo) {
+        return res.status(400).json({ error: 'mesa_id, monto (>0) y metodo son requeridos.' })
+      }
       // Idempotency: rechazar duplicado mismo mesa+monto+metodo en 60s
       const sixtySecsAgo = new Date(Date.now() - 60_000).toISOString()
       const { data: existing } = await sb
@@ -82,7 +87,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
-    console.error('[api/pagos]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/pagos]', e)
   }
 }

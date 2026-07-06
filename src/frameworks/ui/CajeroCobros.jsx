@@ -11,7 +11,7 @@ import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { useToast } from '../state/ToastContext.jsx'
 import { db } from '../../adapters/db.js'
 
-const METODOS = ['efectivo', 'tarjeta', 'yape', 'plin', 'transferencia']
+const METODOS = ['efectivo', 'transferencia', 'tarjeta']
 
 // Envía un POST de formulario clásico (redirige el navegador a la Página de Pagos de Azul).
 function postRedirect(url, fields) {

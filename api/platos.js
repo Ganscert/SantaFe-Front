@@ -1,13 +1,15 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { requireAuth, serverError } from './_auth.js'
+
+const ROLES_GESTION = ['admin', 'gerente']
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
     const sb = getDB()
+    // Mutaciones de la carta: sólo administración
+    if (req.method !== 'GET' && !requireAuth(req, res, ROLES_GESTION)) return
     if (req.method === 'GET') {
       const { data, error } = await sb
         .from('platos')
@@ -65,7 +67,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
-    console.error('[api/platos]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/platos]', e)
   }
 }

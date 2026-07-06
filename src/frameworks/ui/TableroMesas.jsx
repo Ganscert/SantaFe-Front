@@ -51,10 +51,10 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
         </span>
       )}
 
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 mb-3">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Mesa {mesa.numeroMesa}</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{mesa.capacidad} personas · max {mesa.capacidad} cuentas</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Mesa {mesa.numeroMesa}</h3>
+          <p className="text-xs leading-snug text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">{mesa.capacidad} pers · {mesa.capacidad} cuentas</p>
         </div>
         <EstadoBadge estado={mesa.estado} />
       </div>
@@ -86,35 +86,35 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
 }
 
 /* ── Botonera de control de estado de mesa ────────── */
+const BOTONERA_CFG = {
+  disponible: { activeBg: 'bg-emerald-500',   activeText: 'text-white',  activeRing: 'ring-emerald-600', text: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-200 dark:ring-emerald-500/30' },
+  ocupada:    { activeBg: 'bg-amber-500',     activeText: 'text-white',  activeRing: 'ring-amber-600',   text: 'text-amber-700 dark:text-amber-300',     ring: 'ring-amber-200 dark:ring-amber-500/30' },
+  por_cobrar: { activeBg: 'bg-indigo-500',    activeText: 'text-white',  activeRing: 'ring-indigo-600',  text: 'text-indigo-700 dark:text-indigo-300',   ring: 'ring-indigo-200 dark:ring-indigo-500/30' },
+}
+
+function BotoneraBtn({ mesa, onSetEstado, estado, label, color, disabled, motivo }) {
+  const isActive = mesa.estado === estado
+  return (
+    <button
+      onClick={() => !disabled && !isActive && onSetEstado(mesa.numeroMesa, estado)}
+      disabled={disabled || isActive}
+      title={disabled ? motivo : (isActive ? 'Estado actual' : `Marcar como ${label}`)}
+      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all ring-1 ring-inset ${
+        isActive
+          ? `${color.activeBg} ${color.activeText} ${color.activeRing} shadow-sm`
+          : disabled
+            ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 ring-slate-200 dark:ring-slate-700 cursor-not-allowed'
+            : `bg-white dark:bg-slate-900 ${color.text} ${color.ring} hover:${color.activeBg}`
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
 function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
   const bloqueaCobrar    = pedidosActivosCount > 0
   const bloqueaDisponible = pedidosActivosCount > 0
-
-  const Btn = ({ estado, label, color, disabled, motivo }) => {
-    const isActive = mesa.estado === estado
-    return (
-      <button
-        onClick={() => !disabled && !isActive && onSetEstado(mesa.numeroMesa, estado)}
-        disabled={disabled || isActive}
-        title={disabled ? motivo : (isActive ? 'Estado actual' : `Marcar como ${label}`)}
-        className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all ring-1 ring-inset ${
-          isActive
-            ? `${color.activeBg} ${color.activeText} ${color.activeRing} shadow-sm`
-            : disabled
-              ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 ring-slate-200 dark:ring-slate-700 cursor-not-allowed'
-              : `bg-white dark:bg-slate-900 ${color.text} ${color.ring} hover:${color.activeBg}`
-        }`}
-      >
-        {label}
-      </button>
-    )
-  }
-
-  const CFG = {
-    disponible: { activeBg: 'bg-emerald-500',   activeText: 'text-white',  activeRing: 'ring-emerald-600', text: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-200 dark:ring-emerald-500/30' },
-    ocupada:    { activeBg: 'bg-amber-500',     activeText: 'text-white',  activeRing: 'ring-amber-600',   text: 'text-amber-700 dark:text-amber-300',     ring: 'ring-amber-200 dark:ring-amber-500/30' },
-    por_cobrar: { activeBg: 'bg-indigo-500',    activeText: 'text-white',  activeRing: 'ring-indigo-600',  text: 'text-indigo-700 dark:text-indigo-300',   ring: 'ring-indigo-200 dark:ring-indigo-500/30' },
-  }
 
   return (
     <div className="space-y-2">
@@ -122,22 +122,28 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
         Estado de la mesa
       </p>
       <div className="flex gap-2">
-        <Btn
+        <BotoneraBtn
+          mesa={mesa}
+          onSetEstado={onSetEstado}
           estado="disponible"
           label="Disponible"
-          color={CFG.disponible}
+          color={BOTONERA_CFG.disponible}
           disabled={bloqueaDisponible}
           motivo={`Hay ${pedidosActivosCount} pedido(s) sin entregar`}
         />
-        <Btn
+        <BotoneraBtn
+          mesa={mesa}
+          onSetEstado={onSetEstado}
           estado="ocupada"
           label="Ocupada"
-          color={CFG.ocupada}
+          color={BOTONERA_CFG.ocupada}
         />
-        <Btn
+        <BotoneraBtn
+          mesa={mesa}
+          onSetEstado={onSetEstado}
           estado="por_cobrar"
           label="Por cobrar"
-          color={CFG.por_cobrar}
+          color={BOTONERA_CFG.por_cobrar}
           disabled={bloqueaCobrar}
           motivo="Todos los pedidos deben estar entregados"
         />
@@ -160,8 +166,6 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
       <p className="text-sm text-slate-400 dark:text-slate-500">Toca cualquier tarjeta para ver acciones rápidas.</p>
     </div>
   )
-
-  const integrantes = mesa.integrantes || []
 
   return (
     <div className="space-y-4">
@@ -222,39 +226,31 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         </div>
       )}
 
-      {/* Integrantes (clientes en mesa via QR) */}
-      {integrantes.length > 0 && (
-        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
-            <Users size={10} /> Comensales ({integrantes.length})
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {integrantes.map(int => (
-              <span key={int.userId} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] ring-1 ring-[#A85638]/20">
-                {int.nombre}
-              </span>
-            ))}
+      {/* Comensales activos en la mesa: SÓLO los logueados (DB, activo=true).
+          La lista de integrantes sincronizada por WS puede quedar obsoleta;
+          la tabla de comensales es la fuente de verdad de quién está conectado. */}
+      {(() => {
+        const activos = comensalesDB.filter(c => c.activo)
+        if (activos.length === 0) return null
+        return (
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
+              <Users size={10} /> Comensales en mesa ({activos.length})
+            </p>
+            {activos.map(c => {
+              const diff = Date.now() - new Date(c.creado_en).getTime()
+              const min = Math.floor(diff / 60000)
+              const tiempoStr = min < 1 ? 'ahora' : min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}min`
+              return (
+                <div key={c.id} className="py-1.5 border-b last:border-0 border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{c.username}</p>
+                  <p className="text-[10px] text-slate-400">{tiempoStr}</p>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      )}
-
-      {/* Comensales DB con estado de pago */}
-      {comensalesDB.filter(c => c.activo).length > 0 && (
-        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Comensales en mesa</p>
-          {comensalesDB.filter(c => c.activo).map(c => {
-            const diff = Date.now() - new Date(c.creado_en).getTime()
-            const min = Math.floor(diff / 60000)
-            const tiempoStr = min < 1 ? 'ahora' : min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}min`
-            return (
-              <div key={c.id} className="py-1.5 border-b last:border-0 border-slate-200 dark:border-slate-700">
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{c.username}</p>
-                <p className="text-[10px] text-slate-400">{tiempoStr}</p>
-              </div>
-            )
-          })}
-        </div>
-      )}
+        )
+      })()}
 
       {/* botonera de estado */}
       <BotoneraEstado mesa={mesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} />
@@ -367,7 +363,7 @@ function FiltroChip({ estado, count, label, cls, filtroEstado, onToggle }) {
       onClick={() => onToggle(estado)}
       aria-pressed={activo}
       title={activo ? 'Quitar filtro' : `Ver solo mesas ${label.toLowerCase()}`}
-      className={`px-2.5 py-1 rounded-full font-semibold ring-1 transition-all ${cls} ${
+      className={`px-2.5 py-1 rounded-full font-semibold ring-1 whitespace-nowrap transition-all ${cls} ${
         activo ? 'ring-2 scale-105 shadow-sm' : 'ring-inset opacity-90 hover:opacity-100'
       }`}
     >
@@ -456,11 +452,11 @@ function TableroMesas() {
       {/* ── Topbar ── */}
       <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500 dark:text-slate-400 font-bold">Tablero de Mesas</span>
+          <div className="hidden sm:flex items-center gap-3">
+            <span className="text-sm text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">Tablero de Mesas</span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs min-w-0 overflow-x-auto">
             <FiltroChip
               filtroEstado={filtroEstado}
               onToggle={(e) => setFiltroEstado(f => (f === e ? 'todas' : e))}

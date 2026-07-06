@@ -18,4 +18,16 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Las API routes (Vercel Functions + dev server) y los archivos de
+    // configuración corren en Node.
+    files: ['api/**/*.js', 'vite.config.js', 'eslint.config.js', 'tailwind.config.js', 'postcss.config.js'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    // El entry point no es un límite de HMR (llama a createRoot); la regla
+    // de react-refresh no aplica a los lazy() del router.
+    files: ['src/frameworks/router/main.jsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])

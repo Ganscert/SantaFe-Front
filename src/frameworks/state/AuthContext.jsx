@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await db.usuarios.login(email, password)
       if (result.ok) {
-        const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now() }
+        const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now(), token: result.token }
         setSession(safe)
         return { ok: true, user: safe }
       }
@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await db.usuarios.register({ nombre: cleanName, email: cleanEmail, password, role })
       if (!result.ok) return { ok: false, error: result.error }
-      const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now() }
+      const safe = { id: result.user.id, name: result.user.nombre, email: result.user.email, role: result.user.role, issuedAt: Date.now(), token: result.token }
       setSession(safe)
       return { ok: true, user: safe }
     } catch {

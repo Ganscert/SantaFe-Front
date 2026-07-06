@@ -1,24 +1,9 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import '../../index.css'
 import Login from '../ui/Login.jsx'
-import Menu from '../ui/Menu.jsx'
-import TableroMesas from '../ui/TableroMesas.jsx'
-import MesaDetalle from '../ui/MesaDetalle.jsx'
-import AgregarPedido from '../ui/AgregarPedido.jsx'
-import CocinaPendientes from '../ui/CocinaPendientes.jsx'
-import Dashboard from '../ui/Dashboard.jsx'
-import RendimientoMeseros from '../ui/RendimientoMeseros.jsx'
-import Roles from '../ui/Roles.jsx'
-import AdminPlatos from '../ui/AdminPlatos.jsx'
-import AdminUsuarios from '../ui/AdminUsuarios.jsx'
 import AppShell from '../ui/AppShell.jsx'
-import Join from '../ui/Join.jsx'
-import MesaCliente from '../ui/MesaCliente.jsx'
-import CajeroCobros from '../ui/CajeroCobros.jsx'
-import HistorialCobros from '../ui/HistorialCobros.jsx'
-import Reservas from '../ui/Reservas.jsx'
 import RequireAuth from '../ui/RequireAuth.jsx'
 import { MesasProvider } from '../state/MesasContext.jsx'
 import { PedidosProvider } from '../state/PedidosContext.jsx'
@@ -30,29 +15,69 @@ import { TokensProvider } from '../state/TokensContext.jsx'
 import { ToastProvider } from '../state/ToastContext.jsx'
 import { rolesFor } from '../ui/roleAccess.js'
 
+// Code-splitting por ruta: cada vista pesada (dashboard con recharts, admin,
+// cocina, etc.) se descarga sólo cuando se navega a ella.
+const Menu               = lazy(() => import('../ui/Menu.jsx'))
+const TableroMesas       = lazy(() => import('../ui/TableroMesas.jsx'))
+const MesaDetalle        = lazy(() => import('../ui/MesaDetalle.jsx'))
+const AgregarPedido      = lazy(() => import('../ui/AgregarPedido.jsx'))
+const CocinaPendientes   = lazy(() => import('../ui/CocinaPendientes.jsx'))
+const Dashboard          = lazy(() => import('../ui/Dashboard.jsx'))
+const RendimientoMeseros = lazy(() => import('../ui/RendimientoMeseros.jsx'))
+const Roles              = lazy(() => import('../ui/Roles.jsx'))
+const AdminPlatos        = lazy(() => import('../ui/AdminPlatos.jsx'))
+const AdminUsuarios      = lazy(() => import('../ui/AdminUsuarios.jsx'))
+const Join               = lazy(() => import('../ui/Join.jsx'))
+const MesaCliente        = lazy(() => import('../ui/MesaCliente.jsx'))
+const CajeroCobros       = lazy(() => import('../ui/CajeroCobros.jsx'))
+const HistorialCobros    = lazy(() => import('../ui/HistorialCobros.jsx'))
+const Reservas           = lazy(() => import('../ui/Reservas.jsx'))
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <span className="w-9 h-9 rounded-full border-[3px] border-[#E5D9C9] border-t-[#A85638] animate-spin" />
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Cargando…</p>
+      </div>
+    </div>
+  )
+}
+
+// Envuelve la vista en el guard de rol + Suspense del chunk lazy.
+const page = (Comp, path) => (
+  <RequireAuth roles={rolesFor(path)}>
+    <Suspense fallback={<PageLoader />}>
+      <Comp />
+    </Suspense>
+  </RequireAuth>
+)
+
 const router = createBrowserRouter([
   { path: '/',     element: <Login /> },
-  { path: '/join', element: <Join /> },
+  { path: '/join', element: <Suspense fallback={<PageLoader />}><Join /></Suspense> },
   {
     element: <AppShell />,
     children: [
-      { path: '/mi-mesa',           element: <RequireAuth roles={rolesFor('/mi-mesa')}><MesaCliente /></RequireAuth> },
-      { path: '/menu',              element: <RequireAuth roles={rolesFor('/menu')}><Menu /></RequireAuth> },
-      { path: '/tablero-mesas',     element: <RequireAuth roles={rolesFor('/tablero-mesas')}><TableroMesas /></RequireAuth> },
-      { path: '/reservas',          element: <RequireAuth roles={rolesFor('/reservas')}><Reservas /></RequireAuth> },
-      { path: '/mesa/:id',          element: <RequireAuth roles={rolesFor('/mesa/:id')}><MesaDetalle /></RequireAuth> },
-      { path: '/pedidos/nuevo',     element: <RequireAuth roles={rolesFor('/pedidos/nuevo')}><AgregarPedido /></RequireAuth> },
-      { path: '/pedidos/agregar',   element: <RequireAuth roles={rolesFor('/pedidos/agregar')}><AgregarPedido /></RequireAuth> },
-      { path: '/cocina/pendientes', element: <RequireAuth roles={rolesFor('/cocina/pendientes')}><CocinaPendientes /></RequireAuth> },
-      { path: '/cajero/cobros',     element: <RequireAuth roles={rolesFor('/cajero/cobros')}><CajeroCobros /></RequireAuth> },
-      { path: '/cajero/historial',  element: <RequireAuth roles={rolesFor('/cajero/historial')}><HistorialCobros /></RequireAuth> },
-      { path: '/admin/dashboard',   element: <RequireAuth roles={rolesFor('/admin/dashboard')}><Dashboard /></RequireAuth> },
-      { path: '/admin/meseros',     element: <RequireAuth roles={rolesFor('/admin/meseros')}><RendimientoMeseros /></RequireAuth> },
-      { path: '/admin/roles',       element: <RequireAuth roles={rolesFor('/admin/roles')}><Roles /></RequireAuth> },
-      { path: '/admin/platos',      element: <RequireAuth roles={rolesFor('/admin/platos')}><AdminPlatos /></RequireAuth> },
-      { path: '/admin/usuarios',    element: <RequireAuth roles={rolesFor('/admin/usuarios')}><AdminUsuarios /></RequireAuth> },
+      { path: '/mi-mesa',           element: page(MesaCliente, '/mi-mesa') },
+      { path: '/menu',              element: page(Menu, '/menu') },
+      { path: '/tablero-mesas',     element: page(TableroMesas, '/tablero-mesas') },
+      { path: '/reservas',          element: page(Reservas, '/reservas') },
+      { path: '/mesa/:id',          element: page(MesaDetalle, '/mesa/:id') },
+      { path: '/pedidos/nuevo',     element: page(AgregarPedido, '/pedidos/nuevo') },
+      { path: '/pedidos/agregar',   element: page(AgregarPedido, '/pedidos/agregar') },
+      { path: '/cocina/pendientes', element: page(CocinaPendientes, '/cocina/pendientes') },
+      { path: '/cajero/cobros',     element: page(CajeroCobros, '/cajero/cobros') },
+      { path: '/cajero/historial',  element: page(HistorialCobros, '/cajero/historial') },
+      { path: '/admin/dashboard',   element: page(Dashboard, '/admin/dashboard') },
+      { path: '/admin/meseros',     element: page(RendimientoMeseros, '/admin/meseros') },
+      { path: '/admin/roles',       element: page(Roles, '/admin/roles') },
+      { path: '/admin/platos',      element: page(AdminPlatos, '/admin/platos') },
+      { path: '/admin/usuarios',    element: page(AdminUsuarios, '/admin/usuarios') },
     ],
   },
+  // Rutas desconocidas → login (que redirige al home del rol si hay sesión)
+  { path: '*', element: <Navigate to="/" replace /> },
 ])
 
 createRoot(document.getElementById('root')).render(

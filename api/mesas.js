@@ -1,9 +1,7 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { requireAuth, serverError } from './_auth.js'
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
@@ -19,6 +17,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      if (!requireAuth(req, res, ['admin', 'gerente'])) return
       const { numero_mesa, capacidad = 4, estado = 'disponible' } = req.body
       const { data, error } = await sb
         .from('mesas')
@@ -33,6 +32,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
+      // Cualquier sesión válida: el staff opera el tablero y el cliente
+      // ocupa la mesa al unirse por QR.
+      if (!requireAuth(req, res)) return
       const { id, estado } = req.body
       // Cerrar TODOS los pedidos no entregados de la mesa antes de pasar a
       // por_cobrar / disponible. No dependemos de la RPC porque su filtro
@@ -88,7 +90,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST, PATCH')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
-    console.error('[api/mesas]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/mesas]', e)
   }
 }

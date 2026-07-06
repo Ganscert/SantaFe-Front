@@ -1,4 +1,5 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { requireAuth, serverError } from './_auth.js'
 import {
   azulIsLive, buildAzulRequest, verifyAzulResponse, azulSandboxApproval, azulConfig,
 } from './_azul.js'
@@ -29,15 +30,16 @@ async function registrarPago(sb, { mesa_id, monto, referencia }) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   const action = req.query?.action || req.body?.action
   const c = azulConfig()
 
   try {
+    // session y sandbox-approve requieren sesión (staff o cliente logueado);
+    // el callback llega por redirección desde Azul y se valida con AuthHash.
+    if ((action === 'session' || action === 'sandbox-approve') && !requireAuth(req, res)) return
+
     // ── Crear sesión de pago: devuelve el formulario de la Página de Pagos ──
     if (action === 'session') {
       const { mesa_id, monto, returnTo } = req.body || {}
@@ -88,7 +90,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: 'action no reconocida (session | sandbox-approve | callback).' })
   } catch (e) {
-    console.error('[api/pagos-azul]', e.message)
-    return res.status(500).json({ error: e.message })
+    return serverError(res, '[api/pagos-azul]', e)
   }
 }
