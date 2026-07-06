@@ -7,9 +7,19 @@ export default async function handler(req, res) {
   try {
     const sb = getDB()
     // Staff y clientes logueados (unirse por QR también requiere sesión)
-    if (req.method !== 'GET' && !requireAuth(req, res)) return
+    if (!requireAuth(req, res)) return
     if (req.method === 'GET') {
       const { mesa_id, tipo } = req.query
+
+      // Limpieza perezosa: un comensal "activo" de hace más de 12 h es una
+      // sesión abandonada (nadie cena tanto); desactivarlo evita fantasmas
+      // en el panel de mesas.
+      const staleIso = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+      await sb.from('comensales')
+        .update({ activo: false })
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('activo', true)
+        .lt('creado_en', staleIso)
 
       if (tipo === 'tiempo') {
         const { data, error } = await sb

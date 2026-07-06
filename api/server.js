@@ -43,18 +43,18 @@ app.use('/api', (req, res, next) => {
   const action = req.query?.action || req.body?.action
 
   const isOpen =
-    (method === 'GET' && ['/mesas', '/platos', '/comensales'].includes(path)) ||
-    (method === 'GET' && path === '/pedidos' && !(req.query.dashboard === '1' || req.query.dashboard === 'true')) ||
+    (method === 'GET' && ['/mesas', '/platos'].includes(path)) ||
     (path === '/usuarios' && method === 'POST' && (action === 'login' || action === 'register')) ||
     (path === '/pagos-azul' && action === 'callback')
   if (isOpen) return next()
 
+  const esDashboard = req.query.dashboard === '1' || req.query.dashboard === 'true'
   let roles = null
   if (path === '/usuarios') roles = ROLES_ADMIN
   else if (path === '/platos') roles = ROLES_ADMIN
   else if (path === '/mesas' && method === 'POST') roles = ROLES_ADMIN
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
-  else if (path === '/pedidos' && method === 'GET') roles = ROLES_ADMIN // dashboard
+  else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
 
   const user = requireAuth(req, res, roles)
   if (!user) return
@@ -160,6 +160,14 @@ app.delete('/api/platos', async (req, res) => {
 app.get('/api/comensales', async (req, res) => {
   try {
     const { mesa_id, tipo } = req.query
+
+    // Limpieza perezosa de comensales abandonados (activos > 12 h)
+    const staleIso = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+    await db().from('comensales')
+      .update({ activo: false })
+      .eq('restaurante_id', RESTAURANTE_ID)
+      .eq('activo', true)
+      .lt('creado_en', staleIso)
 
     if (tipo === 'tiempo') {
       const { data, error } = await db().from('comensales')

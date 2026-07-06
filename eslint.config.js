@@ -17,6 +17,13 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // `try { localStorage… } catch {}` es el patrón estándar del proyecto
+      // para almacenamiento no disponible.
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      // Prefijo _ = descarte intencional (p. ej. destructuring para omitir).
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
   },
   {
     // Las API routes (Vercel Functions + dev server) y los archivos de

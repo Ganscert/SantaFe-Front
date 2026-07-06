@@ -16,6 +16,9 @@ export default async function handler(req, res) {
         return res.json(await dashboardRows(sb, RESTAURANTE_ID, { desde, hasta }))
       }
 
+      // Pedidos por mesa: cualquier sesión válida (staff o cliente en mesa)
+      if (!requireAuth(req, res)) return
+
       let mid = mesa_id
 
       if (!mid && numero_mesa) {

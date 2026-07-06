@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Utensils, Plus, Minus, ShoppingBag, Check, X, LogOut, ImageIcon, Clock, ChefHat,
+  Plus, Minus, ShoppingBag, Check, X, LogOut, ImageIcon, Clock, ChefHat,
   Users, Receipt, Loader2, KeyRound, CreditCard, CircleDollarSign, Upload, ShieldCheck,
 } from 'lucide-react'
 import ingredientes from '../assets/data/ingredientes.js'

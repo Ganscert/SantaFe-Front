@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ShieldCheck, Plus, Trash2, RotateCcw, AlertTriangle, Lock,
-  Pencil, Check, X, ChevronDown, Users, UserCog, Mail, Search,
+  Pencil, Check, X, ChevronDown, Users, Mail, Search,
   SlidersHorizontal,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'

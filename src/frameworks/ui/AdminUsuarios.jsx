@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Users, Plus, Pencil, Trash2, Save, RotateCcw, Mail, ShieldCheck, Search, X,
+  Users, Plus, Pencil, Trash2, Save, RotateCcw, Mail, ShieldCheck, Search,
 } from 'lucide-react'
 import { useRoles } from '../../usecases/useRoles.js'
 import { useUsuarios } from '../../usecases/useUsuarios.js'

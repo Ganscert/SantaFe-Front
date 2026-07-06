@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Users, X, AlertCircle, UserPlus } from 'lucide-react'
+import { Users, X, AlertCircle, UserPlus } from 'lucide-react'
 import { useTableManagement } from '../../usecases/useTableManagement.js'
 
 /**

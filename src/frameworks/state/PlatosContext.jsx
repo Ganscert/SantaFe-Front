@@ -69,11 +69,6 @@ export function PlatosProvider({ children }) {
     if (serverState?.platos) setPlatos(serverState.platos)
   }, [serverState?.platos])
 
-  const syncPlatos = useCallback((next) => {
-    if (!connected) return
-    sendMessage({ type: 'sync:platos', platos: next })
-  }, [connected, sendMessage])
-
   const agregarPlato = useCallback(async (data) => {
     try {
       const row = await db.platos.insert(toRow(data))
