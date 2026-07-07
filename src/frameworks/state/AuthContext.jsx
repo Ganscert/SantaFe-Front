@@ -3,6 +3,7 @@ import { db } from '../../adapters/db.js'
 
 const STORAGE_KEY_SESSION = 'santa-fe:session'
 const STORAGE_KEY_USERS   = 'santa-fe:auth-users'
+const STORAGE_KEY_VIEW_AS = 'santa-fe:view-as'
 
 export const ROLES = {
   ADMIN:         'admin',
@@ -44,9 +45,16 @@ function leerUsuariosLocales() {
 
 const AuthCtx = createContext(null)
 
+function leerViewAs() {
+  try { return localStorage.getItem(STORAGE_KEY_VIEW_AS) || null } catch { return null }
+}
+
 export function AuthProvider({ children }) {
   const [users, setUsers]     = useState(leerUsuariosLocales)
-  const [session, setSession] = useState(leerSesion)
+  // rawSession = sesión real (la que se persiste y firma el token).
+  // session (derivada) puede llevar otro rol cuando el admin usa "ver como".
+  const [rawSession, setSession] = useState(leerSesion)
+  const [viewAs, setViewAsState] = useState(leerViewAs)
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users)) } catch {}
@@ -54,12 +62,33 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     try {
-      if (session) localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+      if (rawSession) localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(rawSession))
       else localStorage.removeItem(STORAGE_KEY_SESSION)
     } catch {}
-  }, [session])
+  }, [rawSession])
+
+  const canImpersonate = rawSession?.role === ROLES.ADMIN
+
+  // Sesión efectiva: el resto de la app (router, sidebar, vistas) sólo ve ésta.
+  const session = useMemo(() => {
+    if (!rawSession) return null
+    if (canImpersonate && viewAs && viewAs !== rawSession.role) {
+      return { ...rawSession, role: viewAs, realRole: rawSession.role }
+    }
+    return { ...rawSession, realRole: rawSession.role }
+  }, [rawSession, viewAs, canImpersonate])
+
+  const setViewAs = useCallback((role) => {
+    const next = role && role !== ROLES.ADMIN && Object.values(ROLES).includes(role) ? role : null
+    setViewAsState(next)
+    try {
+      if (next) localStorage.setItem(STORAGE_KEY_VIEW_AS, next)
+      else localStorage.removeItem(STORAGE_KEY_VIEW_AS)
+    } catch {}
+  }, [])
 
   const login = useCallback(async (email, password) => {
+    setViewAs(null)
     // Try DB first
     try {
       const result = await db.usuarios.login(email, password)
@@ -79,7 +108,7 @@ export function AuthProvider({ children }) {
       setSession(safe)
       return { ok: true, user: safe }
     }
-  }, [users])
+  }, [users, setViewAs])
 
   const register = useCallback(async ({ name, email, password, role = ROLES.CLIENTE }) => {
     const cleanName  = String(name || '').trim()
@@ -108,7 +137,10 @@ export function AuthProvider({ children }) {
     }
   }, [users])
 
-  const logout = useCallback(() => setSession(null), [])
+  const logout = useCallback(() => {
+    setViewAs(null)
+    setSession(null)
+  }, [setViewAs])
 
   const hasRole = useCallback((roles) => {
     if (!session) return false
@@ -117,8 +149,8 @@ export function AuthProvider({ children }) {
   }, [session])
 
   const value = useMemo(
-    () => ({ session, users, login, register, logout, hasRole, isAuthenticated: Boolean(session) }),
-    [session, users, login, register, logout, hasRole],
+    () => ({ session, users, login, register, logout, hasRole, isAuthenticated: Boolean(session), viewAs, setViewAs, canImpersonate }),
+    [session, users, login, register, logout, hasRole, viewAs, setViewAs, canImpersonate],
   )
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>

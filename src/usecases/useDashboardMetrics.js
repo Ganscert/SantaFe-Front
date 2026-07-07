@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePedidos } from '../frameworks/state/PedidosContext.jsx'
 import { useMesas } from '../frameworks/state/MesasContext.jsx'
 import { db } from '../adapters/db.js'
+import { buildCSV } from '../adapters/csv.js'
 
 const DAY = 86400000
 const HOUR = 3600000
@@ -14,13 +15,19 @@ const startOfDay = (ts) => {
 
 const periodWindow = (period) => {
   const now = Date.now()
-  if (period === 'today') return { from: startOfDay(now), to: now, bucket: HOUR, fmt: (ts) => new Date(ts).getHours().toString().padStart(2, '0') + ':00' }
-  if (period === 'week')  return { from: startOfDay(now - 6 * DAY), to: now, bucket: DAY,  fmt: (ts) => new Date(ts).toLocaleDateString('es-PE', { weekday: 'short' }) }
-  return { from: startOfDay(now - 29 * DAY), to: now, bucket: DAY, fmt: (ts) => new Date(ts).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) }
+  if (period === 'today') return { from: startOfDay(now), to: now, span: DAY, bucket: HOUR, fmt: (ts) => new Date(ts).getHours().toString().padStart(2, '0') + ':00' }
+  if (period === 'week')  return { from: startOfDay(now - 6 * DAY), to: now, span: 7 * DAY, bucket: DAY,  fmt: (ts) => new Date(ts).toLocaleDateString('es-PE', { weekday: 'short' }) }
+  return { from: startOfDay(now - 29 * DAY), to: now, span: 30 * DAY, bucket: DAY, fmt: (ts) => new Date(ts).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) }
 }
 
 const totalDePedido = (p) =>
   (p.items ?? []).reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 0), 0)
+
+const esVentaFacturada = (p) =>
+  p.estado === 'entregado' || p.estado === 'listo' || p.estado === 'en_preparacion' || p.estado === 'pendiente'
+
+// Variación % vs período anterior; null si no hay base de comparación.
+const pctDelta = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
 // Normaliza un registro de v_dashboard_resumen al shape interno de pedido local.
 function dbRowToPedido(row) {
@@ -49,15 +56,21 @@ export function useDashboardMetrics(period = 'today') {
   const { pedidos } = usePedidos()
   const { mesas } = useMesas()
   const [pedidosDB, setPedidosDB] = useState([])
+  // loading derivado: el período cargado difiere del solicitado.
+  const [cargadoPara, setCargadoPara] = useState(null)
+  const loading = cargadoPara !== period
 
   // Cargar desde DB cuando cambia el período; refresca cada 30s.
+  // Se pide una ventana extendida (período actual + anterior) en una sola
+  // query para poder calcular las variaciones sin doble round-trip.
   useEffect(() => {
     let cancelled = false
-    const { from, to } = periodWindow(period)
+    const { from, to, span } = periodWindow(period)
     const cargar = () => {
-      db.pedidos.listDashboard({ desde: from, hasta: to })
+      db.pedidos.listDashboard({ desde: from - span, hasta: to })
         .then(rows => { if (!cancelled) setPedidosDB((rows || []).map(dbRowToPedido)) })
         .catch(() => {})
+        .finally(() => { if (!cancelled) setCargadoPara(period) })
     }
     cargar()
     const id = setInterval(() => { if (!document.hidden) cargar() }, 30000)
@@ -65,19 +78,33 @@ export function useDashboardMetrics(period = 'today') {
   }, [period])
 
   return useMemo(() => {
-    const { from, to, bucket, fmt } = periodWindow(period)
+    const { from, to, span, bucket, fmt } = periodWindow(period)
     // DB-first: si la consulta devolvió algo, úsala; si no, fallback al estado local.
     const fuente = pedidosDB.length ? pedidosDB : pedidos
     const enRango = fuente.filter(p => {
       const t = p.creadoEn ?? 0
       return t >= from && t <= to
     })
+    // Misma porción transcurrida del período anterior (comparación justa).
+    const enRangoPrev = fuente.filter(p => {
+      const t = p.creadoEn ?? 0
+      return t >= from - span && t <= to - span
+    })
 
-    const ventasFacturadas = enRango.filter(p => p.estado === 'entregado' || p.estado === 'listo' || p.estado === 'en_preparacion' || p.estado === 'pendiente')
+    const ventasFacturadas = enRango.filter(esVentaFacturada)
     const totalVentas = ventasFacturadas.reduce((s, p) => s + totalDePedido(p), 0)
     const pedidosActivos = fuente.filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado').length
     const ticketPromedio = ventasFacturadas.length ? totalVentas / ventasFacturadas.length : 0
     const mesasOcupadas = mesas.filter(m => m.estado === 'ocupada' || m.estado === 'por_cobrar').length
+
+    const ventasPrev = enRangoPrev.filter(esVentaFacturada)
+    const totalVentasPrev = ventasPrev.reduce((s, p) => s + totalDePedido(p), 0)
+    const ticketPromedioPrev = ventasPrev.length ? totalVentasPrev / ventasPrev.length : 0
+    const deltas = {
+      totalVentas:    pctDelta(totalVentas, totalVentasPrev),
+      totalPedidos:   pctDelta(ventasFacturadas.length, ventasPrev.length),
+      ticketPromedio: pctDelta(ticketPromedio, ticketPromedioPrev),
+    }
 
     const buckets = new Map()
     for (let t = from; t <= to; t += bucket) buckets.set(t, { time: fmt(t), ventas: 0, pedidos: 0 })
@@ -101,7 +128,8 @@ export function useDashboardMetrics(period = 'today') {
         itemMap.set(key, prev)
       }
     }
-    const topItems = [...itemMap.values()].sort((a, b) => b.cantidad - a.cantidad).slice(0, 5)
+    const topItemsAll = [...itemMap.values()].sort((a, b) => b.cantidad - a.cantidad)
+    const topItems = topItemsAll.slice(0, 5)
 
     const mesaMap = new Map()
     for (const p of ventasFacturadas) {
@@ -148,29 +176,56 @@ export function useDashboardMetrics(period = 'today') {
     }
     const cuentasActivas = [...cuentasActivasMap.values()].sort((a, b) => b.total - a.total)
 
-    const csv = (() => {
-      const head = 'fecha,hora,mesa,cuenta,estado,items,total\n'
-      const rows = enRango.map(p => {
-        const d = new Date(p.creadoEn)
-        const fecha = d.toLocaleDateString('es-PE')
-        const hora = d.toLocaleTimeString('es-PE')
-        const items = (p.items ?? []).map(i => `${i.cantidad}x ${i.nombre}`).join(' | ')
-        const cuenta = cuentaIdToName.get(p.cuentaId) ?? ''
-        return `${fecha},${hora},${p.mesa},"${cuenta}",${p.estado},"${items}",${totalDePedido(p).toFixed(2)}`
-      }).join('\n')
-      return head + rows
-    })()
+    // Reportes exportables: el CSV se arma sólo al hacer clic en exportar.
+    const getReporte = (tipo) => {
+      if (tipo === 'resumen') {
+        return buildCSV(
+          ['periodo', 'ventas', 'pedidos'],
+          salesOverTime.map(b => [b.time, b.ventas.toFixed(2), b.pedidos]),
+        )
+      }
+      if (tipo === 'top-platos') {
+        return buildCSV(
+          ['plato', 'categoria', 'unidades', 'total'],
+          topItemsAll.map(i => [i.nombre, i.categoria ?? '', i.cantidad, i.total.toFixed(2)]),
+        )
+      }
+      if (tipo === 'mesas') {
+        return buildCSV(
+          ['mesa', 'pedidos', 'ventas'],
+          mesaPerformance.map(m => [m.mesa, m.pedidos, m.ventas.toFixed(2)]),
+        )
+      }
+      // 'ventas' (detalle por pedido) — reporte por defecto.
+      return buildCSV(
+        ['fecha', 'hora', 'mesa', 'cuenta', 'estado', 'items', 'total'],
+        enRango.map(p => {
+          const d = new Date(p.creadoEn)
+          return [
+            d.toLocaleDateString('es-PE'),
+            d.toLocaleTimeString('es-PE'),
+            p.mesa,
+            cuentaIdToName.get(p.cuentaId) ?? '',
+            p.estado,
+            (p.items ?? []).map(i => `${i.cantidad}x ${i.nombre}`).join(' | '),
+            totalDePedido(p).toFixed(2),
+          ]
+        }),
+      )
+    }
 
     return {
       kpis: { totalVentas, pedidosActivos, ticketPromedio, mesasOcupadas, totalItemsVendidos, totalPedidos: ventasFacturadas.length, cuentasActivas: cuentasActivas.length },
+      deltas,
       salesOverTime,
       topItems,
       mesaPerformance,
       pedidosRecientes,
       cuentasActivas,
-      csv,
+      getReporte,
       period,
+      loading,
       isEmpty: ventasFacturadas.length === 0,
     }
-  }, [pedidos, mesas, period, pedidosDB])
+  }, [pedidos, mesas, period, pedidosDB, loading])
 }

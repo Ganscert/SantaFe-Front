@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { db } from '../../adapters/db.js'
+import { buildCSV, downloadCSV, csvFilename } from '../../adapters/csv.js'
 
 const formatPEN = (n) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0)
@@ -112,26 +113,21 @@ export default function HistorialCobros() {
   const limpiarFiltros = () => { setDesde(''); setHasta(''); setMetodo('todos'); setQuery('') }
 
   function exportarCSV() {
-    const head = ['Fecha', 'Mesa', 'Metodo', 'Monto', 'RNC', 'Referencia']
-    const rows = filtrados.map((p) => {
-      const r = parseReferencia(p.referencia)
-      return [
-        new Date(p.creado_en).toLocaleString('es-PE'),
-        mesaNumeroPorId.get(p.mesa_id) ?? '—',
-        p.metodo,
-        Number(p.monto || 0).toFixed(2),
-        r.rnc ?? '',
-        (r.comprobante ?? r.auth ?? r.raw ?? '').replace(/[\n;]/g, ' '),
-      ]
-    })
-    const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n')
-    const blob = new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `cobros-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const csv = buildCSV(
+      ['Fecha', 'Mesa', 'Metodo', 'Monto', 'RNC', 'Referencia'],
+      filtrados.map((p) => {
+        const r = parseReferencia(p.referencia)
+        return [
+          new Date(p.creado_en).toLocaleString('es-PE'),
+          mesaNumeroPorId.get(p.mesa_id) ?? '—',
+          p.metodo,
+          Number(p.monto || 0).toFixed(2),
+          r.rnc ?? '',
+          (r.comprobante ?? r.auth ?? r.raw ?? '').replace(/\n/g, ' '),
+        ]
+      }),
+    )
+    downloadCSV(csvFilename('cobros'), csv)
   }
 
   return (

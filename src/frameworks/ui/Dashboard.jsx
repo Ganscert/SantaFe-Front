@@ -1,16 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import {
-  LayoutDashboard, TrendingUp, Receipt, Users, Utensils,
+  LayoutDashboard, TrendingUp, TrendingDown, Receipt, Users, Utensils,
   Download, Sun, Moon, Wifi, WifiOff, ArrowLeft, Activity, Calendar,
-  UserCheck, Clock, Timer,
+  UserCheck, Clock, Timer, ChevronDown, FileSpreadsheet,
 } from 'lucide-react'
 import { useDashboardMetrics } from '../../usecases/useDashboardMetrics.js'
 import { useTiempoServicio } from '../../usecases/useServicioMetrics.js'
+import { downloadCSV, csvFilename } from '../../adapters/csv.js'
 import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
@@ -52,19 +53,91 @@ function ConnectionPill() {
   )
 }
 
-function Kpi({ icon: Icon, label, value, sub, accent }) {
+function DeltaBadge({ delta }) {
+  if (delta == null || !isFinite(delta)) return null
+  const up = delta >= 0
+  const Icon = up ? TrendingUp : TrendingDown
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-black ${
+      up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+    }`} title="vs período anterior">
+      <Icon size={11} /> {up ? '+' : ''}{delta.toFixed(0)}%
+    </span>
+  )
+}
+
+function Kpi({ icon: Icon, label, value, sub, accent, delta, loading }) {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-50 truncate">{value}</p>
-          {sub && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{sub}</p>}
+          {loading ? (
+            <div className="mt-3 h-7 w-24 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+          ) : (
+            <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-50 truncate">
+              {value} <DeltaBadge delta={delta} />
+            </p>
+          )}
+          {sub && !loading && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{sub}</p>}
         </div>
         <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${accent}`}>
           <Icon size={18} />
         </span>
       </div>
+    </div>
+  )
+}
+
+const REPORTES = [
+  { id: 'ventas',     label: 'Ventas detalladas',   desc: 'Un pedido por fila con sus ítems' },
+  { id: 'resumen',    label: 'Resumen del período', desc: 'Ventas y pedidos por hora/día' },
+  { id: 'top-platos', label: 'Top platos',          desc: 'Unidades y total por plato' },
+  { id: 'mesas',      label: 'Rendimiento por mesa', desc: 'Pedidos y ventas por mesa' },
+]
+
+function ExportMenu({ getReporte, period, disabled }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const cerrar = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [open])
+
+  const exportar = (tipo) => {
+    downloadCSV(csvFilename(`santa-fe-${tipo}-${period}`), getReporte(tipo))
+    setOpen(false)
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        disabled={disabled}
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
+      >
+        <Download size={14} /> Exportar <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-64 z-30 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+          {REPORTES.map(r => (
+            <button
+              key={r.id}
+              onClick={() => exportar(r.id)}
+              className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              <FileSpreadsheet size={15} className="mt-0.5 flex-shrink-0 text-[#7D8B6A]" />
+              <span className="min-w-0">
+                <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{r.label}</span>
+                <span className="block text-[11px] text-slate-400 dark:text-slate-500">{r.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -103,6 +176,19 @@ function ChartTooltip({ active, payload, label, formatter }) {
   )
 }
 
+// Tooltip del chart de ventas: monto + nº de pedidos del bucket.
+function VentasTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const punto = payload[0]?.payload
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-3 py-2 shadow-lg text-xs">
+      {label && <p className="font-bold text-slate-700 dark:text-slate-200 mb-1">{label}</p>}
+      <p className="font-semibold text-[#A85638]">Ventas: <span className="text-slate-900 dark:text-slate-100">{fmtMoney(punto?.ventas)}</span></p>
+      <p className="font-semibold text-[#7D8B6A]">Pedidos: <span className="text-slate-900 dark:text-slate-100">{fmtInt(punto?.pedidos)}</span></p>
+    </div>
+  )
+}
+
 function VentasChart({ data, theme }) {
   const grid = theme === 'dark' ? '#1e293b' : '#e2e8f0'
   const axis = theme === 'dark' ? '#64748b' : '#94a3b8'
@@ -118,7 +204,7 @@ function VentasChart({ data, theme }) {
         <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="time" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
         <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `S/${v}`} />
-        <Tooltip content={<ChartTooltip formatter={fmtMoney} />} />
+        <Tooltip content={<VentasTooltip />} />
         <Area type="monotone" dataKey="ventas" name="Ventas" stroke="#A85638" strokeWidth={2.5} fill="url(#grad-ventas)" animationDuration={700} />
       </AreaChart>
     </ResponsiveContainer>
@@ -179,18 +265,6 @@ function TopItemsDonut({ data }) {
   )
 }
 
-function descargarCSV(csv, period) {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `santa-fe-ventas-${period}-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
 function TiempoServicioChart({ data, theme }) {
   const grid = theme === 'dark' ? '#1e293b' : '#e2e8f0'
   const axis = theme === 'dark' ? '#64748b' : '#94a3b8'
@@ -214,7 +288,7 @@ export default function Dashboard() {
   const [period, setPeriod] = useState('today')
   const { theme } = useTheme()
   const { session } = useAuth()
-  const { kpis, salesOverTime, topItems, mesaPerformance, pedidosRecientes, cuentasActivas, csv, isEmpty } = useDashboardMetrics(period)
+  const { kpis, deltas, salesOverTime, topItems, mesaPerformance, pedidosRecientes, cuentasActivas, getReporte, loading, isEmpty } = useDashboardMetrics(period)
   const { data: tiempoData, loading: tiempoLoading } = useTiempoServicio()
   const puedeVerTiempo = ['admin', 'gerente'].includes(session?.role)
 
@@ -258,13 +332,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <PeriodSwitch value={period} onChange={setPeriod} />
-            <button
-              onClick={() => descargarCSV(csv, period)}
-              disabled={isEmpty}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
-            >
-              <Download size={14} /> CSV
-            </button>
+            <ExportMenu getReporte={getReporte} period={period} disabled={isEmpty} />
           </div>
         </div>
 
@@ -275,6 +343,8 @@ export default function Dashboard() {
             label="Ventas totales"
             value={fmtMoney(kpis.totalVentas)}
             sub={`${kpis.totalPedidos} pedidos`}
+            delta={deltas.totalVentas}
+            loading={loading && isEmpty}
             accent="bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20"
           />
           <Kpi
@@ -282,6 +352,7 @@ export default function Dashboard() {
             label="Pedidos activos"
             value={fmtInt(kpis.pedidosActivos)}
             sub="en cocina o por cobrar"
+            loading={loading && isEmpty}
             accent="bg-amber-500/10 text-amber-600 dark:text-amber-400"
           />
           <Kpi
@@ -289,6 +360,8 @@ export default function Dashboard() {
             label="Ticket promedio"
             value={fmtMoney(kpis.ticketPromedio)}
             sub="por pedido"
+            delta={deltas.ticketPromedio}
+            loading={loading && isEmpty}
             accent="bg-[#7D8B6A]/15 text-[#7D8B6A] dark:text-[#AEBC97]"
           />
           <Kpi
@@ -296,6 +369,7 @@ export default function Dashboard() {
             label="Mesas activas"
             value={fmtInt(kpis.mesasOcupadas)}
             sub={`${fmtInt(kpis.totalItemsVendidos)} platos vendidos`}
+            loading={loading && isEmpty}
             accent="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
           />
         </section>
@@ -314,7 +388,7 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex-1 min-h-[260px]">
-              {isEmpty ? <EmptyState /> : <VentasChart data={salesOverTime} theme={theme} />}
+              {loading && isEmpty ? <ChartSkeleton /> : isEmpty ? <EmptyState /> : <VentasChart data={salesOverTime} theme={theme} />}
             </div>
           </div>
 
@@ -325,7 +399,7 @@ export default function Dashboard() {
               <Utensils size={14} className="text-slate-400" />
             </div>
             <div className="flex-1 min-h-[220px]">
-              {isEmpty ? <EmptyState /> : <TopItemsDonut data={topItems} />}
+              {loading && isEmpty ? <ChartSkeleton /> : isEmpty ? <EmptyState /> : <TopItemsDonut data={topItems} />}
             </div>
           </div>
 
@@ -368,7 +442,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex-1 min-h-[220px]">
-              {isEmpty ? <EmptyState /> : <MesasChart data={mesaPerformance} theme={theme} />}
+              {loading && isEmpty ? <ChartSkeleton /> : isEmpty ? <EmptyState /> : <MesasChart data={mesaPerformance} theme={theme} />}
             </div>
           </div>
 
@@ -480,6 +554,10 @@ export default function Dashboard() {
       </main>
     </div>
   )
+}
+
+function ChartSkeleton() {
+  return <div className="h-full min-h-[180px] rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
 }
 
 function EmptyState({ compact }) {

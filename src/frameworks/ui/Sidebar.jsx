@@ -1,16 +1,29 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LogOut, X, Sun, Moon, Search } from 'lucide-react'
+import { LogOut, X, Sun, Moon, Search, Eye } from 'lucide-react'
 import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
-import { useAuth } from '../state/AuthContext.jsx'
+import { useAuth, ROLES } from '../state/AuthContext.jsx'
 import { rolesFor } from './roleAccess.js'
+import { defaultHomeForRole } from './RequireAuth.jsx'
 import { NAV_ITEMS, OPEN_PALETTE_EVENT } from './nav.js'
+
+const ROLE_LABELS = {
+  admin: 'Admin', gerente: 'Gerente', recepcionista: 'Recepcionista',
+  mesero: 'Mesero', cocinero: 'Cocinero', cajero: 'Cajero', cliente: 'Cliente',
+}
 
 export default function Sidebar({ open, onClose }) {
   const { theme, toggle } = useTheme()
   const { connected } = useLiveSync()
-  const { session, logout } = useAuth()
+  const { session, logout, canImpersonate, setViewAs } = useAuth()
   const navigate = useNavigate()
+
+  function cambiarVista(role) {
+    const destino = role === ROLES.ADMIN ? null : role
+    setViewAs(destino)
+    onClose?.()
+    navigate(defaultHomeForRole(destino ?? ROLES.ADMIN), { replace: true })
+  }
 
   function cerrarSesion() {
     onClose?.()
@@ -124,9 +137,25 @@ export default function Sidebar({ open, onClose }) {
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
+        {canImpersonate && (
+          <label className="flex items-center gap-2 px-2 py-1 rounded-xl ring-1 ring-[#E5D9C9] dark:ring-slate-700 bg-[#FAF4EA]/60 dark:bg-slate-950/40">
+            <Eye size={13} className="shrink-0 text-[#C99A3C]" />
+            <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 shrink-0">Ver como</span>
+            <select
+              value={session?.role ?? 'admin'}
+              onChange={(e) => cambiarVista(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+            >
+              {Object.values(ROLES).map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+              ))}
+            </select>
+          </label>
+        )}
         {session && (
           <div className="px-2 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 truncate" title={session.email}>
             {session.name} · {session.role}
+            {session.realRole && session.realRole !== session.role ? ` (real: ${session.realRole})` : ''}
           </div>
         )}
         <button

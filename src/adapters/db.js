@@ -59,6 +59,13 @@ export const db = {
     // Aprobación simulada (sólo modo sandbox).
     sandboxApprove: (data) => req('/pagos-azul?action=sandbox-approve', 'POST', { action: 'sandbox-approve', ...data }),
   },
+  restaurantes: {
+    list:   ()          => req('/restaurantes'),
+    detail: (id)        => req(`/restaurantes?id=${encodeURIComponent(id)}`),
+    create: (data)      => req('/restaurantes', 'POST', data),
+    update: (id, patch) => req('/restaurantes', 'PATCH', { id, ...patch }),
+    remove: (id)        => req('/restaurantes', 'DELETE', { id }),
+  },
   usuarios: {
     login:    (email, password) => req('/usuarios', 'POST', { action: 'login', email, password }),
     register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),

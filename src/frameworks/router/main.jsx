@@ -32,6 +32,8 @@ const MesaCliente        = lazy(() => import('../ui/MesaCliente.jsx'))
 const CajeroCobros       = lazy(() => import('../ui/CajeroCobros.jsx'))
 const HistorialCobros    = lazy(() => import('../ui/HistorialCobros.jsx'))
 const Reservas           = lazy(() => import('../ui/Reservas.jsx'))
+const AdminPlataforma    = lazy(() => import('../ui/AdminPlataforma.jsx'))
+const AdminRestaurante   = lazy(() => import('../ui/AdminRestaurante.jsx'))
 
 function PageLoader() {
   return (
@@ -69,6 +71,8 @@ const router = createBrowserRouter([
       { path: '/cocina/pendientes', element: page(CocinaPendientes, '/cocina/pendientes') },
       { path: '/cajero/cobros',     element: page(CajeroCobros, '/cajero/cobros') },
       { path: '/cajero/historial',  element: page(HistorialCobros, '/cajero/historial') },
+      { path: '/admin/plataforma',     element: page(AdminPlataforma, '/admin/plataforma') },
+      { path: '/admin/plataforma/:id', element: page(AdminRestaurante, '/admin/plataforma/:id') },
       { path: '/admin/dashboard',   element: page(Dashboard, '/admin/dashboard') },
       { path: '/admin/meseros',     element: page(RendimientoMeseros, '/admin/meseros') },
       { path: '/admin/roles',       element: page(Roles, '/admin/roles') },

@@ -1,8 +1,38 @@
 import { useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Menu, Eye, Undo2 } from 'lucide-react'
 import Sidebar from './Sidebar.jsx'
 import CommandPalette from './CommandPalette.jsx'
+import { useAuth } from '../state/AuthContext.jsx'
+import { defaultHomeForRole } from './RequireAuth.jsx'
+
+// Aviso fijo mientras el admin navega la app con otro rol ("ver como").
+function ViewAsBanner() {
+  const { session, setViewAs } = useAuth()
+  const navigate = useNavigate()
+  const impersonando = session?.realRole === 'admin' && session.role !== 'admin'
+  if (!impersonando) return null
+
+  function volver() {
+    setViewAs(null)
+    navigate(defaultHomeForRole('admin'), { replace: true })
+  }
+
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pl-4 pr-2 py-2 rounded-full bg-[#2C2118]/95 text-[#F6EEE3] shadow-xl ring-1 ring-[#C99A3C]/50 backdrop-blur">
+      <span className="inline-flex items-center gap-1.5 text-xs font-bold">
+        <Eye size={13} className="text-[#C99A3C]" />
+        Viendo como <span className="uppercase tracking-wider text-[#C99A3C]">{session.role}</span>
+      </span>
+      <button
+        onClick={volver}
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#C99A3C] hover:bg-[#B3872F] text-[#2C2118] text-xs font-black transition-colors"
+      >
+        <Undo2 size={12} /> Volver a admin
+      </button>
+    </div>
+  )
+}
 
 export default function AppShell() {
   const [open, setOpen] = useState(false)
@@ -12,6 +42,7 @@ export default function AppShell() {
     <div className="min-h-screen">
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <CommandPalette />
+      <ViewAsBanner />
 
       {/* Hamburger flotante (solo móvil/tablet) */}
       <button

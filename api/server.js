@@ -28,6 +28,10 @@ import {
   loginRateLimited, loginRateClear, serverError,
 } from './_auth.js'
 import { dashboardRows } from './_dashboard.js'
+import {
+  listRestaurantes, detalleRestaurante, crearRestaurante,
+  renombrarRestaurante, eliminarRestaurante,
+} from './_restaurantes.js'
 
 const app = express()
 app.use(express.json())
@@ -52,6 +56,7 @@ app.use('/api', (req, res, next) => {
   let roles = null
   if (path === '/usuarios') roles = ROLES_ADMIN
   else if (path === '/platos') roles = ROLES_ADMIN
+  else if (path === '/restaurantes') roles = ['admin']
   else if (path === '/mesas' && method === 'POST') roles = ROLES_ADMIN
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
   else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
@@ -456,6 +461,44 @@ app.patch('/api/pedidos', async (req, res) => {
     }
 
     res.json({ id: item.id, estado: item.estado })
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+// ─── RESTAURANTES (panel de plataforma, admin) ───────────────────────────────
+app.get('/api/restaurantes', async (req, res) => {
+  try {
+    const { id } = req.query
+    if (id) {
+      const detalle = await detalleRestaurante(db(), id)
+      if (!detalle) return res.status(404).json({ error: 'Restaurante no encontrado.' })
+      return res.json(detalle)
+    }
+    res.json(await listRestaurantes(db()))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.post('/api/restaurantes', async (req, res) => {
+  try {
+    const { nombre, mesas_iniciales } = req.body || {}
+    if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre es requerido.' })
+    res.json(await crearRestaurante(db(), { nombre, mesas_iniciales }))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.patch('/api/restaurantes', async (req, res) => {
+  try {
+    const { id, nombre } = req.body || {}
+    if (!id || !nombre || !String(nombre).trim()) return res.status(400).json({ error: 'id y nombre son requeridos.' })
+    res.json(await renombrarRestaurante(db(), { id, nombre }))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.delete('/api/restaurantes', async (req, res) => {
+  try {
+    const { id } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    if (id === RESTAURANTE_ID) return res.status(400).json({ error: 'No puedes eliminar el restaurante activo de la plataforma.' })
+    res.json(await eliminarRestaurante(db(), id))
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 

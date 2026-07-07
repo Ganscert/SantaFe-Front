@@ -1,6 +1,8 @@
 // Matriz única rol→rutas permitidas. Fuente de verdad para router y sidebar.
 
 export const ROUTE_ACCESS = {
+  '/admin/plataforma':     ['admin'],
+  '/admin/plataforma/:id': ['admin'],
   '/admin/dashboard':   ['admin', 'gerente'],
   '/admin/meseros':     ['admin', 'gerente'],
   '/admin/usuarios':    ['admin', 'gerente'],

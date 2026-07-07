@@ -2,10 +2,11 @@
 // El acceso por rol se resuelve con rolesFor() de roleAccess.js.
 import {
   LayoutDashboard, ClipboardList, ChefHat, PlusCircle, Utensils, UtensilsCrossed,
-  ShieldCheck, Users, Receipt, UserCog, CalendarDays, LayoutGrid, History,
+  ShieldCheck, Users, Receipt, UserCog, CalendarDays, LayoutGrid, History, Building2,
 } from 'lucide-react'
 
 export const NAV_ITEMS = [
+  { to: '/admin/plataforma',  label: 'Plataforma',     icon: Building2,       group: 'Supervisión' },
   { to: '/admin/dashboard',   label: 'Dashboard',      icon: LayoutDashboard, group: 'Supervisión' },
   { to: '/admin/meseros',     label: 'Meseros',        icon: UserCog,         group: 'Supervisión' },
   { to: '/admin/usuarios',    label: 'Usuarios',       icon: Users,           group: 'Supervisión' },
