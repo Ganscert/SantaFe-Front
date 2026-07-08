@@ -12,6 +12,7 @@ const secret = () =>
 
 export function signToken(user) {
   const payload = { sub: user.id, role: user.role, exp: Date.now() + TOKEN_TTL_MS }
+  if (user.restaurante_id) payload.restaurante_id = user.restaurante_id
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const sig = createHmac('sha256', secret()).update(body).digest('base64url')
   return `${body}.${sig}`

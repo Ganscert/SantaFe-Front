@@ -164,7 +164,7 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
 }
 
 /* ── Panel lateral ────────────────────────────────── */
-function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona }) {
+function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa }) {
   if (!mesa) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center">
       <span className="text-4xl">👆</span>
@@ -300,6 +300,16 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         >
           Ver hoja de mesa
         </Link>
+        {onEliminarMesa && (
+          <button
+            onClick={() => onEliminarMesa(mesa)}
+            disabled={mesa.estado !== 'disponible'}
+            title={mesa.estado !== 'disponible' ? 'Solo se pueden eliminar mesas disponibles' : 'Eliminar mesa'}
+            className="w-full rounded-xl border-2 border-red-200 dark:border-red-500/40 text-red-600 dark:text-red-400 py-2 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <LogOut size={14} className="rotate-180" /> Eliminar mesa
+          </button>
+        )}
       </div>
 
       {/* pedidos activos */}
@@ -325,7 +335,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
 }
 
 /* ── Panel / Drawer híbrido ───────────────────────── */
-function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona }) {
+function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa }) {
   // Cierra con Escape
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose()
@@ -343,7 +353,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
       >
         ✕
       </button>
-      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} zonas={zonas} onAsignarZona={onAsignarZona} />
+      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} zonas={zonas} onAsignarZona={onAsignarZona} onEliminarMesa={onEliminarMesa} />
     </div>
   )
 
@@ -397,7 +407,7 @@ function FiltroChip({ estado, count, label, cls, filtroEstado, onToggle }) {
 
 /* ── Componente principal ─────────────────────────── */
 function TableroMesas() {
-  const { mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona } = useMesas()
+  const { mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa } = useMesas()
   const { pedidos, contarActivosMesa } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { session } = useAuth()
@@ -414,13 +424,35 @@ function TableroMesas() {
   const puedeGenerarQR = session?.role === ROLES.RECEPCIONISTA || session?.role === ROLES.MESERO
     || session?.role === 'admin' || session?.role === 'gerente'
   const puedeGestionarZonas = session?.role === 'admin' || session?.role === 'gerente'
+  // Admin y gerente (supervisor) pueden dar de alta / baja mesas.
+  const puedeGestionarMesas = session?.role === 'admin' || session?.role === 'gerente'
 
   const [fabOpen, setFabOpen] = useState(false)
+  const [agregandoMesa, setAgregandoMesa] = useState(false)
 
   const handleSelect = (mesa) => setSelectedMesa(mesa)
   const handleClose  = () => setSelectedMesa(null)
   const handlePedirCuenta = (mesa) => setPickerMesa(mesa)
   const handleClearCuenta = (mesa) => actualizarMesa(mesa.numeroMesa, { solicitudesCuenta: [] })
+
+  const handleAgregarMesa = async () => {
+    setAgregandoMesa(true)
+    const res = await agregarMesa({ capacidad: 4 })
+    setAgregandoMesa(false)
+    if (res?.ok) toast.success(`Mesa ${res.numero} agregada.`)
+    else toast.error(res?.error || 'No se pudo agregar la mesa.')
+  }
+
+  const handleEliminarMesa = async (mesa) => {
+    if (!window.confirm(`¿Eliminar la Mesa ${mesa.numeroMesa}? Esta acción no se puede deshacer.`)) return
+    const res = await eliminarMesa(mesa.numeroMesa)
+    if (res?.ok) {
+      toast.success(`Mesa ${mesa.numeroMesa} eliminada.`)
+      setSelectedMesa(null)
+    } else {
+      toast.error(res?.error || 'No se pudo eliminar la mesa.')
+    }
+  }
 
   const handleLiberarMesa = (mesa) => {
     invalidarTokensDeMesa(mesa.id)
@@ -591,9 +623,18 @@ function TableroMesas() {
             />
           </div>
 
-          {/* Filtro y gestión de zonas */}
-          {(zonas.length > 0 || puedeGestionarZonas) && (
+          {/* Filtro y gestión de zonas / mesas */}
+          {(zonas.length > 0 || puedeGestionarZonas || puedeGestionarMesas) && (
             <div className="mb-4 flex items-center gap-2 flex-wrap">
+              {puedeGestionarMesas && (
+                <button
+                  onClick={handleAgregarMesa}
+                  disabled={agregandoMesa}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-white bg-[#A85638] hover:bg-[#8F4527] disabled:opacity-60 transition-colors"
+                >
+                  + {agregandoMesa ? 'Agregando…' : 'Agregar mesa'}
+                </button>
+              )}
               {zonas.length > 0 && (
                 <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   <MapPin size={13} className="text-[#7D8B6A]" />
@@ -660,6 +701,7 @@ function TableroMesas() {
           comensalesDB={comensalesDB}
           zonas={zonas}
           onAsignarZona={puedeGestionarZonas ? asignarZona : undefined}
+          onEliminarMesa={puedeGestionarMesas ? handleEliminarMesa : undefined}
         />
       </div>
 

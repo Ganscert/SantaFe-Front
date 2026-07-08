@@ -35,6 +35,7 @@ export const db = {
     insert: (data)       => req('/mesas', 'POST', data),
     // `patch` puede ser un string (estado, retrocompat) o un objeto { estado?, zona_id? }.
     update: (id, patch)  => req('/mesas', 'PATCH', { id, ...(typeof patch === 'string' ? { estado: patch } : patch) }),
+    remove: (id)         => req('/mesas', 'DELETE', { id }),
   },
   zonas: {
     list:   ()          => req('/zonas'),
@@ -76,7 +77,7 @@ export const db = {
   usuarios: {
     login:    (email, password) => req('/usuarios', 'POST', { action: 'login', email, password }),
     register: (data)            => req('/usuarios', 'POST', { action: 'register', ...data }),
-    list:     ()                => req('/usuarios'),
+    list:     (restauranteId)   => req(`/usuarios${restauranteId ? `?restaurante_id=${encodeURIComponent(restauranteId)}` : ''}`),
     create:   (data)            => req('/usuarios', 'POST', { action: 'create', ...data }),
     update:   (id, patch)       => req('/usuarios', 'PATCH', { id, ...patch }),
     remove:   (id)              => req('/usuarios', 'DELETE', { id }),

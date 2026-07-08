@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Users, Plus, Pencil, Trash2, Save, RotateCcw, Mail, ShieldCheck, Search,
+  Users, Plus, Pencil, Trash2, Save, RotateCcw, Mail, ShieldCheck, Search, Building2,
 } from 'lucide-react'
 import { useRoles } from '../../usecases/useRoles.js'
 import { useUsuarios } from '../../usecases/useUsuarios.js'
+import { useAuth } from '../state/AuthContext.jsx'
+import { db } from '../../adapters/db.js'
 
 const FORM_VACIO = { name: '', email: '', roleId: '', password: '' }
 
@@ -21,7 +23,30 @@ function initials(name = '') {
 
 export default function AdminUsuarios() {
   const { roles, loading } = useRoles()
-  const { users, loading: loadingUsers, agregarUsuario, actualizarUsuario, eliminarUsuario } = useUsuarios(roles)
+  const { session } = useAuth()
+  // realRole = rol real firmado en el token (no el impersonado por "ver como").
+  const esAdmin = session?.realRole === 'admin'
+
+  const [restaurantes, setRestaurantes] = useState([])
+  const [restauranteId, setRestauranteId] = useState('')
+
+  // El admin elige restaurante; se carga la lista y se fija uno por defecto
+  // (el suyo si el token lo trae, si no el primero).
+  useEffect(() => {
+    if (!esAdmin) return
+    let cancel = false
+    db.restaurantes.list()
+      .then((rs) => {
+        if (cancel) return
+        setRestaurantes(rs || [])
+        setRestauranteId((prev) => prev || session?.restaurante_id || rs?.[0]?.id || '')
+      })
+      .catch((e) => console.error('[restaurantes.list]', e.message))
+    return () => { cancel = true }
+  }, [esAdmin, session?.restaurante_id])
+
+  const { users, loading: loadingUsers, agregarUsuario, actualizarUsuario, eliminarUsuario } =
+    useUsuarios(roles, esAdmin ? restauranteId : undefined)
 
   const [form, setForm] = useState(FORM_VACIO)
   const [editandoId, setEditandoId] = useState(null)
@@ -48,6 +73,7 @@ export default function AdminUsuarios() {
     if (!name) return setError('El nombre es obligatorio.')
     if (!emailRegex.test(email)) return setError('Ingresa un correo válido.')
     if (!form.roleId) return setError('Selecciona un rol.')
+    if (!editando && esAdmin && !restauranteId) return setError('Selecciona el restaurante al que pertenece el usuario.')
     if (password && password.length < 4) return setError('La contraseña debe tener al menos 4 caracteres.')
 
     const duplicado = users.some(
@@ -58,7 +84,7 @@ export default function AdminUsuarios() {
     setGuardando(true)
     const res = editando
       ? await actualizarUsuario(editandoId, { name, email, roleId: form.roleId, password })
-      : await agregarUsuario({ name, email, roleId: form.roleId, password })
+      : await agregarUsuario({ name, email, roleId: form.roleId, password, restauranteId: esAdmin ? restauranteId : undefined })
     setGuardando(false)
     if (res?.ok === false) return setError(res.error || 'No se pudo guardar el usuario.')
     resetForm()
@@ -158,6 +184,27 @@ export default function AdminUsuarios() {
           </div>
 
           <form onSubmit={onSubmit} className="p-5 space-y-4">
+            {esAdmin && (
+              <Field label="Restaurante">
+                <div className="relative">
+                  <Building2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <select
+                    value={restauranteId}
+                    onChange={(e) => setRestauranteId(e.target.value)}
+                    disabled={editando}
+                    className={`${inputCls} pl-9 disabled:opacity-60`}
+                  >
+                    {restaurantes.length === 0 && <option value="">Cargando restaurantes…</option>}
+                    {restaurantes.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  {editando ? 'El restaurante no se cambia al editar.' : 'El nuevo usuario se dará de alta en este restaurante.'}
+                </p>
+              </Field>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Nombre completo">
                 <input

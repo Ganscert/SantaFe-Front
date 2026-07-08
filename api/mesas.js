@@ -91,7 +91,36 @@ export default async function handler(req, res) {
       return res.json(data)
     }
 
-    res.setHeader('Allow', 'GET, POST, PATCH')
+    if (req.method === 'DELETE') {
+      // Solo gestión: admin y gerente (supervisor) pueden eliminar mesas.
+      if (!requireAuth(req, res, ['admin', 'gerente'])) return
+      const { id } = req.body || {}
+      if (!id) return res.status(400).json({ error: 'id requerido.' })
+      // No permitir borrar una mesa que no esté disponible (ocupada / por cobrar).
+      const { data: mesa } = await sb
+        .from('mesas')
+        .select('estado')
+        .eq('id', id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .maybeSingle()
+      if (!mesa) return res.json({ ok: false, error: 'Mesa no encontrada.' })
+      if (mesa.estado !== 'disponible') {
+        return res.json({ ok: false, error: 'Solo se pueden eliminar mesas disponibles (sin comensales ni cobros pendientes).' })
+      }
+      const { error } = await sb
+        .from('mesas')
+        .delete()
+        .eq('id', id)
+        .eq('restaurante_id', RESTAURANTE_ID)
+      if (error) {
+        // FK: hay pedidos/pagos históricos referenciando la mesa.
+        if (error.code === '23503') return res.json({ ok: false, error: 'La mesa tiene pedidos o pagos asociados y no se puede eliminar.' })
+        throw error
+      }
+      return res.json({ ok: true })
+    }
+
+    res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
     return serverError(res, '[api/mesas]', e)

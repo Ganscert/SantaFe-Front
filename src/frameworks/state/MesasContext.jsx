@@ -143,6 +143,38 @@ export function MesasProvider({ children }) {
     })
   }, [syncMesas])
 
+  // Alta de una mesa nueva. El número se autogenera (máximo actual + 1).
+  const agregarMesa = useCallback(async ({ capacidad = 4, zonaId = null } = {}) => {
+    const numero = mesas.reduce((max, m) => Math.max(max, m.numeroMesa || 0), 0) + 1
+    try {
+      const row = await db.mesas.insert({ numero_mesa: numero, capacidad, zona_id: zonaId })
+      if (row) {
+        setMesas(prev => [...prev, mapRow(row)].sort((a, b) => a.numeroMesa - b.numeroMesa))
+      } else {
+        await cargar(mesas) // número colisionó (upsert ignorado) → recargar
+      }
+      return { ok: true, numero }
+    } catch (e) {
+      console.error('[mesas.agregar]', e.message)
+      return { ok: false, error: e.message }
+    }
+  }, [mesas])
+
+  // Baja de una mesa (solo si está disponible; lo valida también el backend).
+  const eliminarMesa = useCallback(async (numeroMesa) => {
+    const mesa = mesas.find(m => m.numeroMesa === numeroMesa)
+    if (!mesa) return { ok: false, error: 'Mesa no encontrada.' }
+    try {
+      const res = await db.mesas.remove(mesa.id)
+      if (res?.ok === false) return { ok: false, error: res.error }
+      setMesas(prev => prev.filter(m => m.numeroMesa !== numeroMesa))
+      return { ok: true }
+    } catch (e) {
+      console.error('[mesas.eliminar]', e.message)
+      return { ok: false, error: e.message }
+    }
+  }, [mesas])
+
   // Asigna (o quita, zonaId=null) la zona de una mesa. Optimista + persistencia.
   const asignarZona = useCallback((numeroMesa, zonaId) => {
     lastOptimisticAtRef.current = Date.now()
@@ -158,8 +190,8 @@ export function MesasProvider({ children }) {
   }, [zonas])
 
   const value = useMemo(
-    () => ({ mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona }),
-    [mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona],
+    () => ({ mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa }),
+    [mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa],
   )
 
   return <MesasContext.Provider value={value}>{children}</MesasContext.Provider>

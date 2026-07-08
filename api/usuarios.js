@@ -7,17 +7,33 @@ import {
 const ROLES_ADMIN = ['admin', 'gerente']
 const ROLES_VALIDOS = ['admin', 'gerente', 'recepcionista', 'mesero', 'cocinero', 'cajero', 'cliente']
 
+// Restaurante al que pertenece quien hace la petición. El token nuevo lo lleva;
+// para tokens legacy se resuelve consultando la fila del usuario. Fallback: env.
+async function resolverRestauranteCaller(sb, auth) {
+  if (auth?.restaurante_id) return auth.restaurante_id
+  if (auth?.sub) {
+    const { data } = await sb.from('usuarios').select('restaurante_id').eq('id', auth.sub).maybeSingle()
+    if (data?.restaurante_id) return data.restaurante_id
+  }
+  return RESTAURANTE_ID
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
     const sb = getDB()
     if (req.method === 'GET') {
-      if (!requireAuth(req, res, ROLES_ADMIN)) return
+      const auth = requireAuth(req, res, ROLES_ADMIN)
+      if (!auth) return
+      const propio = await resolverRestauranteCaller(sb, auth)
+      // El admin puede consultar otro restaurante vía ?restaurante_id; el
+      // gerente (supervisor) siempre ve el suyo.
+      const rid = (auth.role === 'admin' && req.query?.restaurante_id) ? req.query.restaurante_id : propio
       const { data, error } = await sb
         .from('usuarios')
         .select('id, restaurante_id, nombre, email, role, activo, creado_en, actualizado_en')
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', rid)
         .order('creado_en', { ascending: false })
       if (error) throw error
       return res.json(data)
@@ -36,7 +52,7 @@ export default async function handler(req, res) {
         }
         const { data: user, error } = await sb
           .from('usuarios')
-          .select('id, nombre, email, role, password_hash')
+          .select('id, restaurante_id, nombre, email, role, password_hash')
           .eq('email', cleanEmail)
           .eq('activo', true)
           .maybeSingle()
@@ -49,7 +65,7 @@ export default async function handler(req, res) {
           const { error: upErr } = await sb.from('usuarios').update({ password_hash: hashPassword(password) }).eq('id', user.id)
           if (upErr) console.warn('[usuarios.login] upgrade hash:', upErr.message)
         }
-        const safe = { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+        const safe = { id: user.id, nombre: user.nombre, email: user.email, role: user.role, restaurante_id: user.restaurante_id }
         return res.json({ ok: true, user: safe, token: signToken(safe) })
       }
 
@@ -62,7 +78,7 @@ export default async function handler(req, res) {
         const { data: row, error } = await sb
           .from('usuarios')
           .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password), role: 'cliente' })
-          .select('id, nombre, email, role, creado_en')
+          .select('id, restaurante_id, nombre, email, role, creado_en')
           .single()
         if (error) {
           if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
@@ -75,14 +91,27 @@ export default async function handler(req, res) {
 
       // Alta de personal desde el panel /admin/usuarios.
       if (action === 'create') {
-        if (!requireAuth(req, res, ROLES_ADMIN)) return
+        const auth = requireAuth(req, res, ROLES_ADMIN)
+        if (!auth) return
         if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
         if (role && !ROLES_VALIDOS.includes(role)) return res.json({ ok: false, error: 'Rol no válido.' })
         const cleanEmail = String(email).trim().toLowerCase()
+
+        // Restaurante destino: el admin lo elige explícitamente; el gerente
+        // (supervisor) sólo puede dar de alta en su propio restaurante.
+        let restauranteDestino = await resolverRestauranteCaller(sb, auth)
+        if (auth.role === 'admin') {
+          const solicitado = req.body?.restaurante_id
+          if (!solicitado) return res.json({ ok: false, error: 'Selecciona el restaurante al que pertenece el usuario.' })
+          const { data: rest } = await sb.from('restaurantes').select('id').eq('id', solicitado).maybeSingle()
+          if (!rest) return res.json({ ok: false, error: 'Restaurante no válido.' })
+          restauranteDestino = solicitado
+        }
+
         const { data: row, error } = await sb
           .from('usuarios')
-          .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password || 'santafe123'), role: role || 'cliente' })
-          .select('id, nombre, email, role, activo, creado_en')
+          .insert({ restaurante_id: restauranteDestino, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password || 'santafe123'), role: role || 'cliente' })
+          .select('id, restaurante_id, nombre, email, role, activo, creado_en')
           .single()
         if (error) {
           if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {

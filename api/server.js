@@ -75,6 +75,16 @@ const db = () => {
   return _sb
 }
 
+// Restaurante del caller: del token si lo lleva, si no de su fila; fallback env.
+async function resolverRestauranteCaller(auth) {
+  if (auth?.restaurante_id) return auth.restaurante_id
+  if (auth?.sub) {
+    const { data } = await db().from('usuarios').select('restaurante_id').eq('id', auth.sub).maybeSingle()
+    if (data?.restaurante_id) return data.restaurante_id
+  }
+  return RESTAURANTE_ID
+}
+
 // ─── MESAS ───────────────────────────────────────────────────────────────────
 app.get('/api/mesas', async (req, res) => {
   try {
@@ -292,9 +302,11 @@ app.patch('/api/comensales', async (req, res) => {
 // ─── USUARIOS ─────────────────────────────────────────────────────────────────
 app.get('/api/usuarios', async (req, res) => {
   try {
+    const propio = await resolverRestauranteCaller(req.auth)
+    const rid = (req.auth?.role === 'admin' && req.query?.restaurante_id) ? req.query.restaurante_id : propio
     const { data, error } = await db().from('usuarios')
       .select('id, restaurante_id, nombre, email, role, activo, creado_en, actualizado_en')
-      .eq('restaurante_id', RESTAURANTE_ID).order('creado_en', { ascending: false })
+      .eq('restaurante_id', rid).order('creado_en', { ascending: false })
     if (error) throw error
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -310,7 +322,7 @@ app.post('/api/usuarios', async (req, res) => {
       const rateKey = `${req.ip}|${cleanEmail}`
       if (loginRateLimited(rateKey)) return res.status(429).json({ ok: false, error: 'Demasiados intentos. Espera unos minutos.' })
       const { data: user, error } = await db().from('usuarios')
-        .select('id, nombre, email, role, password_hash')
+        .select('id, restaurante_id, nombre, email, role, password_hash')
         .eq('email', cleanEmail).eq('activo', true).maybeSingle()
       if (error) throw error
       const check = user ? verifyPassword(password, user.password_hash) : { ok: false }
@@ -320,7 +332,7 @@ app.post('/api/usuarios', async (req, res) => {
         const { error: upErr } = await db().from('usuarios').update({ password_hash: hashPassword(password) }).eq('id', user.id)
         if (upErr) console.warn('[usuarios.login] upgrade hash:', upErr.message)
       }
-      const safe = { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+      const safe = { id: user.id, nombre: user.nombre, email: user.email, role: user.role, restaurante_id: user.restaurante_id }
       return res.json({ ok: true, user: safe, token: signToken(safe) })
     }
 
@@ -331,7 +343,7 @@ app.post('/api/usuarios', async (req, res) => {
       // El registro público SIEMPRE crea clientes.
       const { data: row, error } = await db().from('usuarios')
         .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password), role: 'cliente' })
-        .select('id, nombre, email, role, creado_en').single()
+        .select('id, restaurante_id, nombre, email, role, creado_en').single()
       if (error) {
         if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
           return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })
@@ -344,9 +356,20 @@ app.post('/api/usuarios', async (req, res) => {
     if (action === 'create') {
       if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
       const cleanEmail = String(email).trim().toLowerCase()
+
+      // Restaurante destino: admin lo elige; gerente (supervisor) usa el suyo.
+      let restauranteDestino = await resolverRestauranteCaller(req.auth)
+      if (req.auth?.role === 'admin') {
+        const solicitado = req.body?.restaurante_id
+        if (!solicitado) return res.json({ ok: false, error: 'Selecciona el restaurante al que pertenece el usuario.' })
+        const { data: rest } = await db().from('restaurantes').select('id').eq('id', solicitado).maybeSingle()
+        if (!rest) return res.json({ ok: false, error: 'Restaurante no válido.' })
+        restauranteDestino = solicitado
+      }
+
       const { data: row, error } = await db().from('usuarios')
-        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password || 'santafe123'), role: role || 'cliente' })
-        .select('id, nombre, email, role, activo, creado_en').single()
+        .insert({ restaurante_id: restauranteDestino, nombre: String(nombre).trim(), email: cleanEmail, password_hash: hashPassword(password || 'santafe123'), role: role || 'cliente' })
+        .select('id, restaurante_id, nombre, email, role, activo, creado_en').single()
       if (error) {
         if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
           return res.json({ ok: false, error: 'Ya existe una cuenta con ese correo.' })

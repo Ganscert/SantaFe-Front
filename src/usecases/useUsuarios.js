@@ -43,15 +43,17 @@ function leerOverrides() {
   }
 }
 
-export function useUsuarios(roles) {
+export function useUsuarios(roles, restauranteId) {
   const [lista, setLista]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [overrides, setOverrides] = useState(leerOverrides)
 
-  // Carga inicial desde la base de datos.
+  // Carga desde la base de datos. Para el admin, `restauranteId` filtra el
+  // restaurante consultado; el gerente siempre ve el suyo (backend lo fuerza).
   useEffect(() => {
     let cancel = false
-    db.usuarios.list()
+    setLoading(true)
+    db.usuarios.list(restauranteId)
       .then((rows) => {
         if (cancel) return
         setLista(Array.isArray(rows) ? rows.map(mapUser) : [])
@@ -64,7 +66,7 @@ export function useUsuarios(roles) {
         setLoading(false)
       })
     return () => { cancel = true }
-  }, [])
+  }, [restauranteId])
 
   // Persistencia sólo de los overrides de permisos (la lista vive en la DB).
   useEffect(() => {
@@ -133,6 +135,7 @@ export function useUsuarios(roles) {
         email: (data.email || '').trim().toLowerCase(),
         role: data.roleId,
         password: data.password || undefined,
+        restaurante_id: data.restauranteId || undefined,
       })
       if (res?.ok === false) return { ok: false, error: res.error }
       const nuevo = mapUser(res.user)
