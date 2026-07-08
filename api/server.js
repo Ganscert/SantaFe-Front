@@ -47,7 +47,7 @@ app.use('/api', (req, res, next) => {
   const action = req.query?.action || req.body?.action
 
   const isOpen =
-    (method === 'GET' && ['/mesas', '/platos'].includes(path)) ||
+    (method === 'GET' && ['/mesas', '/platos', '/zonas'].includes(path)) ||
     (path === '/usuarios' && method === 'POST' && (action === 'login' || action === 'register')) ||
     (path === '/pagos-azul' && action === 'callback')
   if (isOpen) return next()
@@ -58,6 +58,7 @@ app.use('/api', (req, res, next) => {
   else if (path === '/platos') roles = ROLES_ADMIN
   else if (path === '/restaurantes') roles = ['admin']
   else if (path === '/mesas' && method === 'POST') roles = ROLES_ADMIN
+  else if (path === '/zonas' && method !== 'GET') roles = ROLES_ADMIN
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
   else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
 
@@ -77,7 +78,7 @@ const db = () => {
 // ─── MESAS ───────────────────────────────────────────────────────────────────
 app.get('/api/mesas', async (req, res) => {
   try {
-    const { data, error } = await db().from('mesas').select('id, numero_mesa, estado, capacidad').eq('restaurante_id', RESTAURANTE_ID).order('numero_mesa')
+    const { data, error } = await db().from('mesas').select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').eq('restaurante_id', RESTAURANTE_ID).order('numero_mesa')
     if (error) throw error
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -85,10 +86,10 @@ app.get('/api/mesas', async (req, res) => {
 
 app.post('/api/mesas', async (req, res) => {
   try {
-    const { numero_mesa, capacidad = 4, estado = 'disponible' } = req.body
+    const { numero_mesa, capacidad = 4, estado = 'disponible', zona_id = null } = req.body
     const { data, error } = await db().from('mesas')
-      .upsert({ restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado }, { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true })
-      .select('id, numero_mesa, estado, capacidad').maybeSingle()
+      .upsert({ restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado, zona_id }, { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true })
+      .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').maybeSingle()
     if (error) throw error
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -97,6 +98,7 @@ app.post('/api/mesas', async (req, res) => {
 app.patch('/api/mesas', async (req, res) => {
   try {
     const { id, estado } = req.body
+    const cambiaZona = Object.prototype.hasOwnProperty.call(req.body, 'zona_id')
     // Siempre cerrar pedidos abiertos desde JS (no depender de la RPC).
     if (estado === 'por_cobrar' || estado === 'disponible') {
       const { data: abiertos } = await db().from('pedidos').select('id')
@@ -113,9 +115,68 @@ app.patch('/api/mesas', async (req, res) => {
         if (pedErr) throw pedErr
       }
     }
-    const { data, error } = await db().from('mesas').update({ estado }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad').single()
+    const patch = {}
+    if (estado !== undefined) patch.estado = estado
+    if (cambiaZona) patch.zona_id = req.body.zona_id ?? null
+    const { data, error } = await db().from('mesas').update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').single()
     if (error) throw error
     res.json(data)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+// ─── ZONAS ───────────────────────────────────────────────────────────────────
+app.get('/api/zonas', async (req, res) => {
+  try {
+    const { data, error } = await db().from('zonas')
+      .select('id, nombre, orden, activa').eq('restaurante_id', RESTAURANTE_ID)
+      .order('orden', { ascending: true }).order('nombre', { ascending: true })
+    if (error) throw error
+    res.json(data)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.post('/api/zonas', async (req, res) => {
+  try {
+    const { nombre, orden = 0, activa = true } = req.body || {}
+    if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre de la zona es requerido.' })
+    const { data, error } = await db().from('zonas')
+      .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), orden: Number(orden) || 0, activa })
+      .select('id, nombre, orden, activa').single()
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una zona con ese nombre.' })
+      throw error
+    }
+    res.json(data)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.patch('/api/zonas', async (req, res) => {
+  try {
+    const { id, nombre, orden, activa } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const patch = {}
+    if (nombre !== undefined) patch.nombre = String(nombre).trim()
+    if (orden !== undefined) patch.orden = Number(orden) || 0
+    if (activa !== undefined) patch.activa = activa
+    const { data, error } = await db().from('zonas')
+      .update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+      .select('id, nombre, orden, activa').single()
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una zona con ese nombre.' })
+      throw error
+    }
+    res.json(data)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.delete('/api/zonas', async (req, res) => {
+  try {
+    const { id } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    await db().from('mesas').update({ zona_id: null }).eq('zona_id', id).eq('restaurante_id', RESTAURANTE_ID)
+    const { error } = await db().from('zonas').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    if (error) throw error
+    res.json({ ok: true })
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 

@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const { data, error } = await sb
         .from('mesas')
-        .select('id, numero_mesa, estado, capacidad')
+        .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)')
         .eq('restaurante_id', RESTAURANTE_ID)
         .order('numero_mesa')
       if (error) throw error
@@ -18,14 +18,14 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       if (!requireAuth(req, res, ['admin', 'gerente'])) return
-      const { numero_mesa, capacidad = 4, estado = 'disponible' } = req.body
+      const { numero_mesa, capacidad = 4, estado = 'disponible', zona_id = null } = req.body
       const { data, error } = await sb
         .from('mesas')
         .upsert(
-          { restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado },
+          { restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado, zona_id },
           { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true }
         )
-        .select('id, numero_mesa, estado, capacidad')
+        .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)')
         .maybeSingle()
       if (error) throw error
       return res.json(data)
@@ -36,6 +36,7 @@ export default async function handler(req, res) {
       // ocupa la mesa al unirse por QR.
       if (!requireAuth(req, res)) return
       const { id, estado } = req.body
+      const cambiaZona = Object.prototype.hasOwnProperty.call(req.body, 'zona_id')
       // Cerrar TODOS los pedidos no entregados de la mesa antes de pasar a
       // por_cobrar / disponible. No dependemos de la RPC porque su filtro
       // por cobrado_en deja afuera pedidos cobrados-pero-en-estado-pendiente
@@ -76,12 +77,15 @@ export default async function handler(req, res) {
           }
         }
       }
+      const patch = {}
+      if (estado !== undefined) patch.estado = estado
+      if (cambiaZona) patch.zona_id = req.body.zona_id ?? null
       const { data, error } = await sb
         .from('mesas')
-        .update({ estado })
+        .update(patch)
         .eq('id', id)
         .eq('restaurante_id', RESTAURANTE_ID)
-        .select('id, numero_mesa, estado, capacidad')
+        .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)')
         .single()
       if (error) throw error
       return res.json(data)

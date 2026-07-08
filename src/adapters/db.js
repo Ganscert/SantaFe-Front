@@ -33,7 +33,14 @@ export const db = {
   mesas: {
     list:   ()           => req('/mesas'),
     insert: (data)       => req('/mesas', 'POST', data),
-    update: (id, estado) => req('/mesas', 'PATCH', { id, estado }),
+    // `patch` puede ser un string (estado, retrocompat) o un objeto { estado?, zona_id? }.
+    update: (id, patch)  => req('/mesas', 'PATCH', { id, ...(typeof patch === 'string' ? { estado: patch } : patch) }),
+  },
+  zonas: {
+    list:   ()          => req('/zonas'),
+    create: (data)      => req('/zonas', 'POST', data),
+    update: (id, patch) => req('/zonas', 'PATCH', { id, ...patch }),
+    remove: (id)        => req('/zonas', 'DELETE', { id }),
   },
   platos: {
     list:   ()           => req('/platos'),

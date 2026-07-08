@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { QrCode, Receipt, Users, LogOut } from 'lucide-react'
+import { QrCode, Receipt, Users, LogOut, MapPin, Settings2 } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { useToast } from '../state/ToastContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
@@ -9,6 +9,7 @@ import { useAuth, ROLES } from '../state/AuthContext.jsx'
 import { db } from '../../adapters/db.js'
 import AccountPicker from './AccountPicker.jsx'
 import GenerarQR from './GenerarQR.jsx'
+import ZonasManager from './ZonasManager.jsx'
 
 /* ── Badge de estado ──────────────────────────────── */
 const ESTADO_CFG = {
@@ -55,6 +56,11 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Mesa {mesa.numeroMesa}</h3>
           <p className="text-xs leading-snug text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">{mesa.capacidad} pers · {mesa.capacidad} cuentas</p>
+          {mesa.zonaNombre && (
+            <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#7D8B6A]/15 text-[#5f6b4e] dark:text-[#AEBC97]">
+              <MapPin size={9} /> {mesa.zonaNombre}
+            </span>
+          )}
         </div>
         <EstadoBadge estado={mesa.estado} />
       </div>
@@ -158,7 +164,7 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
 }
 
 /* ── Panel lateral ────────────────────────────────── */
-function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [] }) {
+function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona }) {
   if (!mesa) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center">
       <span className="text-4xl">👆</span>
@@ -175,6 +181,23 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         <EstadoBadge estado={mesa.estado} size="lg" />
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">{mesa.capacidad} personas</p>
+
+      {/* Asignación de zona */}
+      {onAsignarZona && (
+        <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <MapPin size={13} className="text-[#7D8B6A] shrink-0" />
+          <select
+            value={mesa.zonaId ?? ''}
+            onChange={e => onAsignarZona(mesa.numeroMesa, e.target.value || null)}
+            className="flex-1 px-2.5 py-1.5 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+          >
+            <option value="">Sin zona</option>
+            {zonas.filter(z => z.activa !== false).map(z => (
+              <option key={z.id} value={z.id}>{z.nombre}</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {/* Alerta: clientes solicitaron la cuenta */}
       {(mesa.solicitudesCuenta?.length > 0) && (
@@ -302,7 +325,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
 }
 
 /* ── Panel / Drawer híbrido ───────────────────────── */
-function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [] }) {
+function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona }) {
   // Cierra con Escape
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose()
@@ -320,7 +343,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
       >
         ✕
       </button>
-      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} />
+      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} zonas={zonas} onAsignarZona={onAsignarZona} />
     </div>
   )
 
@@ -374,7 +397,7 @@ function FiltroChip({ estado, count, label, cls, filtroEstado, onToggle }) {
 
 /* ── Componente principal ─────────────────────────── */
 function TableroMesas() {
-  const { mesas, cambiarEstadoA, actualizarMesa, enviarACobro } = useMesas()
+  const { mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona } = useMesas()
   const { pedidos, contarActivosMesa } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { session } = useAuth()
@@ -382,12 +405,15 @@ function TableroMesas() {
   const navigate                 = useNavigate()
   const [selectedMesa, setSelectedMesa] = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('todas')
+  const [filtroZona, setFiltroZona] = useState('todas')
   const [pickerMesa, setPickerMesa] = useState(null)
   const [qrMesa, setQrMesa] = useState(null)
   const [comensalesDB, setComensalesDB] = useState([])
+  const [zonasOpen, setZonasOpen] = useState(false)
 
   const puedeGenerarQR = session?.role === ROLES.RECEPCIONISTA || session?.role === ROLES.MESERO
     || session?.role === 'admin' || session?.role === 'gerente'
+  const puedeGestionarZonas = session?.role === 'admin' || session?.role === 'gerente'
 
   const [fabOpen, setFabOpen] = useState(false)
 
@@ -443,8 +469,13 @@ function TableroMesas() {
   const ocupacionPct     = mesas.length ? Math.round(((countOcupadas + countPorCobrar) / mesas.length) * 100) : 0
 
   const mesasFiltradas = useMemo(
-    () => (filtroEstado === 'todas' ? mesas : mesas.filter(m => m.estado === filtroEstado)),
-    [mesas, filtroEstado],
+    () => mesas.filter(m => {
+      if (filtroEstado !== 'todas' && m.estado !== filtroEstado) return false
+      if (filtroZona === 'sin') return !m.zonaId
+      if (filtroZona !== 'todas' && m.zonaId !== filtroZona) return false
+      return true
+    }),
+    [mesas, filtroEstado, filtroZona],
   )
 
   return (
@@ -560,6 +591,34 @@ function TableroMesas() {
             />
           </div>
 
+          {/* Filtro y gestión de zonas */}
+          {(zonas.length > 0 || puedeGestionarZonas) && (
+            <div className="mb-4 flex items-center gap-2 flex-wrap">
+              {zonas.length > 0 && (
+                <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <MapPin size={13} className="text-[#7D8B6A]" />
+                  <select
+                    value={filtroZona}
+                    onChange={e => setFiltroZona(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+                  >
+                    <option value="todas">Todas las zonas</option>
+                    {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                    <option value="sin">Sin zona</option>
+                  </select>
+                </label>
+              )}
+              {puedeGestionarZonas && (
+                <button
+                  onClick={() => setZonasOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#A85638] dark:text-[#C99A3C] ring-1 ring-[#A85638]/30 hover:bg-[#A85638]/5 transition-colors"
+                >
+                  <Settings2 size={13} /> Gestionar zonas
+                </button>
+              )}
+            </div>
+          )}
+
           {filtroEstado !== 'todas' && (
             <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
               Mostrando {mesasFiltradas.length} de {mesas.length} mesas ·{' '}
@@ -599,11 +658,22 @@ function TableroMesas() {
           onClearCuenta={handleClearCuenta}
           onLiberarMesa={handleLiberarMesa}
           comensalesDB={comensalesDB}
+          zonas={zonas}
+          onAsignarZona={puedeGestionarZonas ? asignarZona : undefined}
         />
       </div>
 
       {/* Modal QR */}
       {qrMesa && <GenerarQR mesa={qrMesa} onClose={() => setQrMesa(null)} />}
+
+      {/* Modal gestión de zonas */}
+      {zonasOpen && (
+        <ZonasManager
+          zonas={zonas}
+          onClose={() => setZonasOpen(false)}
+          onChanged={cargarZonas}
+        />
+      )}
 
       {/* Selector de cuenta antes de crear pedido */}
       {pickerMesa && (

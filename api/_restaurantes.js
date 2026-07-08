@@ -48,16 +48,17 @@ export async function listRestaurantes(sb) {
 /** Detalle completo de un restaurante para la vista de administración. */
 export async function detalleRestaurante(sb, id) {
   const desde = desde30dIso()
-  const [rest, mesas, usuarios, platos, pagosRecientes, pagos30, pedidos30] = await Promise.all([
+  const [rest, mesas, usuarios, platos, pagosRecientes, pagos30, pedidos30, zonas] = await Promise.all([
     sb.from('restaurantes').select('id, nombre, creado_en, actualizado_en').eq('id', id).maybeSingle(),
-    sb.from('mesas').select('id, numero_mesa, estado, capacidad').eq('restaurante_id', id).order('numero_mesa'),
+    sb.from('mesas').select('id, numero_mesa, estado, capacidad, zona_id').eq('restaurante_id', id).order('numero_mesa'),
     sb.from('usuarios').select('id, nombre, email, role, activo, creado_en').eq('restaurante_id', id).order('creado_en', { ascending: false }),
     sb.from('platos').select('id, nombre, precio, disponible, categoria, imagen_url').eq('restaurante_id', id).is('eliminado_en', null).order('nombre'),
     sb.from('pagos').select('id, mesa_id, monto, metodo, referencia, creado_en').eq('restaurante_id', id).order('creado_en', { ascending: false }).limit(50),
     sb.from('pagos').select('monto').eq('restaurante_id', id).gte('creado_en', desde),
     sb.from('pedidos').select('id, estado').eq('restaurante_id', id).gte('creado_en', desde),
+    sb.from('zonas').select('id, nombre, orden, activa').eq('restaurante_id', id).order('orden').order('nombre'),
   ])
-  for (const q of [rest, mesas, usuarios, platos, pagosRecientes, pagos30, pedidos30]) {
+  for (const q of [rest, mesas, usuarios, platos, pagosRecientes, pagos30, pedidos30, zonas]) {
     if (q.error) throw q.error
   }
   if (!rest.data) return null
@@ -68,6 +69,7 @@ export async function detalleRestaurante(sb, id) {
   return {
     ...rest.data,
     mesas: mesas.data || [],
+    zonas: zonas.data || [],
     usuarios: usuarios.data || [],
     platos: platos.data || [],
     pagos: pagosRecientes.data || [],

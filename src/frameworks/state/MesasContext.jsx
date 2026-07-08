@@ -25,6 +25,8 @@ function mapRow(row, prev) {
     numeroMesa:  row.numero_mesa,
     capacidad:   row.capacidad ?? 4,
     estado:      row.estado,
+    zonaId:      row.zona_id ?? null,
+    zonaNombre:  row.zona?.nombre ?? null,
     cuentas:     prev?.cuentas          ?? [],
     integrantes: prev?.integrantes      ?? [],
     solicitudesCuenta: prev?.solicitudesCuenta ?? [],
@@ -34,8 +36,14 @@ function mapRow(row, prev) {
 export function MesasProvider({ children }) {
   const { serverState, sendMessage, connected } = useLiveSync()
   const [mesas, setMesas] = useState(defaultMesas)
+  const [zonas, setZonas] = useState([])
   const prevRef = useRef([])
   const lastOptimisticAtRef = useRef(0)
+
+  const cargarZonas = useCallback(async () => {
+    try { setZonas(await db.zonas.list()) }
+    catch (e) { console.error('[zonas.cargar]', e.message) }
+  }, [])
 
   // Carga desde Supabase vía API
   async function cargar(prev) {
@@ -50,7 +58,8 @@ export function MesasProvider({ children }) {
   // Carga inicial
   useEffect(() => {
     cargar([])
-  }, [])
+    cargarZonas()
+  }, [cargarZonas])
 
   // Polling como fallback: solo corre cuando Pusher NO está conectado.
   // Cuando Pusher está activo, los updates llegan en vivo via sync:mesas.
@@ -134,9 +143,23 @@ export function MesasProvider({ children }) {
     })
   }, [syncMesas])
 
+  // Asigna (o quita, zonaId=null) la zona de una mesa. Optimista + persistencia.
+  const asignarZona = useCallback((numeroMesa, zonaId) => {
+    lastOptimisticAtRef.current = Date.now()
+    setMesas(current => {
+      const zona = zonas.find(z => z.id === zonaId)
+      const next = current.map(m => m.numeroMesa === numeroMesa
+        ? { ...m, zonaId: zonaId ?? null, zonaNombre: zona?.nombre ?? null }
+        : m)
+      const mesa = next.find(m => m.numeroMesa === numeroMesa)
+      if (mesa) db.mesas.update(mesa.id, { zona_id: zonaId ?? null }).catch(e => console.error('[mesas.zona]', e.message))
+      return next
+    })
+  }, [zonas])
+
   const value = useMemo(
-    () => ({ mesas, cambiarEstadoA, actualizarMesa, enviarACobro }),
-    [mesas, cambiarEstadoA, actualizarMesa, enviarACobro],
+    () => ({ mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona }),
+    [mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona],
   )
 
   return <MesasContext.Provider value={value}>{children}</MesasContext.Provider>

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import {
   Building2, ArrowLeft, Loader2, AlertCircle, Users, Utensils, LayoutGrid,
   TrendingUp, Receipt, Download, RotateCcw, Pencil, Check, X, Activity,
-  CircleDollarSign, CreditCard,
+  CircleDollarSign, CreditCard, MapPin,
 } from 'lucide-react'
 import { db, RESTAURANTE_ID } from '../../adapters/db.js'
 import { buildCSV, downloadCSV, csvFilename } from '../../adapters/csv.js'
@@ -212,11 +212,12 @@ export default function AdminRestaurante() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Mesas */}
-          <Seccion titulo="Mesas" sub={`${data.mesas.length} registradas`}>
+          <Seccion titulo="Mesas" sub={`${data.mesas.length} registradas · ${(data.zonas?.length ?? 0)} zona${(data.zonas?.length ?? 0) !== 1 ? 's' : ''}`}>
             {!data.mesas.length ? <Vacio texto="Este restaurante aún no tiene mesas." /> : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {data.mesas.map((m) => {
                   const meta = ESTADO_MESA[m.estado] ?? ESTADO_MESA.disponible
+                  const zonaNombre = data.zonas?.find(z => z.id === m.zona_id)?.nombre
                   return (
                     <div key={m.id} className="rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-2">
                       <div className="flex items-center justify-between gap-1">
@@ -226,6 +227,11 @@ export default function AdminRestaurante() {
                       <span className={`inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${meta.cls}`}>
                         {meta.label}
                       </span>
+                      {zonaNombre && (
+                        <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] font-bold text-[#5f6b4e] dark:text-[#AEBC97]">
+                          <MapPin size={9} /> {zonaNombre}
+                        </span>
+                      )}
                     </div>
                   )
                 })}
