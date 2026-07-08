@@ -57,7 +57,7 @@ app.use('/api', (req, res, next) => {
   if (path === '/usuarios') roles = ROLES_ADMIN
   else if (path === '/platos') roles = ROLES_ADMIN
   else if (path === '/restaurantes') roles = ['admin']
-  else if (path === '/mesas' && method === 'POST') roles = ROLES_ADMIN
+  else if (path === '/mesas' && (method === 'POST' || method === 'DELETE')) roles = ROLES_ADMIN
   else if (path === '/zonas' && method !== 'GET') roles = ROLES_ADMIN
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
   else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
@@ -131,6 +131,22 @@ app.patch('/api/mesas', async (req, res) => {
     const { data, error } = await db().from('mesas').update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').single()
     if (error) throw error
     res.json(data)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.delete('/api/mesas', async (req, res) => {
+  try {
+    const { id } = req.body || {}
+    if (!id) return res.status(400).json({ error: 'id requerido.' })
+    const { data: mesa } = await db().from('mesas').select('estado').eq('id', id).eq('restaurante_id', RESTAURANTE_ID).maybeSingle()
+    if (!mesa) return res.json({ ok: false, error: 'Mesa no encontrada.' })
+    if (mesa.estado !== 'disponible') return res.json({ ok: false, error: 'Solo se pueden eliminar mesas disponibles (sin comensales ni cobros pendientes).' })
+    const { error } = await db().from('mesas').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    if (error) {
+      if (error.code === '23503') return res.json({ ok: false, error: 'La mesa tiene pedidos o pagos asociados y no se puede eliminar.' })
+      throw error
+    }
+    res.json({ ok: true })
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 
