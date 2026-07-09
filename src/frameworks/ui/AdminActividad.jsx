@@ -14,9 +14,14 @@ const TIPOS = {
   sesion:     { label: 'Sesión',     icon: KeyRound,           cls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
 }
 
+// Zona horaria del restaurante (consistente con la moneda/locale es-PE).
+// Fijarla evita el "desfase" de que cada visor viera la hora en SU zona:
+// ahora todos ven la misma hora local del negocio.
+const TZ_RESTAURANTE = 'America/Lima'
 const fmtTs = (iso) => new Date(iso).toLocaleString('es-PE', {
   day: '2-digit', month: '2-digit', year: 'numeric',
   hour: '2-digit', minute: '2-digit', second: '2-digit',
+  timeZone: TZ_RESTAURANTE,
 })
 
 function ChipTipo({ tipo }) {

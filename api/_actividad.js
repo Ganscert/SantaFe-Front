@@ -42,7 +42,12 @@ export async function registrarActividad(sb, auth, restauranteId, eventos) {
   const { error } = await sb.from('actividad_usuarios').insert(filas)
   if (error) {
     if (esTablaFaltante(error)) return { ok: false, missingTable: true }
-    throw error
+    // La auditoría NUNCA debe romper la app (500). Si la fila viola una
+    // restricción (p. ej. FK de restaurante inexistente) o hay un desajuste
+    // de columnas, se registra en el servidor y se descarta el lote sin error
+    // hacia el cliente.
+    console.warn('[actividad] insert falló, lote descartado:', error.code, error.message)
+    return { ok: false, error: error.message }
   }
   return { ok: true, insertados: filas.length }
 }

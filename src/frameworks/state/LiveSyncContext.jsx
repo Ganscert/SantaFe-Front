@@ -84,17 +84,28 @@ export const LiveSyncProvider = ({ children }) => {
 
   const sendMessage = useCallback(async (message) => {
     if (!PUSHER_KEY) return
+    const token = authToken()
+    // Sin sesión válida no se puede difundir: /api/sync exige token y
+    // respondería 401. Evitamos el request (y el error silencioso) y avisamos.
+    if (!token) {
+      console.warn('[LiveSync] sin sesión: se omite la difusión en tiempo real.')
+      return
+    }
     try {
-      const token = authToken()
-      await fetch('/api/sync', {
+      const res = await fetch('/api/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ ...message, socket_id: socketIdRef.current }),
         keepalive: true,
       })
+      if (!res.ok) {
+        // 401: token expirado/ inválido. No rompemos la app; sólo se pierde
+        // esta difusión (los demás siguen recibiendo por polling).
+        console.warn('[LiveSync] /api/sync respondió', res.status, '— difusión omitida.')
+      }
     } catch (e) {
       console.error('[LiveSync] send failed:', e)
     }

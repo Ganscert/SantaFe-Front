@@ -42,11 +42,22 @@ export default function Join() {
 
   const [status, setStatus] = useState('checking') // checking | success | error
   const [message, setMessage] = useState('')
+  // Contador para forzar la re-evaluación del efecto tras el timeout de espera.
+  const [tick, setTick] = useState(0)
 
   // Para asegurar que sólo aplicamos el token una vez aunque tokens cambien
   const consumidoRef = useRef(false)
   // Timestamp de cuándo empezamos a esperar — para no fallar antes del timeout
   const inicioRef = useRef(Date.now())
+
+  // Permite reintentar sin recargar: reinicia la ventana de espera y re-evalúa.
+  const reintentar = () => {
+    consumidoRef.current = false
+    inicioRef.current = Date.now()
+    setMessage('')
+    setStatus('checking')
+    setTick((t) => t + 1)
+  }
 
   useEffect(() => {
     if (consumidoRef.current) return
@@ -74,11 +85,11 @@ export default function Join() {
       const transcurrido = Date.now() - inicioRef.current
       if (transcurrido < WAIT_FOR_SYNC_MS) {
         const restante = WAIT_FOR_SYNC_MS - transcurrido
-        const id = setTimeout(() => {
-          // Forzar re-evaluación tras el timeout; el efecto re-corre por dep `tokens`
-          // o por este state push.
-          setStatus((s) => s === 'checking' ? 'checking' : s)
-        }, restante + 50)
+        // Forzar re-evaluación tras el timeout incrementando un contador REAL.
+        // (Antes se hacía setStatus al mismo valor 'checking', que no
+        // re-renderiza → el efecto no volvía a correr y la pantalla quedaba
+        // colgada indefinidamente en "Procesando código…".)
+        const id = setTimeout(() => setTick((t) => t + 1), restante + 50)
         return () => clearTimeout(id)
       }
       setStatus('error')
@@ -94,9 +105,12 @@ export default function Join() {
 
     const mesa = mesas.find((m) => m.id === token.mesa_id)
     if (!mesa) {
-      // Igual que con tokens, espera al WS por si la lista de mesas tarda
+      // Igual que con tokens, espera al WS por si la lista de mesas tarda.
       const transcurrido = Date.now() - inicioRef.current
-      if (transcurrido < WAIT_FOR_SYNC_MS) return
+      if (transcurrido < WAIT_FOR_SYNC_MS) {
+        const id = setTimeout(() => setTick((t) => t + 1), WAIT_FOR_SYNC_MS - transcurrido + 50)
+        return () => clearTimeout(id)
+      }
       setStatus('error')
       setMessage('La mesa asociada al código ya no existe.')
       return
@@ -176,9 +190,10 @@ export default function Join() {
       const dest = session.role === ROLES.CLIENTE ? '/mi-mesa' : `/mesa/${mesa.numeroMesa}`
       setTimeout(() => navigate(dest, { replace: true }), 900)
     })()
-    // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos
+    // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos.
+    // `tick` fuerza la re-evaluación tras cada timeout de espera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenStr, codigoParam, session?.id, tokens, mesas])
+  }, [tokenStr, codigoParam, session?.id, tokens, mesas, tick])
 
   if (!session) return <Navigate to="/" replace />
 
@@ -212,13 +227,22 @@ export default function Join() {
             </div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">No fue posible unirte</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{message}</p>
-            <button
-              type="button"
-              onClick={() => navigate(session?.role === ROLES.CLIENTE ? '/mi-mesa' : '/tablero-mesas')}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-bold"
-            >
-              <QrCode size={14} /> Volver
-            </button>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={reintentar}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-bold"
+              >
+                <Loader2 size={14} /> Reintentar
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(session?.role === ROLES.CLIENTE ? '/mi-mesa' : '/tablero-mesas')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <QrCode size={14} /> {session?.role === ROLES.CLIENTE ? 'Otro código' : 'Volver'}
+              </button>
+            </div>
           </>
         )}
       </div>

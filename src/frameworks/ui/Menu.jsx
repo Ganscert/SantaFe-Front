@@ -67,7 +67,10 @@ function Menu() {
   // Mezcla: platos del catálogo estático + agregados en /admin/platos.
   // Normalizamos al mismo shape (imagen, ingredientes[], categoria, precio).
   const catalogo = useMemo(() => {
-    const base = ingredientes.map((p, i) => ({
+    // El menú estático es sólo un FALLBACK de demo: si el restaurante ya tiene
+    // su propia carta (platos en DB, con imágenes por restaurante), se usa esa.
+    const hayCartaPropia = (platosAdmin || []).length > 0
+    const base = hayCartaPropia ? [] : ingredientes.map((p, i) => ({
       key: `static-${i}`,
       nombre: p.nombre,
       precio: p.precio,
@@ -126,14 +129,17 @@ function Menu() {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Menú Santa Fe</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">Gastronomía peruana de autor</p>
             </div>
-            <div className="flex gap-2">
-              <Link to="/tablero-mesas" className="rounded-xl bg-[#4F46E5] text-white px-4 py-2 text-sm font-bold hover:bg-[#4338CA] transition-colors">
-                Tablero
-              </Link>
-              <Link to="/cocina/pendientes" className="rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                Cocina
-              </Link>
-            </div>
+            {/* Accesos de staff: ocultos para el cliente (no tiene esas rutas). */}
+            {!esCliente && (
+              <div className="flex gap-2">
+                <Link to="/tablero-mesas" className="rounded-xl bg-[#4F46E5] text-white px-4 py-2 text-sm font-bold hover:bg-[#4338CA] transition-colors">
+                  Tablero
+                </Link>
+                <Link to="/cocina/pendientes" className="rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Cocina
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Búsqueda */}

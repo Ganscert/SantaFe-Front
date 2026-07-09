@@ -33,7 +33,13 @@ export default async function handler(req, res) {
         )
         .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)')
         .maybeSingle()
-      if (error) throw error
+      if (error) {
+        // FK: el restaurante configurado no existe en `restaurantes`.
+        if (error.code === '23503') {
+          return res.status(400).json({ error: 'El restaurante configurado no existe. Revisa RESTAURANTE_ID.' })
+        }
+        throw error
+      }
       return res.json(data)
     }
 

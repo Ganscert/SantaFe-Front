@@ -3,6 +3,7 @@ import {
   signToken, requireAuth, hashPassword, verifyPassword,
   loginRateLimited, loginRateClear, serverError,
 } from './_auth.js'
+import { crearPerfilCliente } from './_perfiles.js'
 
 const ROLES_ADMIN = ['admin', 'gerente']
 const ROLES_VALIDOS = ['admin', 'gerente', 'recepcionista', 'mesero', 'cocinero', 'cajero', 'cliente']
@@ -86,6 +87,15 @@ export default async function handler(req, res) {
           }
           throw error
         }
+        // Persistir también el perfil del cliente (tabla perfiles_clientes).
+        // Best-effort: si falla, el registro del usuario sigue siendo válido.
+        await crearPerfilCliente(sb, {
+          usuario_id: row.id,
+          restaurante_id: row.restaurante_id,
+          nombre: row.nombre,
+          email: row.email,
+          telefono: req.body?.telefono ?? null,
+        })
         return res.json({ ok: true, user: row, token: signToken(row) })
       }
 

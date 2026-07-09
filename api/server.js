@@ -33,6 +33,7 @@ import {
   renombrarRestaurante, eliminarRestaurante,
 } from './_restaurantes.js'
 import { registrarActividad, listActividad } from './_actividad.js'
+import { crearPerfilCliente } from './_perfiles.js'
 
 const app = express()
 app.use(express.json())
@@ -71,7 +72,12 @@ app.use('/api', (req, res, next) => {
   next()
 })
 
-const RESTAURANTE_ID = process.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
+// Mismo criterio que api/_supabase.js: acepta RESTAURANTE_ID sin prefijo y usa
+// el id real de "Santa fe" como último recurso (el 000..001 no existe → FK 500).
+const RESTAURANTE_ID =
+  process.env.RESTAURANTE_ID ||
+  process.env.VITE_RESTAURANTE_ID ||
+  'c2b2d7cd-12e0-49b0-ad46-4e3c23fbab90'
 let _sb = null
 const db = () => {
   if (!_sb) _sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -385,6 +391,13 @@ app.post('/api/usuarios', async (req, res) => {
         }
         throw error
       }
+      await crearPerfilCliente(db(), {
+        usuario_id: row.id,
+        restaurante_id: row.restaurante_id,
+        nombre: row.nombre,
+        email: row.email,
+        telefono: req.body?.telefono ?? null,
+      })
       return res.json({ ok: true, user: row, token: signToken(row) })
     }
 

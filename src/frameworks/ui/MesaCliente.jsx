@@ -180,7 +180,10 @@ export default function MesaCliente() {
 
   // Catálogo combinado (estático + admin)
   const catalogo = useMemo(() => {
-    const base = ingredientes.map((p, i) => ({
+    // Menú estático = fallback de demo. Si el restaurante tiene su carta propia
+    // (platos en DB con imágenes), se muestra ésa en lugar del catálogo genérico.
+    const hayCartaPropia = (platosAdmin || []).some((p) => p.disponible !== false)
+    const base = hayCartaPropia ? [] : ingredientes.map((p, i) => ({
       key: `static-${i}`,
       nombre: p.nombre,
       precio: p.precio,
