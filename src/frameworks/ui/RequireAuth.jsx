@@ -30,6 +30,7 @@ export function defaultHomeForRole(role) {
     case 'cliente':       return '/mi-mesa'
     case 'admin':         return '/admin/dashboard'
     case 'gerente':       return '/admin/dashboard'
+    case 'supervisor':    return '/tablero-mesas'
     case 'cocinero':      return '/cocina/pendientes'
     case 'cajero':        return '/cajero/cobros'
     case 'recepcionista': return '/tablero-mesas'

@@ -60,7 +60,7 @@ function MesaDetalle() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">La mesa {id} no existe en el sistema.</p>
         <button
           onClick={() => navigate('/tablero-mesas')}
-          className="rounded-xl bg-[#A85638] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#8F4527] transition-colors"
+          className="rounded-xl bg-[#4F46E5] text-white px-6 py-2.5 text-sm font-bold hover:bg-[#4338CA] transition-colors"
         >
           ← Volver al tablero
         </button>
@@ -77,7 +77,7 @@ function MesaDetalle() {
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
       {/* Topbar */}
-      <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3 pl-16 lg:pl-4">
           <button
             onClick={() => navigate('/tablero-mesas')}
@@ -99,7 +99,7 @@ function MesaDetalle() {
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pedidos activos</h2>
             <Link
               to={`/pedidos/nuevo?mesa=${numeroMesa}`}
-              className="rounded-xl bg-[#A85638] text-white px-4 py-2 text-sm font-bold hover:bg-[#8F4527] transition-colors"
+              className="rounded-xl bg-[#4F46E5] text-white px-4 py-2 text-sm font-bold hover:bg-[#4338CA] transition-colors"
             >
               + Agregar pedido
             </Link>
@@ -122,7 +122,7 @@ function MesaDetalle() {
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-xs text-slate-400 dark:text-slate-500">{pedido.hora}</span>
                         {cuenta && (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] truncate">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] dark:bg-[#4F46E5]/20 dark:text-[#EEF2FF] truncate">
                             {cuenta.nombre}
                           </span>
                         )}
@@ -185,7 +185,7 @@ function MesaDetalle() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Cuentas abiertas</p>
               <div className="flex flex-wrap gap-1.5">
                 {mesa.cuentas.filter(c => c.abierta !== false).map(c => (
-                  <span key={c.id} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20 dark:text-[#F6EEE3] ring-1 ring-[#A85638]/20">
+                  <span key={c.id} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] dark:bg-[#4F46E5]/20 dark:text-[#EEF2FF] ring-1 ring-[#4F46E5]/20">
                     {c.nombre}
                   </span>
                 ))}

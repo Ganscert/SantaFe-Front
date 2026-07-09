@@ -34,6 +34,24 @@ export function verifyToken(token) {
 }
 
 /**
+ * Restaurante efectivo del request (multi-tenant):
+ * 1) `restaurante_id` explícito en query/body — sólo si el token es de admin
+ *    (el panel de plataforma audita otros restaurantes),
+ * 2) el restaurante del token del caller (staff/clientes de otras sedes),
+ * 3) el restaurante por defecto de la instalación (env).
+ * No responde errores: un override no autorizado cae al restaurante propio.
+ */
+export function resolveRestaurante(req, fallback) {
+  const header = req.headers?.authorization || ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null
+  const user = verifyToken(token)
+  const pedido = req.query?.restaurante_id || req.body?.restaurante_id
+  if (pedido && user?.role === 'admin') return String(pedido)
+  if (user?.restaurante_id) return user.restaurante_id
+  return fallback
+}
+
+/**
  * Verifica el Bearer token y (opcional) el rol. Si falla responde 401/403
  * y devuelve null; si pasa, devuelve el payload { sub, role, exp }.
  */

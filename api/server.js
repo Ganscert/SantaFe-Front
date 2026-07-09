@@ -24,7 +24,7 @@ import {
   azulIsLive, buildAzulRequest, verifyAzulResponse, azulSandboxApproval, azulConfig,
 } from './_azul.js'
 import {
-  signToken, requireAuth, hashPassword, verifyPassword,
+  signToken, requireAuth, resolveRestaurante, hashPassword, verifyPassword,
   loginRateLimited, loginRateClear, serverError,
 } from './_auth.js'
 import { dashboardRows } from './_dashboard.js'
@@ -32,6 +32,7 @@ import {
   listRestaurantes, detalleRestaurante, crearRestaurante,
   renombrarRestaurante, eliminarRestaurante,
 } from './_restaurantes.js'
+import { registrarActividad, listActividad } from './_actividad.js'
 
 const app = express()
 app.use(express.json())
@@ -39,8 +40,9 @@ app.use(express.urlencoded({ extended: true })) // Azul postea el callback como 
 
 // ─── AUTH GUARD ──────────────────────────────────────────────────────────────
 // Espeja los requireAuth de las funciones de Vercel (api/*.js).
-const ROLES_ADMIN  = ['admin', 'gerente']
-const ROLES_COBROS = ['admin', 'gerente', 'cajero', 'recepcionista']
+const ROLES_ADMIN       = ['admin', 'gerente']
+const ROLES_SUPERVISION = ['admin', 'gerente', 'supervisor']
+const ROLES_COBROS      = ['admin', 'gerente', 'cajero', 'recepcionista']
 
 app.use('/api', (req, res, next) => {
   const { path, method } = req
@@ -55,10 +57,11 @@ app.use('/api', (req, res, next) => {
   const esDashboard = req.query.dashboard === '1' || req.query.dashboard === 'true'
   let roles = null
   if (path === '/usuarios') roles = ROLES_ADMIN
-  else if (path === '/platos') roles = ROLES_ADMIN
+  else if (path === '/platos') roles = ROLES_SUPERVISION
   else if (path === '/restaurantes') roles = ['admin']
-  else if (path === '/mesas' && (method === 'POST' || method === 'DELETE')) roles = ROLES_ADMIN
-  else if (path === '/zonas' && method !== 'GET') roles = ROLES_ADMIN
+  else if (path === '/actividad' && method === 'GET') roles = ['admin']
+  else if (path === '/mesas' && (method === 'POST' || method === 'DELETE')) roles = ROLES_SUPERVISION
+  else if (path === '/zonas' && method !== 'GET') roles = ROLES_SUPERVISION
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
   else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
 
@@ -86,9 +89,12 @@ async function resolverRestauranteCaller(auth) {
 }
 
 // ─── MESAS ───────────────────────────────────────────────────────────────────
+// rid(req) = restaurante del caller u override de auditoría (admin).
+const rid = (req) => resolveRestaurante(req, RESTAURANTE_ID)
+
 app.get('/api/mesas', async (req, res) => {
   try {
-    const { data, error } = await db().from('mesas').select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').eq('restaurante_id', RESTAURANTE_ID).order('numero_mesa')
+    const { data, error } = await db().from('mesas').select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').eq('restaurante_id', rid(req)).order('numero_mesa')
     if (error) throw error
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -98,7 +104,7 @@ app.post('/api/mesas', async (req, res) => {
   try {
     const { numero_mesa, capacidad = 4, estado = 'disponible', zona_id = null } = req.body
     const { data, error } = await db().from('mesas')
-      .upsert({ restaurante_id: RESTAURANTE_ID, numero_mesa, capacidad, estado, zona_id }, { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true })
+      .upsert({ restaurante_id: rid(req), numero_mesa, capacidad, estado, zona_id }, { onConflict: 'restaurante_id,numero_mesa', ignoreDuplicates: true })
       .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').maybeSingle()
     if (error) throw error
     res.json(data)
@@ -107,12 +113,18 @@ app.post('/api/mesas', async (req, res) => {
 
 app.patch('/api/mesas', async (req, res) => {
   try {
+    const RID = rid(req)
     const { id, estado } = req.body
     const cambiaZona = Object.prototype.hasOwnProperty.call(req.body, 'zona_id')
+    // Atributos estructurales (número/capacidad): sólo gestión/supervisión.
+    const cambiaEstructura = req.body.numero_mesa !== undefined || req.body.capacidad !== undefined
+    if (cambiaEstructura && !ROLES_SUPERVISION.includes(req.auth?.role)) {
+      return res.status(403).json({ error: 'Solo administración o supervisión pueden editar nombre/número y capacidad de las mesas.' })
+    }
     // Siempre cerrar pedidos abiertos desde JS (no depender de la RPC).
     if (estado === 'por_cobrar' || estado === 'disponible') {
       const { data: abiertos } = await db().from('pedidos').select('id')
-        .eq('mesa_id', id).eq('restaurante_id', RESTAURANTE_ID)
+        .eq('mesa_id', id).eq('restaurante_id', RID)
         .not('estado', 'in', '("entregado","cancelado")')
       if (abiertos?.length) {
         const ids = abiertos.map(p => p.id)
@@ -128,20 +140,26 @@ app.patch('/api/mesas', async (req, res) => {
     const patch = {}
     if (estado !== undefined) patch.estado = estado
     if (cambiaZona) patch.zona_id = req.body.zona_id ?? null
-    const { data, error } = await db().from('mesas').update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID).select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').single()
-    if (error) throw error
+    if (req.body.numero_mesa !== undefined) patch.numero_mesa = Number(req.body.numero_mesa)
+    if (req.body.capacidad !== undefined) patch.capacidad = Math.max(1, Number(req.body.capacidad) || 1)
+    const { data, error } = await db().from('mesas').update(patch).eq('id', id).eq('restaurante_id', RID).select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)').single()
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una mesa con ese número.' })
+      throw error
+    }
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 
 app.delete('/api/mesas', async (req, res) => {
   try {
+    const RID = rid(req)
     const { id } = req.body || {}
     if (!id) return res.status(400).json({ error: 'id requerido.' })
-    const { data: mesa } = await db().from('mesas').select('estado').eq('id', id).eq('restaurante_id', RESTAURANTE_ID).maybeSingle()
+    const { data: mesa } = await db().from('mesas').select('estado').eq('id', id).eq('restaurante_id', RID).maybeSingle()
     if (!mesa) return res.json({ ok: false, error: 'Mesa no encontrada.' })
     if (mesa.estado !== 'disponible') return res.json({ ok: false, error: 'Solo se pueden eliminar mesas disponibles (sin comensales ni cobros pendientes).' })
-    const { error } = await db().from('mesas').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    const { error } = await db().from('mesas').delete().eq('id', id).eq('restaurante_id', RID)
     if (error) {
       if (error.code === '23503') return res.json({ ok: false, error: 'La mesa tiene pedidos o pagos asociados y no se puede eliminar.' })
       throw error
@@ -154,7 +172,7 @@ app.delete('/api/mesas', async (req, res) => {
 app.get('/api/zonas', async (req, res) => {
   try {
     const { data, error } = await db().from('zonas')
-      .select('id, nombre, orden, activa').eq('restaurante_id', RESTAURANTE_ID)
+      .select('id, nombre, orden, activa').eq('restaurante_id', rid(req))
       .order('orden', { ascending: true }).order('nombre', { ascending: true })
     if (error) throw error
     res.json(data)
@@ -166,7 +184,7 @@ app.post('/api/zonas', async (req, res) => {
     const { nombre, orden = 0, activa = true } = req.body || {}
     if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre de la zona es requerido.' })
     const { data, error } = await db().from('zonas')
-      .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), orden: Number(orden) || 0, activa })
+      .insert({ restaurante_id: rid(req), nombre: String(nombre).trim(), orden: Number(orden) || 0, activa })
       .select('id, nombre, orden, activa').single()
     if (error) {
       if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una zona con ese nombre.' })
@@ -185,7 +203,7 @@ app.patch('/api/zonas', async (req, res) => {
     if (orden !== undefined) patch.orden = Number(orden) || 0
     if (activa !== undefined) patch.activa = activa
     const { data, error } = await db().from('zonas')
-      .update(patch).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+      .update(patch).eq('id', id).eq('restaurante_id', rid(req))
       .select('id, nombre, orden, activa').single()
     if (error) {
       if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una zona con ese nombre.' })
@@ -199,8 +217,9 @@ app.delete('/api/zonas', async (req, res) => {
   try {
     const { id } = req.body || {}
     if (!id) return res.status(400).json({ error: 'id requerido.' })
-    await db().from('mesas').update({ zona_id: null }).eq('zona_id', id).eq('restaurante_id', RESTAURANTE_ID)
-    const { error } = await db().from('zonas').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    const RID = rid(req)
+    await db().from('mesas').update({ zona_id: null }).eq('zona_id', id).eq('restaurante_id', RID)
+    const { error } = await db().from('zonas').delete().eq('id', id).eq('restaurante_id', RID)
     if (error) throw error
     res.json({ ok: true })
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -211,7 +230,7 @@ app.get('/api/platos', async (req, res) => {
   try {
     const { data, error } = await db().from('platos')
       .select('id, nombre, precio, disponible, imagen_url, categoria, ingredientes, creado_en')
-      .eq('restaurante_id', RESTAURANTE_ID).is('eliminado_en', null).order('creado_en', { ascending: false })
+      .eq('restaurante_id', rid(req)).is('eliminado_en', null).order('creado_en', { ascending: false })
     if (error) throw error
     res.json(data)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -221,7 +240,7 @@ app.post('/api/platos', async (req, res) => {
   try {
     const { nombre, precio, disponible = true, imagen_url = null, categoria = null, ingredientes = [] } = req.body
     const { data, error } = await db().from('platos')
-      .insert({ restaurante_id: RESTAURANTE_ID, nombre, precio, disponible, imagen_url, categoria, ingredientes })
+      .insert({ restaurante_id: rid(req), nombre, precio, disponible, imagen_url, categoria, ingredientes })
       .select().single()
     if (error) throw error
     res.json(data)
@@ -233,7 +252,7 @@ app.patch('/api/platos', async (req, res) => {
     const { id, nombre, precio, disponible, imagen_url, categoria, ingredientes } = req.body
     const { data, error } = await db().from('platos')
       .update({ nombre, precio, disponible, imagen_url: imagen_url ?? null, categoria: categoria ?? null, ingredientes: ingredientes ?? [] })
-      .eq('id', id).eq('restaurante_id', RESTAURANTE_ID).is('eliminado_en', null).select().single()
+      .eq('id', id).eq('restaurante_id', rid(req)).is('eliminado_en', null).select().single()
     if (error) throw error
     res.json(data ?? null)
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -242,7 +261,7 @@ app.patch('/api/platos', async (req, res) => {
 app.delete('/api/platos', async (req, res) => {
   try {
     const { id } = req.body ?? {}
-    const { error } = await db().from('platos').update({ eliminado_en: new Date().toISOString() }).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+    const { error } = await db().from('platos').update({ eliminado_en: new Date().toISOString() }).eq('id', id).eq('restaurante_id', rid(req))
     if (error) throw error
     res.json({ ok: true })
   } catch (e) { serverError(res, '[api dev]', e) }
@@ -599,6 +618,22 @@ app.delete('/api/restaurantes', async (req, res) => {
     if (!id) return res.status(400).json({ error: 'id requerido.' })
     if (id === RESTAURANTE_ID) return res.status(400).json({ error: 'No puedes eliminar el restaurante activo de la plataforma.' })
     res.json(await eliminarRestaurante(db(), id))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+// ─── ACTIVIDAD (auditoría de usuarios, panel admin) ──────────────────────────
+app.post('/api/actividad', async (req, res) => {
+  try {
+    // Se atribuye al restaurante del usuario autenticado (token).
+    const restauranteId = req.auth?.restaurante_id || RESTAURANTE_ID
+    res.json(await registrarActividad(db(), req.auth, restauranteId, req.body?.eventos))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.get('/api/actividad', async (req, res) => {
+  try {
+    const { tipo, desde, hasta, q, limit, restaurante_id } = req.query || {}
+    res.json(await listActividad(db(), { restaurante_id, tipo, desde, hasta, q, limit }))
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 

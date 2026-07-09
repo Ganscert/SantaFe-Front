@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { QrCode, Receipt, Users, LogOut, MapPin, Settings2 } from 'lucide-react'
+import { QrCode, Receipt, Users, LogOut, MapPin, Settings2, Pencil, X } from 'lucide-react'
 import { useMesas } from '../state/MesasContext.jsx'
 import { useToast } from '../state/ToastContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
@@ -38,7 +38,7 @@ const BORDER_ESTADO = {
 
 function TarjetaMesa({ mesa, seleccionada, onSelect }) {
   const border = BORDER_ESTADO[mesa.estado] ?? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
-  const ring   = seleccionada ? 'ring-2 ring-[#A85638] ring-offset-2 dark:ring-offset-slate-950' : ''
+  const ring   = seleccionada ? 'ring-2 ring-[#4F46E5] ring-offset-2 dark:ring-offset-slate-950' : ''
   const integrantes = mesa.integrantes || []
   return (
     <article
@@ -57,7 +57,7 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Mesa {mesa.numeroMesa}</h3>
           <p className="text-xs leading-snug text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">{mesa.capacidad} pers · {mesa.capacidad} cuentas</p>
           {mesa.zonaNombre && (
-            <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#7D8B6A]/15 text-[#5f6b4e] dark:text-[#AEBC97]">
+            <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#10B981]/15 text-[#047857] dark:text-[#6EE7B7]">
               <MapPin size={9} /> {mesa.zonaNombre}
             </span>
           )}
@@ -83,7 +83,7 @@ function TarjetaMesa({ mesa, seleccionada, onSelect }) {
       <Link
         to={`/mesa/${mesa.numeroMesa}`}
         onClick={e => e.stopPropagation()}
-        className="text-xs font-semibold text-[#A85638] dark:text-[#C99A3C] hover:underline"
+        className="text-xs font-semibold text-[#4F46E5] dark:text-[#0EA5E9] hover:underline"
       >
         Ver detalle →
       </Link>
@@ -163,8 +163,77 @@ function BotoneraEstado({ mesa, pedidosActivosCount, onSetEstado }) {
   )
 }
 
+/* ── Edición de número/capacidad (admin · gerente · supervisor) ──
+   El caller lo monta con key={numero-capacidad}: si la mesa cambia por
+   fuera, el editor se remonta con los valores frescos (sin effects). */
+function EditorMesa({ mesa, onEditarMesa }) {
+  const [abierto, setAbierto] = useState(false)
+  const [numero, setNumero] = useState(mesa.numeroMesa)
+  const [capacidad, setCapacidad] = useState(mesa.capacidad)
+  const [guardando, setGuardando] = useState(false)
+  const toast = useToast()
+
+  if (!abierto) {
+    return (
+      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+        {mesa.capacidad} personas
+        <button
+          onClick={() => setAbierto(true)}
+          title="Editar número y capacidad de la mesa"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-[#4F46E5] hover:bg-[#4F46E5]/10 transition-colors"
+        >
+          <Pencil size={12} />
+        </button>
+      </div>
+    )
+  }
+
+  async function guardar(e) {
+    e.preventDefault()
+    if (guardando) return
+    setGuardando(true)
+    const res = await onEditarMesa(mesa.numeroMesa, { numero: Number(numero), capacidad: Number(capacidad) })
+    setGuardando(false)
+    if (res?.ok) {
+      toast.success(`Mesa actualizada (nº ${numero}, ${capacidad} personas).`)
+      setAbierto(false)
+    } else {
+      toast.error(res?.error || 'No se pudo actualizar la mesa.')
+    }
+  }
+
+  return (
+    <form onSubmit={guardar} className="flex flex-wrap items-end gap-2 rounded-xl ring-1 ring-[#4F46E5]/40 p-2.5 bg-[#4F46E5]/5">
+      <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        Mesa nº
+        <input
+          type="number" min={1} autoFocus value={numero}
+          onChange={(e) => setNumero(e.target.value)}
+          className="w-16 px-2 py-1.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#4F46E5]"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        Personas
+        <input
+          type="number" min={1} max={30} value={capacidad}
+          onChange={(e) => setCapacidad(e.target.value)}
+          className="w-16 px-2 py-1.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#4F46E5]"
+        />
+      </label>
+      <div className="flex items-center gap-1 ml-auto">
+        <button type="button" onClick={() => { setAbierto(false); setNumero(mesa.numeroMesa); setCapacidad(mesa.capacidad) }} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <X size={14} />
+        </button>
+        <button type="submit" disabled={guardando} className="px-3 h-8 rounded-lg bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold disabled:opacity-50 transition-colors">
+          Guardar
+        </button>
+      </div>
+    </form>
+  )
+}
+
 /* ── Panel lateral ────────────────────────────────── */
-function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa }) {
+function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa, onEditarMesa }) {
   if (!mesa) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center">
       <span className="text-4xl">👆</span>
@@ -180,16 +249,18 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
         <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Mesa {mesa.numeroMesa}</h2>
         <EstadoBadge estado={mesa.estado} size="lg" />
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{mesa.capacidad} personas</p>
+      {onEditarMesa
+        ? <EditorMesa key={`${mesa.numeroMesa}-${mesa.capacidad}`} mesa={mesa} onEditarMesa={onEditarMesa} />
+        : <p className="text-sm text-slate-500 dark:text-slate-400">{mesa.capacidad} personas</p>}
 
       {/* Asignación de zona */}
       {onAsignarZona && (
         <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-          <MapPin size={13} className="text-[#7D8B6A] shrink-0" />
+          <MapPin size={13} className="text-[#10B981] shrink-0" />
           <select
             value={mesa.zonaId ?? ''}
             onChange={e => onAsignarZona(mesa.numeroMesa, e.target.value || null)}
-            className="flex-1 px-2.5 py-1.5 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+            className="flex-1 px-2.5 py-1.5 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
           >
             <option value="">Sin zona</option>
             {zonas.filter(z => z.activa !== false).map(z => (
@@ -282,14 +353,14 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
       <div className="grid gap-2">
         <button
           onClick={() => onPedirCuenta?.(mesa)}
-          className="w-full rounded-xl bg-[#A85638] text-white py-2.5 text-sm font-semibold hover:bg-[#8F4527] transition-colors"
+          className="w-full rounded-xl bg-[#4F46E5] text-white py-2.5 text-sm font-semibold hover:bg-[#4338CA] transition-colors"
         >
           + Nuevo pedido para esta mesa
         </button>
         {puedeGenerarQR && (
           <button
             onClick={() => onGenerarQR?.(mesa)}
-            className="w-full rounded-xl border-2 border-[#A85638] text-[#A85638] dark:text-[#C99A3C] dark:border-[#C99A3C] py-2 text-sm font-bold hover:bg-[#A85638]/5 dark:hover:bg-[#A85638]/10 transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full rounded-xl border-2 border-[#4F46E5] text-[#4F46E5] dark:text-[#0EA5E9] dark:border-[#0EA5E9] py-2 text-sm font-bold hover:bg-[#4F46E5]/5 dark:hover:bg-[#4F46E5]/10 transition-colors inline-flex items-center justify-center gap-2"
           >
             <QrCode size={15} /> Generar código QR
           </button>
@@ -335,7 +406,7 @@ function PanelMesa({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onPe
 }
 
 /* ── Panel / Drawer híbrido ───────────────────────── */
-function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa }) {
+function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, onClose, onPedirCuenta, onGenerarQR, puedeGenerarQR, onClearCuenta, onLiberarMesa, comensalesDB = [], zonas = [], onAsignarZona, onEliminarMesa, onEditarMesa }) {
   // Cierra con Escape
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose()
@@ -353,7 +424,7 @@ function PanelDrawer({ mesa, pedidosDeMesa, pedidosActivosCount, onSetEstado, on
       >
         ✕
       </button>
-      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} zonas={zonas} onAsignarZona={onAsignarZona} onEliminarMesa={onEliminarMesa} />
+      <PanelMesa mesa={mesa} pedidosDeMesa={pedidosDeMesa} pedidosActivosCount={pedidosActivosCount} onSetEstado={onSetEstado} onPedirCuenta={onPedirCuenta} onGenerarQR={onGenerarQR} puedeGenerarQR={puedeGenerarQR} onClearCuenta={onClearCuenta} onLiberarMesa={onLiberarMesa} comensalesDB={comensalesDB} zonas={zonas} onAsignarZona={onAsignarZona} onEliminarMesa={onEliminarMesa} onEditarMesa={onEditarMesa} />
     </div>
   )
 
@@ -407,7 +478,7 @@ function FiltroChip({ estado, count, label, cls, filtroEstado, onToggle }) {
 
 /* ── Componente principal ─────────────────────────── */
 function TableroMesas() {
-  const { mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa } = useMesas()
+  const { mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, editarMesa, eliminarMesa } = useMesas()
   const { pedidos, contarActivosMesa } = usePedidos()
   const { invalidarTokensDeMesa } = useTokens()
   const { session } = useAuth()
@@ -424,8 +495,9 @@ function TableroMesas() {
   const puedeGenerarQR = session?.role === ROLES.RECEPCIONISTA || session?.role === ROLES.MESERO
     || session?.role === 'admin' || session?.role === 'gerente'
   const puedeGestionarZonas = session?.role === 'admin' || session?.role === 'gerente'
-  // Admin y gerente (supervisor) pueden dar de alta / baja mesas.
-  const puedeGestionarMesas = session?.role === 'admin' || session?.role === 'gerente'
+  // Admin, gerente y supervisor pueden dar de alta/baja mesas y editar
+  // su número/nombre y capacidad (el backend valida el rol del token).
+  const puedeGestionarMesas = ['admin', 'gerente', 'supervisor'].includes(session?.role)
 
   const [fabOpen, setFabOpen] = useState(false)
   const [agregandoMesa, setAgregandoMesa] = useState(false)
@@ -513,7 +585,7 @@ function TableroMesas() {
   return (
     <div className="min-h-screen">
       {/* ── Topbar ── */}
-      <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
           <div className="hidden sm:flex items-center gap-3">
             <span className="text-sm text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">Tablero de Mesas</span>
@@ -550,7 +622,7 @@ function TableroMesas() {
 
             {/* ── Desktop: dos botones normales ── */}
             <Link to="/pedidos/nuevo"
-              className="hidden lg:flex rounded-xl bg-[#A85638] text-white px-4 py-2 text-sm font-bold hover:bg-[#8F4527] transition-colors">
+              className="hidden lg:flex rounded-xl bg-[#4F46E5] text-white px-4 py-2 text-sm font-bold hover:bg-[#4338CA] transition-colors">
               + Nuevo pedido
             </Link>
             <Link to="/cocina/pendientes"
@@ -562,7 +634,7 @@ function TableroMesas() {
             <div className="lg:hidden relative">
               <button
                 onClick={() => setFabOpen(o => !o)}
-                className="w-9 h-9 rounded-full bg-[#A85638] text-white flex items-center justify-center text-xl font-bold shadow-md hover:bg-[#8F4527] transition-all active:scale-95"
+                className="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center text-xl font-bold shadow-md hover:bg-[#4338CA] transition-all active:scale-95"
                 aria-label="Acciones"
               >
                 {fabOpen ? '✕' : '+'}
@@ -581,16 +653,16 @@ function TableroMesas() {
                     <Link
                       to="/pedidos/nuevo"
                       onClick={() => setFabOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#F6EEE3] transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#EEF2FF] transition-colors"
                     >
-                      <span className="w-8 h-8 rounded-xl bg-[#A85638]/10 text-[#A85638] flex items-center justify-center text-base">+</span>
+                      <span className="w-8 h-8 rounded-xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center text-base">+</span>
                       Nuevo pedido
                     </Link>
                     <div className="h-px bg-slate-100 mx-3" />
                     <Link
                       to="/cocina/pendientes"
                       onClick={() => setFabOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#F6EEE3] transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-slate-800 hover:bg-[#EEF2FF] transition-colors"
                     >
                       <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base">🍳</span>
                       Ver cocina
@@ -618,7 +690,7 @@ function TableroMesas() {
           {/* Barra de ocupación de sala */}
           <div className="h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden mb-4" role="img" aria-label={`Ocupación de sala: ${ocupacionPct}%`}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#7D8B6A] via-[#C99A3C] to-[#A85638] transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-[#10B981] via-[#0EA5E9] to-[#4F46E5] transition-all duration-500"
               style={{ width: `${ocupacionPct}%` }}
             />
           </div>
@@ -630,18 +702,18 @@ function TableroMesas() {
                 <button
                   onClick={handleAgregarMesa}
                   disabled={agregandoMesa}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-white bg-[#A85638] hover:bg-[#8F4527] disabled:opacity-60 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-white bg-[#4F46E5] hover:bg-[#4338CA] disabled:opacity-60 transition-colors"
                 >
                   + {agregandoMesa ? 'Agregando…' : 'Agregar mesa'}
                 </button>
               )}
               {zonas.length > 0 && (
                 <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  <MapPin size={13} className="text-[#7D8B6A]" />
+                  <MapPin size={13} className="text-[#10B981]" />
                   <select
                     value={filtroZona}
                     onChange={e => setFiltroZona(e.target.value)}
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
                   >
                     <option value="todas">Todas las zonas</option>
                     {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
@@ -652,7 +724,7 @@ function TableroMesas() {
               {puedeGestionarZonas && (
                 <button
                   onClick={() => setZonasOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#A85638] dark:text-[#C99A3C] ring-1 ring-[#A85638]/30 hover:bg-[#A85638]/5 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#4F46E5] dark:text-[#0EA5E9] ring-1 ring-[#4F46E5]/30 hover:bg-[#4F46E5]/5 transition-colors"
                 >
                   <Settings2 size={13} /> Gestionar zonas
                 </button>
@@ -663,7 +735,7 @@ function TableroMesas() {
           {filtroEstado !== 'todas' && (
             <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
               Mostrando {mesasFiltradas.length} de {mesas.length} mesas ·{' '}
-              <button onClick={() => setFiltroEstado('todas')} className="text-[#A85638] dark:text-[#C99A3C] underline underline-offset-2">
+              <button onClick={() => setFiltroEstado('todas')} className="text-[#4F46E5] dark:text-[#0EA5E9] underline underline-offset-2">
                 ver todas
               </button>
             </p>
@@ -680,7 +752,7 @@ function TableroMesas() {
             ))}
           </div>
           {mesasFiltradas.length === 0 && (
-            <div className="rounded-3xl bg-[#FFFCF5] dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-6 py-12 text-center">
+            <div className="rounded-3xl bg-[#FFFFFF] dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-6 py-12 text-center">
               <p className="font-display text-slate-600 dark:text-slate-300">Ninguna mesa en este estado</p>
             </div>
           )}
@@ -702,6 +774,7 @@ function TableroMesas() {
           zonas={zonas}
           onAsignarZona={puedeGestionarZonas ? asignarZona : undefined}
           onEliminarMesa={puedeGestionarMesas ? handleEliminarMesa : undefined}
+          onEditarMesa={puedeGestionarMesas ? editarMesa : undefined}
         />
       </div>
 

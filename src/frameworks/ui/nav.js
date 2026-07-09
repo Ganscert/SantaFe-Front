@@ -3,10 +3,12 @@
 import {
   LayoutDashboard, ClipboardList, ChefHat, PlusCircle, Utensils, UtensilsCrossed,
   ShieldCheck, Users, Receipt, UserCog, CalendarDays, LayoutGrid, History, Building2,
+  Activity,
 } from 'lucide-react'
 
 export const NAV_ITEMS = [
   { to: '/admin/plataforma',  label: 'Plataforma',     icon: Building2,       group: 'Supervisión' },
+  { to: '/admin/actividad',   label: 'Actividad',      icon: Activity,        group: 'Supervisión' },
   { to: '/admin/dashboard',   label: 'Dashboard',      icon: LayoutDashboard, group: 'Supervisión' },
   { to: '/admin/meseros',     label: 'Meseros',        icon: UserCog,         group: 'Supervisión' },
   { to: '/admin/usuarios',    label: 'Usuarios',       icon: Users,           group: 'Supervisión' },

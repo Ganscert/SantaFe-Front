@@ -8,6 +8,7 @@ const STORAGE_KEY_VIEW_AS = 'santa-fe:view-as'
 export const ROLES = {
   ADMIN:         'admin',
   GERENTE:       'gerente',
+  SUPERVISOR:    'supervisor',
   RECEPCIONISTA: 'recepcionista',
   MESERO:        'mesero',
   COCINERO:      'cocinero',

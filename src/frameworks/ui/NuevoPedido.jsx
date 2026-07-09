@@ -59,12 +59,12 @@ function NuevoPedido() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] min-h-screen bg-[#F6EEE3]">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] min-h-screen bg-[#EEF2FF]">
 
       {/* ── MENÚ ── */}
       <section className="p-4 lg:p-6 overflow-y-auto">
         {/* Header sticky */}
-        <div className="sticky top-0 z-10 bg-[#F6EEE3]/95 backdrop-blur-sm pb-3 mb-4 border-b border-[#E5D9C9]">
+        <div className="sticky top-[var(--sf-topbar,0px)] z-10 bg-[#EEF2FF]/95 backdrop-blur-sm pb-3 mb-4 border-b border-[#E2E8F0]">
           <div className="flex items-center justify-between gap-3 mb-3">
             <h1 className="text-xl font-bold text-slate-900">Nuevo Pedido</h1>
             <button
@@ -81,7 +81,7 @@ function NuevoPedido() {
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar plato…"
-            className="w-full rounded-xl border border-[#E5D9C9] bg-white px-4 py-3 text-sm outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10 transition-all"
+            className="w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm outline-none focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/10 transition-all"
           />
 
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
@@ -91,7 +91,7 @@ function NuevoPedido() {
                 onClick={() => setCategoria(c)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   categoria === c
-                    ? 'bg-[#A85638] text-white'
+                    ? 'bg-[#4F46E5] text-white'
                     : 'bg-white text-slate-600 hover:bg-slate-50 ring-1 ring-slate-200'
                 }`}
               >
@@ -116,13 +116,13 @@ function NuevoPedido() {
                 <article
                   key={plato.nombre}
                   className={`bg-white rounded-2xl shadow-sm overflow-hidden ring-1 transition-all ${
-                    qty > 0 ? 'ring-[#A85638] ring-2' : 'ring-slate-200'
+                    qty > 0 ? 'ring-[#4F46E5] ring-2' : 'ring-slate-200'
                   }`}
                 >
                   <div className="relative">
                     <img src={plato.imagen} alt={plato.nombre} className="w-full h-32 object-cover" />
                     {qty > 0 && (
-                      <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#A85638] text-white text-xs font-bold flex items-center justify-center shadow">
+                      <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#4F46E5] text-white text-xs font-bold flex items-center justify-center shadow">
                         {qty}
                       </span>
                     )}
@@ -133,25 +133,25 @@ function NuevoPedido() {
                         <h3 className="font-semibold text-slate-900 text-sm leading-tight">{plato.nombre}</h3>
                         <p className="text-xs text-slate-400 mt-0.5">{plato.categoria}</p>
                       </div>
-                      <span className="font-bold text-[#A85638] text-sm whitespace-nowrap">S/ {plato.precio.toFixed(2)}</span>
+                      <span className="font-bold text-[#4F46E5] text-sm whitespace-nowrap">S/ {plato.precio.toFixed(2)}</span>
                     </div>
                     <div className="mt-2">
                       {qty === 0 ? (
                         <button
                           onClick={() => agregarItem(plato)}
-                          className="w-full rounded-lg bg-[#A85638] text-white py-2 text-sm font-semibold hover:bg-[#8F4527] active:scale-95 transition-all"
+                          className="w-full rounded-lg bg-[#4F46E5] text-white py-2 text-sm font-semibold hover:bg-[#4338CA] active:scale-95 transition-all"
                         >
                           + Añadir
                         </button>
                       ) : (
-                        <div className="flex items-center justify-between rounded-lg bg-[#A85638]/10 p-1">
+                        <div className="flex items-center justify-between rounded-lg bg-[#4F46E5]/10 p-1">
                           <button
                             onClick={() => cambiarCantidad(plato.nombre, -1)}
                             className="size-9 rounded-md bg-white shadow-sm text-slate-700 font-bold hover:bg-slate-50 transition-colors"
                           >
                             −
                           </button>
-                          <span className="font-bold text-[#A85638]">{qty}</span>
+                          <span className="font-bold text-[#4F46E5]">{qty}</span>
                           <button
                             onClick={() => cambiarCantidad(plato.nombre, +1)}
                             className="size-9 rounded-md bg-white shadow-sm text-slate-700 font-bold hover:bg-slate-50 transition-colors"
@@ -170,7 +170,7 @@ function NuevoPedido() {
       </section>
 
       {/* ── CARRITO ── */}
-      <aside className="border-l border-[#E5D9C9] bg-white p-4 lg:p-5 lg:sticky lg:top-0 lg:h-screen flex flex-col gap-4">
+      <aside className="border-l border-[#E2E8F0] bg-white p-4 lg:p-5 lg:sticky lg:top-0 lg:h-screen flex flex-col gap-4">
 
         {/* Selector de mesa */}
         <div>
@@ -178,7 +178,7 @@ function NuevoPedido() {
           <select
             value={mesaSeleccionada}
             onChange={e => setMesaSeleccionada(e.target.value)}
-            className="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10 transition-all"
+            className="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/10 transition-all"
           >
             <option value="">Selecciona una mesa</option>
             {mesas.map(m => (
@@ -209,10 +209,10 @@ function NuevoPedido() {
                     onClick={() => cambiarCantidad(item.nombre, -1)}
                     className="size-7 rounded-lg bg-white shadow-sm text-slate-500 hover:text-red-500 font-bold transition-colors"
                   >−</button>
-                  <span className="w-5 text-center font-bold text-[#A85638]">{item.cantidad}</span>
+                  <span className="w-5 text-center font-bold text-[#4F46E5]">{item.cantidad}</span>
                   <button
                     onClick={() => cambiarCantidad(item.nombre, +1)}
-                    className="size-7 rounded-lg bg-white shadow-sm text-slate-500 hover:text-[#A85638] font-bold transition-colors"
+                    className="size-7 rounded-lg bg-white shadow-sm text-slate-500 hover:text-[#4F46E5] font-bold transition-colors"
                   >+</button>
                   <span className="w-16 text-right font-semibold text-slate-700">
                     S/ {(item.precio * item.cantidad).toFixed(2)}
@@ -236,7 +236,7 @@ function NuevoPedido() {
               confirmado
                 ? 'bg-emerald-500 text-white'
                 : canEnviar
-                  ? 'bg-[#7D8B6A] text-white hover:bg-[#69765A] active:scale-95 shadow-md shadow-[#7D8B6A]/20'
+                  ? 'bg-[#10B981] text-white hover:bg-[#059669] active:scale-95 shadow-md shadow-[#10B981]/20'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >

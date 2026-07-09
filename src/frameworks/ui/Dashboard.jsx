@@ -16,7 +16,7 @@ import { useTheme } from '../state/ThemeContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
 
-const PALETA = ['#A85638', '#7D8B6A', '#C99A3C', '#4D7F70', '#835D94', '#C2622E']
+const PALETA = ['#4F46E5', '#10B981', '#0EA5E9', '#4D7F70', '#835D94', '#6366F1']
 const PERIODOS = [
   { id: 'today', label: 'Hoy' },
   { id: 'week',  label: 'Semana' },
@@ -117,7 +117,7 @@ function ExportMenu({ getReporte, period, disabled }) {
       <button
         onClick={() => setOpen(o => !o)}
         disabled={disabled}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
       >
         <Download size={14} /> Exportar <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -129,7 +129,7 @@ function ExportMenu({ getReporte, period, disabled }) {
               onClick={() => exportar(r.id)}
               className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
-              <FileSpreadsheet size={15} className="mt-0.5 flex-shrink-0 text-[#7D8B6A]" />
+              <FileSpreadsheet size={15} className="mt-0.5 flex-shrink-0 text-[#10B981]" />
               <span className="min-w-0">
                 <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{r.label}</span>
                 <span className="block text-[11px] text-slate-400 dark:text-slate-500">{r.desc}</span>
@@ -151,7 +151,7 @@ function PeriodSwitch({ value, onChange }) {
           onClick={() => onChange(p.id)}
           className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
             value === p.id
-              ? 'bg-white dark:bg-slate-700 text-[#A85638] dark:text-[#F6EEE3] shadow-sm'
+              ? 'bg-white dark:bg-slate-700 text-[#4F46E5] dark:text-[#EEF2FF] shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -183,8 +183,8 @@ function VentasTooltip({ active, payload, label }) {
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-3 py-2 shadow-lg text-xs">
       {label && <p className="font-bold text-slate-700 dark:text-slate-200 mb-1">{label}</p>}
-      <p className="font-semibold text-[#A85638]">Ventas: <span className="text-slate-900 dark:text-slate-100">{fmtMoney(punto?.ventas)}</span></p>
-      <p className="font-semibold text-[#7D8B6A]">Pedidos: <span className="text-slate-900 dark:text-slate-100">{fmtInt(punto?.pedidos)}</span></p>
+      <p className="font-semibold text-[#4F46E5]">Ventas: <span className="text-slate-900 dark:text-slate-100">{fmtMoney(punto?.ventas)}</span></p>
+      <p className="font-semibold text-[#10B981]">Pedidos: <span className="text-slate-900 dark:text-slate-100">{fmtInt(punto?.pedidos)}</span></p>
     </div>
   )
 }
@@ -197,15 +197,15 @@ function VentasChart({ data, theme }) {
       <AreaChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -10 }}>
         <defs>
           <linearGradient id="grad-ventas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#A85638" stopOpacity={0.45} />
-            <stop offset="100%" stopColor="#A85638" stopOpacity={0} />
+            <stop offset="0%"   stopColor="#4F46E5" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="#4F46E5" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="time" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
         <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `S/${v}`} />
         <Tooltip content={<VentasTooltip />} />
-        <Area type="monotone" dataKey="ventas" name="Ventas" stroke="#A85638" strokeWidth={2.5} fill="url(#grad-ventas)" animationDuration={700} />
+        <Area type="monotone" dataKey="ventas" name="Ventas" stroke="#4F46E5" strokeWidth={2.5} fill="url(#grad-ventas)" animationDuration={700} />
       </AreaChart>
     </ResponsiveContainer>
   )
@@ -297,7 +297,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
       {/* Topbar */}
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Link to="/tablero-mesas" className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center gap-1 text-sm font-semibold">
@@ -305,7 +305,7 @@ export default function Dashboard() {
             </Link>
             <span className="hidden sm:block text-slate-300 dark:text-slate-700">|</span>
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-7 h-7 rounded-xl bg-[#A85638] flex items-center justify-center text-white">
+              <span className="w-7 h-7 rounded-xl bg-[#4F46E5] flex items-center justify-center text-white">
                 <LayoutDashboard size={14} />
               </span>
               <h1 className="text-base font-bold truncate">Dashboard de Supervisión</h1>
@@ -323,7 +323,7 @@ export default function Dashboard() {
         {/* Header strip */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Restaurante Santa Fe</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#4F46E5] dark:text-[#0EA5E9]">Restaurante Santa Fe</p>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">Resumen operativo</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
               <Calendar size={13} />
@@ -345,7 +345,7 @@ export default function Dashboard() {
             sub={`${kpis.totalPedidos} pedidos`}
             delta={deltas.totalVentas}
             loading={loading && isEmpty}
-            accent="bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/20"
+            accent="bg-[#4F46E5]/10 text-[#4F46E5] dark:bg-[#4F46E5]/20"
           />
           <Kpi
             icon={Activity}
@@ -362,7 +362,7 @@ export default function Dashboard() {
             sub="por pedido"
             delta={deltas.ticketPromedio}
             loading={loading && isEmpty}
-            accent="bg-[#7D8B6A]/15 text-[#7D8B6A] dark:text-[#AEBC97]"
+            accent="bg-[#10B981]/15 text-[#10B981] dark:text-[#6EE7B7]"
           />
           <Kpi
             icon={Users}
@@ -426,7 +426,7 @@ export default function Dashboard() {
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{it.nombre}</p>
                       <p className="text-xs text-slate-400">{it.categoria ?? 'Plato'} · {fmtMoney(it.total)}</p>
                     </div>
-                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">×{it.cantidad}</span>
+                    <span className="text-sm font-black text-[#4F46E5] dark:text-[#0EA5E9]">×{it.cantidad}</span>
                   </li>
                 ))}
               </ul>
@@ -447,7 +447,7 @@ export default function Dashboard() {
           </div>
 
           {/* Tarjeta info / accesos rápidos */}
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-[#A85638] to-[#8F4527] dark:from-[#7D8B6A] dark:to-[#69765A] text-white p-5 shadow-sm flex flex-col justify-between">
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-[#4F46E5] to-[#4338CA] dark:from-[#10B981] dark:to-[#059669] text-white p-5 shadow-sm flex flex-col justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest opacity-80">Accesos rápidos</p>
               <h3 className="text-lg font-black mt-2">¿Listo para el siguiente turno?</h3>
@@ -476,7 +476,7 @@ export default function Dashboard() {
               </div>
               <Link
                 to="/admin/meseros"
-                className="text-xs font-bold text-[#A85638] hover:underline"
+                className="text-xs font-bold text-[#4F46E5] hover:underline"
               >
                 Ver panel completo →
               </Link>
@@ -508,14 +508,14 @@ export default function Dashboard() {
               <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                 {cuentasActivas.map(c => (
                   <li key={c.id} className="flex items-center gap-3 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-2">
-                    <span className="w-9 h-9 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#F6EEE3] flex items-center justify-center font-black text-xs flex-shrink-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#4F46E5]/10 dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#EEF2FF] flex items-center justify-center font-black text-xs flex-shrink-0">
                       {c.nombre.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{c.nombre}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">Mesa {c.mesa} · {c.pedidos} pedido{c.pedidos !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">{fmtMoney(c.total)}</span>
+                    <span className="text-sm font-black text-[#4F46E5] dark:text-[#0EA5E9]">{fmtMoney(c.total)}</span>
                   </li>
                 ))}
               </ul>
@@ -544,7 +544,7 @@ export default function Dashboard() {
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">Mesa {p.mesa} · {p.nItems} ítem{p.nItems !== 1 ? 's' : ''} · {p.estado}</p>
                     </div>
-                    <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C]">{fmtMoney(p.total)}</span>
+                    <span className="text-sm font-black text-[#4F46E5] dark:text-[#0EA5E9]">{fmtMoney(p.total)}</span>
                   </li>
                 ))}
               </ul>

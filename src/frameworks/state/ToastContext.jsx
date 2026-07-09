@@ -7,7 +7,7 @@ const ToastCtx = createContext(null)
 const CFG = {
   success: { icon: CheckCircle2,  cls: 'bg-emerald-700 text-white' },
   error:   { icon: AlertTriangle, cls: 'bg-[#B3422F] text-white' },
-  info:    { icon: Info,          cls: 'bg-slate-900 text-[#F6EEE3] dark:bg-[#F1E8D9] dark:text-[#2C2118]' },
+  info:    { icon: Info,          cls: 'bg-slate-900 text-[#EEF2FF] dark:bg-[#F1F5F9] dark:text-[#0F172A]' },
 }
 
 export function ToastProvider({ children }) {

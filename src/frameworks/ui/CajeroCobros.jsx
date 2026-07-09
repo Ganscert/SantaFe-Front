@@ -133,7 +133,7 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-xl p-6">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 shadow-xl p-6">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mb-0.5">Registrar cobro</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Mesa {mesa.numeroMesa}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -191,8 +191,8 @@ function ModalPago({ mesa, total, onConfirm, onClose }) {
                   onClick={() => elegirPropina(pct)}
                   className={`py-2 rounded-xl text-xs font-bold transition-all ring-1 ${
                     propinaPct === pct
-                      ? 'bg-[#C99A3C] text-white ring-[#C99A3C]'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-[#C99A3C]/60'
+                      ? 'bg-[#0EA5E9] text-white ring-[#0EA5E9]'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:ring-[#0EA5E9]/60'
                   }`}
                 >
                   {pct === 0 ? 'Sin' : `${pct}%`}
@@ -375,7 +375,7 @@ export default function CajeroCobros() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-xl bg-indigo-500 text-white flex items-center justify-center">
@@ -415,7 +415,7 @@ export default function CajeroCobros() {
           </div>
 
           {mesasConSolicitud.length === 0 ? (
-            <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 p-10 text-center">
+            <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 p-10 text-center">
               <CheckCircle2 size={36} className="mx-auto text-emerald-400 dark:text-emerald-500 mb-3" />
               <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Sin solicitudes pendientes</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
@@ -451,7 +451,7 @@ export default function CajeroCobros() {
                 return (
                 <div
                   key={mesa.id}
-                  className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-4 py-3 flex items-center justify-between gap-3"
+                  className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-4 py-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-black text-sm">
@@ -474,7 +474,7 @@ export default function CajeroCobros() {
                     )}
                     <Link
                       to={`/mesa/${mesa.numeroMesa}`}
-                      className="text-xs font-bold text-[#A85638] dark:text-[#C99A3C] hover:underline"
+                      className="text-xs font-bold text-[#4F46E5] dark:text-[#0EA5E9] hover:underline"
                     >
                       Ver →
                     </Link>
@@ -560,7 +560,7 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onTicket, onAte
       </div>
 
       {/* Quién solicitó */}
-      <div className="bg-white dark:bg-slate-900 px-4 py-3 border-b border-[#E5D9C9] dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 px-4 py-3 border-b border-[#E2E8F0] dark:border-slate-800">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
           <Users size={9} /> {enviadaPorMesero ? 'Cuentas por cobrar' : 'Solicitaron la cuenta'}
         </p>
@@ -602,9 +602,9 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onTicket, onAte
             ))}
           </ul>
         )}
-        <div className="flex justify-between items-center pt-2.5 border-t border-[#E5D9C9] dark:border-slate-800">
+        <div className="flex justify-between items-center pt-2.5 border-t border-[#E2E8F0] dark:border-slate-800">
           <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Total</span>
-          <span className="text-xl font-black text-[#A85638] dark:text-[#C99A3C]">{formatPEN(total)}</span>
+          <span className="text-xl font-black text-[#4F46E5] dark:text-[#0EA5E9]">{formatPEN(total)}</span>
         </div>
       </div>
 
@@ -628,20 +628,20 @@ function TarjetaCobro({ mesa, pedidosDeMesa, cobrando, onCobrar, onTicket, onAte
             <button
               onClick={onTicket}
               title="Imprimir ticket de consumo"
-              className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
+              className="px-3 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
             >
               <Printer size={13} /> Ticket
             </button>
           )}
           <Link
             to={`/mesa/${mesa.numeroMesa}`}
-            className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center"
+            className="px-3 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center"
           >
             Ver hoja →
           </Link>
           <button
             onClick={onAtender}
-            className="px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="px-3 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Marcar como atendido sin registrar cobro"
           >
             Solo atender

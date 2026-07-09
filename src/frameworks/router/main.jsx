@@ -11,6 +11,7 @@ import { LiveSyncProvider } from '../state/LiveSyncContext.jsx'
 import { ThemeProvider } from '../state/ThemeContext.jsx'
 import { PlatosProvider } from '../state/PlatosContext.jsx'
 import { AuthProvider } from '../state/AuthContext.jsx'
+import { RestauranteProvider } from '../state/RestauranteContext.jsx'
 import { TokensProvider } from '../state/TokensContext.jsx'
 import { ToastProvider } from '../state/ToastContext.jsx'
 import { rolesFor } from '../ui/roleAccess.js'
@@ -34,12 +35,13 @@ const HistorialCobros    = lazy(() => import('../ui/HistorialCobros.jsx'))
 const Reservas           = lazy(() => import('../ui/Reservas.jsx'))
 const AdminPlataforma    = lazy(() => import('../ui/AdminPlataforma.jsx'))
 const AdminRestaurante   = lazy(() => import('../ui/AdminRestaurante.jsx'))
+const AdminActividad     = lazy(() => import('../ui/AdminActividad.jsx'))
 
 function PageLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <span className="w-9 h-9 rounded-full border-[3px] border-[#E5D9C9] border-t-[#A85638] animate-spin" />
+        <span className="w-9 h-9 rounded-full border-[3px] border-[#E2E8F0] border-t-[#4F46E5] animate-spin" />
         <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Cargando…</p>
       </div>
     </div>
@@ -73,6 +75,7 @@ const router = createBrowserRouter([
       { path: '/cajero/historial',  element: page(HistorialCobros, '/cajero/historial') },
       { path: '/admin/plataforma',     element: page(AdminPlataforma, '/admin/plataforma') },
       { path: '/admin/plataforma/:id', element: page(AdminRestaurante, '/admin/plataforma/:id') },
+      { path: '/admin/actividad',      element: page(AdminActividad, '/admin/actividad') },
       { path: '/admin/dashboard',   element: page(Dashboard, '/admin/dashboard') },
       { path: '/admin/meseros',     element: page(RendimientoMeseros, '/admin/meseros') },
       { path: '/admin/roles',       element: page(Roles, '/admin/roles') },
@@ -88,19 +91,21 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <LiveSyncProvider>
-          <MesasProvider>
-            <PedidosProvider>
-              <PlatosProvider>
-                <TokensProvider>
-                  <ToastProvider>
-                    <RouterProvider router={router} />
-                  </ToastProvider>
-                </TokensProvider>
-              </PlatosProvider>
-            </PedidosProvider>
-          </MesasProvider>
-        </LiveSyncProvider>
+        <RestauranteProvider>
+          <LiveSyncProvider>
+            <MesasProvider>
+              <PedidosProvider>
+                <PlatosProvider>
+                  <TokensProvider>
+                    <ToastProvider>
+                      <RouterProvider router={router} />
+                    </ToastProvider>
+                  </TokensProvider>
+                </PlatosProvider>
+              </PedidosProvider>
+            </MesasProvider>
+          </LiveSyncProvider>
+        </RestauranteProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,

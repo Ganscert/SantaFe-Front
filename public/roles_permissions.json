@@ -2,26 +2,70 @@
   "$schema": "Listado maestro de roles del Restaurante Santa Fe. Editable desde /admin/roles.",
   "version": 1,
   "permissions": {
-    "dashboard.view":        { "label": "Ver dashboard de supervisión",        "category": "Supervisión" },
-    "dashboard.export":      { "label": "Exportar reportes (CSV)",             "category": "Supervisión" },
-
-    "mesas.view":            { "label": "Ver tablero de mesas",                 "category": "Operación" },
-    "mesas.changeState":     { "label": "Cambiar estado de mesa",              "category": "Operación" },
-    "mesas.openAccount":     { "label": "Abrir cuentas en una mesa",           "category": "Operación" },
-    "mesas.closeAccount":    { "label": "Cerrar cuentas / cobrar",             "category": "Operación" },
-
-    "orders.create":         { "label": "Crear pedidos",                        "category": "Pedidos" },
-    "orders.cancel":         { "label": "Cancelar pedidos",                     "category": "Pedidos" },
-    "orders.discount":       { "label": "Aplicar descuentos",                   "category": "Pedidos" },
-
-    "kitchen.view":          { "label": "Ver cola de cocina",                   "category": "Cocina" },
-    "kitchen.advanceState":  { "label": "Avanzar estado de pedido (preparar/listo)", "category": "Cocina" },
-
-    "menu.view":             { "label": "Ver carta / menú",                     "category": "Catálogo" },
-    "menu.edit":             { "label": "Editar carta y precios",               "category": "Catálogo" },
-
-    "users.manageRoles":     { "label": "Gestionar roles y permisos",           "category": "Administración" },
-    "users.invite":          { "label": "Invitar usuarios al sistema",          "category": "Administración" }
+    "dashboard.view": {
+      "label": "Ver dashboard de supervisión",
+      "category": "Supervisión"
+    },
+    "dashboard.export": {
+      "label": "Exportar reportes (CSV)",
+      "category": "Supervisión"
+    },
+    "mesas.view": {
+      "label": "Ver tablero de mesas",
+      "category": "Operación"
+    },
+    "mesas.changeState": {
+      "label": "Cambiar estado de mesa",
+      "category": "Operación"
+    },
+    "mesas.editStructure": {
+      "label": "Editar número y capacidad de mesas",
+      "category": "Operación"
+    },
+    "mesas.openAccount": {
+      "label": "Abrir cuentas en una mesa",
+      "category": "Operación"
+    },
+    "mesas.closeAccount": {
+      "label": "Cerrar cuentas / cobrar",
+      "category": "Operación"
+    },
+    "orders.create": {
+      "label": "Crear pedidos",
+      "category": "Pedidos"
+    },
+    "orders.cancel": {
+      "label": "Cancelar pedidos",
+      "category": "Pedidos"
+    },
+    "orders.discount": {
+      "label": "Aplicar descuentos",
+      "category": "Pedidos"
+    },
+    "kitchen.view": {
+      "label": "Ver cola de cocina",
+      "category": "Cocina"
+    },
+    "kitchen.advanceState": {
+      "label": "Avanzar estado de pedido (preparar/listo)",
+      "category": "Cocina"
+    },
+    "menu.view": {
+      "label": "Ver carta / menú",
+      "category": "Catálogo"
+    },
+    "menu.edit": {
+      "label": "Editar carta y precios",
+      "category": "Catálogo"
+    },
+    "users.manageRoles": {
+      "label": "Gestionar roles y permisos",
+      "category": "Administración"
+    },
+    "users.invite": {
+      "label": "Invitar usuarios al sistema",
+      "category": "Administración"
+    }
   },
   "roles": [
     {
@@ -31,12 +75,22 @@
       "system": true,
       "color": "#C1440E",
       "permissions": [
-        "dashboard.view", "dashboard.export",
-        "mesas.view", "mesas.changeState", "mesas.openAccount", "mesas.closeAccount",
-        "orders.create", "orders.cancel", "orders.discount",
-        "kitchen.view", "kitchen.advanceState",
-        "menu.view", "menu.edit",
-        "users.manageRoles", "users.invite"
+        "dashboard.view",
+        "dashboard.export",
+        "mesas.view",
+        "mesas.changeState",
+        "mesas.editStructure",
+        "mesas.openAccount",
+        "mesas.closeAccount",
+        "orders.create",
+        "orders.cancel",
+        "orders.discount",
+        "kitchen.view",
+        "kitchen.advanceState",
+        "menu.view",
+        "menu.edit",
+        "users.manageRoles",
+        "users.invite"
       ]
     },
     {
@@ -46,12 +100,35 @@
       "system": false,
       "color": "#6B7C4F",
       "permissions": [
-        "dashboard.view", "dashboard.export",
-        "mesas.view", "mesas.changeState", "mesas.closeAccount",
-        "orders.cancel", "orders.discount",
+        "dashboard.view",
+        "dashboard.export",
+        "mesas.view",
+        "mesas.changeState",
+        "mesas.editStructure",
+        "mesas.closeAccount",
+        "orders.cancel",
+        "orders.discount",
         "kitchen.view",
-        "menu.view", "menu.edit",
+        "menu.view",
+        "menu.edit",
         "users.invite"
+      ]
+    },
+    {
+      "id": "supervisor",
+      "label": "Supervisor",
+      "description": "Supervisa el piso: gestiona mesas (número y capacidad), cocina y carta.",
+      "system": false,
+      "color": "#0EA5E9",
+      "permissions": [
+        "mesas.view",
+        "mesas.changeState",
+        "mesas.editStructure",
+        "orders.create",
+        "orders.cancel",
+        "kitchen.view",
+        "menu.view",
+        "menu.edit"
       ]
     },
     {
@@ -61,7 +138,9 @@
       "system": false,
       "color": "#D4A017",
       "permissions": [
-        "mesas.view", "mesas.changeState", "mesas.openAccount",
+        "mesas.view",
+        "mesas.changeState",
+        "mesas.openAccount",
         "orders.create",
         "kitchen.view",
         "menu.view"
@@ -74,7 +153,8 @@
       "system": false,
       "color": "#3b82f6",
       "permissions": [
-        "kitchen.view", "kitchen.advanceState"
+        "kitchen.view",
+        "kitchen.advanceState"
       ]
     },
     {
@@ -84,7 +164,8 @@
       "system": false,
       "color": "#8b5cf6",
       "permissions": [
-        "mesas.view", "mesas.closeAccount",
+        "mesas.view",
+        "mesas.closeAccount",
         "orders.discount",
         "menu.view"
       ]

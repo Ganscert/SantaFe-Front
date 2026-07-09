@@ -15,7 +15,7 @@ const ESTADO_BADGE = {
 }
 
 const inputCls =
-  'w-full px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-[#FFFCF5] dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638] transition-colors'
+  'w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 bg-[#FFFFFF] dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 focus:border-[#4F46E5] transition-colors'
 
 function Field({ label, children, className = '' }) {
   return (
@@ -46,9 +46,9 @@ function FormReserva({ mesas, onCrear, conflictoDe }) {
   }
 
   return (
-    <form onSubmit={submit} className="bg-[#FFFCF5] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-5 space-y-3">
+    <form onSubmit={submit} className="bg-[#FFFFFF] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 shadow-sm p-5 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="boho-arch w-8 h-9 bg-[#7D8B6A] text-[#F6EEE3] flex items-center justify-center shrink-0">
+        <span className="brand-mark w-8 h-9 bg-[#10B981] text-[#EEF2FF] flex items-center justify-center shrink-0">
           <Sparkles size={14} />
         </span>
         <div>
@@ -105,7 +105,7 @@ function FormReserva({ mesas, onCrear, conflictoDe }) {
 
       <button
         type="submit"
-        className="w-full min-h-[44px] rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold transition-colors shadow-sm"
+        className="w-full min-h-[44px] rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-bold transition-colors shadow-sm"
       >
         Guardar reserva
       </button>
@@ -117,9 +117,9 @@ function TarjetaReserva({ reserva, onEstado, onSentar, onEliminar }) {
   const cfg = ESTADOS_RESERVA[reserva.estado] ?? ESTADOS_RESERVA.pendiente
   const finalizada = reserva.estado === 'sentada' || reserva.estado === 'cancelada'
   return (
-    <article className={`bg-[#FFFCF5] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-4 flex gap-4 ${finalizada ? 'opacity-70' : ''}`}>
-      {/* Hora en arco boho */}
-      <div className="boho-arch shrink-0 w-16 h-[72px] bg-[#A85638]/10 dark:bg-[#A85638]/20 flex flex-col items-center justify-center text-[#A85638] dark:text-[#C99A3C]">
+    <article className={`bg-[#FFFFFF] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 shadow-sm p-4 flex gap-4 ${finalizada ? 'opacity-70' : ''}`}>
+      {/* Hora destacada */}
+      <div className="brand-mark shrink-0 w-16 h-[72px] bg-[#4F46E5]/10 dark:bg-[#4F46E5]/20 flex flex-col items-center justify-center text-[#4F46E5] dark:text-[#0EA5E9]">
         <Clock size={13} />
         <span className="font-display font-bold text-base leading-tight mt-0.5">{reserva.hora}</span>
       </div>
@@ -139,8 +139,8 @@ function TarjetaReserva({ reserva, onEstado, onSentar, onEliminar }) {
         </div>
 
         {reserva.nota && (
-          <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 inline-flex items-start gap-1.5 bg-[#C99A3C]/10 rounded-lg px-2 py-1">
-            <StickyNote size={11} className="mt-0.5 shrink-0 text-[#C99A3C]" /> {reserva.nota}
+          <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 inline-flex items-start gap-1.5 bg-[#0EA5E9]/10 rounded-lg px-2 py-1">
+            <StickyNote size={11} className="mt-0.5 shrink-0 text-[#0EA5E9]" /> {reserva.nota}
           </p>
         )}
 
@@ -158,13 +158,13 @@ function TarjetaReserva({ reserva, onEstado, onSentar, onEliminar }) {
             <>
               <button
                 onClick={() => onSentar(reserva)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold transition-colors"
               >
                 <Armchair size={12} /> Sentar
               </button>
               <button
                 onClick={() => onEstado(reserva.id, 'cancelada')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl ring-1 ring-[#E5D9C9] dark:ring-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl ring-1 ring-[#E2E8F0] dark:ring-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 transition-colors"
               >
                 <XCircle size={12} /> Cancelar
               </button>
@@ -173,7 +173,7 @@ function TarjetaReserva({ reserva, onEstado, onSentar, onEliminar }) {
           {finalizada && (
             <button
               onClick={() => onEliminar(reserva.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl ring-1 ring-[#E5D9C9] dark:ring-slate-700 text-slate-400 text-xs font-bold hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl ring-1 ring-[#E2E8F0] dark:ring-slate-700 text-slate-400 text-xs font-bold hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 transition-colors"
             >
               <Trash2 size={12} /> Eliminar
             </button>
@@ -236,10 +236,10 @@ export default function Reservas() {
   return (
     <div className="min-h-screen">
       {/* Topbar */}
-      <header className="sticky top-0 z-20 bg-[#FFFCF5]/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E5D9C9] dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-[#FFFFFF]/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E2E8F0] dark:border-slate-800 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-xl bg-[#7D8B6A] text-white flex items-center justify-center">
+            <span className="w-8 h-8 rounded-xl bg-[#10B981] text-white flex items-center justify-center">
               <CalendarDays size={15} />
             </span>
             <h1 className="text-base">Reservas</h1>
@@ -251,7 +251,7 @@ export default function Reservas() {
             <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold ring-1 ring-emerald-200 dark:ring-emerald-500/30">
               {kpis.confirmadas} confirmadas
             </span>
-            <span className="hidden sm:inline px-2.5 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] dark:text-[#C99A3C] font-semibold ring-1 ring-[#A85638]/20">
+            <span className="hidden sm:inline px-2.5 py-1 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] dark:text-[#0EA5E9] font-semibold ring-1 ring-[#4F46E5]/20">
               {kpis.personas} comensales esperados
             </span>
           </div>
@@ -271,7 +271,7 @@ export default function Reservas() {
               type="date"
               value={fecha}
               onChange={e => setFecha(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-[#FFFCF5] dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-[#A85638] transition-colors"
+              className="px-3 py-2 rounded-xl border border-[#E2E8F0] dark:border-slate-700 bg-[#FFFFFF] dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-[#4F46E5] transition-colors"
             />
             <div className="flex gap-1.5 flex-wrap">
               {FILTROS.map(f => (
@@ -280,8 +280,8 @@ export default function Reservas() {
                   onClick={() => setFiltroEstado(f.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                     filtroEstado === f.id
-                      ? 'bg-[#A85638] text-white'
-                      : 'bg-[#FFFCF5] dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-[#E5D9C9] dark:ring-slate-700 hover:text-slate-700'
+                      ? 'bg-[#4F46E5] text-white'
+                      : 'bg-[#FFFFFF] dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-[#E2E8F0] dark:ring-slate-700 hover:text-slate-700'
                   }`}
                 >
                   {f.label}
@@ -294,8 +294,8 @@ export default function Reservas() {
           </div>
 
           {visibles.length === 0 ? (
-            <div className="bg-[#FFFCF5] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-6 py-16 text-center">
-              <div className="boho-divider text-base mb-4" aria-hidden="true">❋</div>
+            <div className="bg-[#FFFFFF] dark:bg-slate-900 rounded-3xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-6 py-16 text-center">
+              <div className="brand-divider mb-4" aria-hidden="true" />
               <p className="font-display text-lg text-slate-700 dark:text-slate-200">Agenda libre</p>
               <p className="text-sm text-slate-400 mt-1">No hay reservas {filtroEstado !== 'todas' ? 'con ese filtro ' : ''}para esta fecha.</p>
             </div>

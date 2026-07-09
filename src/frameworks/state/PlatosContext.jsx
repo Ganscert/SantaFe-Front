@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
+import { useRestaurante } from './RestauranteContext.jsx'
 import { db } from '../../adapters/db.js'
 
 // La carta cambia poco; 30s de refresco es suficiente como respaldo del
@@ -35,6 +36,9 @@ function toRow(data) {
 
 export function PlatosProvider({ children }) {
   const { serverState, sendMessage, connected } = useLiveSync() || {}
+  // El menú es POR RESTAURANTE: al cambiar la sede auditada se recarga la
+  // carta; en modo auditoría no se participa del sync WS (es de la sede base).
+  const { restauranteId, auditando } = useRestaurante()
   const [platos, setPlatos] = useState([])
   const initSent = useRef(false)
 
@@ -47,8 +51,8 @@ export function PlatosProvider({ children }) {
     }
   }
 
-  // Carga inicial
-  useEffect(() => { cargar() }, [])
+  // Carga inicial y recarga al cambiar la sede
+  useEffect(() => { cargar() }, [restauranteId])
 
   // Polling (pausado con la pestaña oculta)
   useEffect(() => {
@@ -58,16 +62,18 @@ export function PlatosProvider({ children }) {
 
   // WS legacy
   useEffect(() => {
+    if (auditando) return
     if (connected && !initSent.current && platos.length > 0) {
       sendMessage?.({ type: 'sync:platos', platos })
       initSent.current = true
     }
     if (!connected) initSent.current = false
-  }, [connected, platos, sendMessage])
+  }, [connected, platos, sendMessage, auditando])
 
   useEffect(() => {
+    if (auditando) return
     if (serverState?.platos) setPlatos(serverState.platos)
-  }, [serverState?.platos])
+  }, [serverState?.platos, auditando])
 
   const agregarPlato = useCallback(async (data) => {
     try {

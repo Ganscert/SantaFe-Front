@@ -3,9 +3,20 @@
 export const RESTAURANTE_ID = import.meta.env.VITE_RESTAURANTE_ID || '00000000-0000-0000-0000-000000000001'
 
 const SESSION_KEY = 'santa-fe:session'
+const ACTIVO_KEY  = 'santa-fe:restaurante-activo'
 
 export function authToken() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY))?.token || null } catch { return null }
+}
+
+// Restaurante en auditoría (lo fija RestauranteContext cuando el admin audita
+// otra sede). El backend sólo honra el override con token de admin, así que
+// un valor viejo en localStorage es inocuo para el resto de roles.
+export function restauranteActivoId() {
+  try {
+    const activo = JSON.parse(localStorage.getItem(ACTIVO_KEY))
+    return activo?.id && activo.id !== RESTAURANTE_ID ? activo.id : null
+  } catch { return null }
 }
 
 async function req(path, method = 'GET', body) {
@@ -29,25 +40,47 @@ async function req(path, method = 'GET', body) {
   return res.json()
 }
 
+// Variante multi-tenant: agrega el restaurante auditado al request (query en
+// GET, body en mutaciones) para que la API opere sobre esa sede.
+function reqTenant(path, method = 'GET', body) {
+  const rid = restauranteActivoId()
+  if (!rid) return req(path, method, body)
+  if (method === 'GET') {
+    const sep = path.includes('?') ? '&' : '?'
+    return req(`${path}${sep}restaurante_id=${encodeURIComponent(rid)}`)
+  }
+  return req(path, method, { restaurante_id: rid, ...body })
+}
+
 export const db = {
   mesas: {
-    list:   ()           => req('/mesas'),
-    insert: (data)       => req('/mesas', 'POST', data),
-    // `patch` puede ser un string (estado, retrocompat) o un objeto { estado?, zona_id? }.
-    update: (id, patch)  => req('/mesas', 'PATCH', { id, ...(typeof patch === 'string' ? { estado: patch } : patch) }),
-    remove: (id)         => req('/mesas', 'DELETE', { id }),
+    list:   ()           => reqTenant('/mesas'),
+    insert: (data)       => reqTenant('/mesas', 'POST', data),
+    // `patch` puede ser un string (estado, retrocompat) o un objeto
+    // { estado?, zona_id?, numero_mesa?, capacidad? }.
+    update: (id, patch)  => reqTenant('/mesas', 'PATCH', { id, ...(typeof patch === 'string' ? { estado: patch } : patch) }),
+    remove: (id)         => reqTenant('/mesas', 'DELETE', { id }),
   },
   zonas: {
-    list:   ()          => req('/zonas'),
-    create: (data)      => req('/zonas', 'POST', data),
-    update: (id, patch) => req('/zonas', 'PATCH', { id, ...patch }),
-    remove: (id)        => req('/zonas', 'DELETE', { id }),
+    list:   ()          => reqTenant('/zonas'),
+    create: (data)      => reqTenant('/zonas', 'POST', data),
+    update: (id, patch) => reqTenant('/zonas', 'PATCH', { id, ...patch }),
+    remove: (id)        => reqTenant('/zonas', 'DELETE', { id }),
   },
   platos: {
-    list:   ()           => req('/platos'),
-    insert: (data)       => req('/platos', 'POST', data),
-    update: (id, patch)  => req('/platos', 'PATCH', { id, ...patch }),
-    delete: (id)         => req('/platos', 'DELETE', { id }),
+    list:   ()           => reqTenant('/platos'),
+    insert: (data)       => reqTenant('/platos', 'POST', data),
+    update: (id, patch)  => reqTenant('/platos', 'PATCH', { id, ...patch }),
+    delete: (id)         => reqTenant('/platos', 'DELETE', { id }),
+  },
+  actividad: {
+    list: (filtros = {}) => {
+      const qs = new URLSearchParams()
+      for (const [k, v] of Object.entries(filtros)) if (v) qs.set(k, v)
+      const s = qs.toString()
+      return req(`/actividad${s ? `?${s}` : ''}`)
+    },
+    registrar: (eventos) => req('/actividad', 'POST', { eventos }),
   },
   comensales: {
     listByMesa:    (mesa_id) => req(`/comensales?mesa_id=${mesa_id}`),

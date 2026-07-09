@@ -8,7 +8,7 @@ import { defaultHomeForRole } from './RequireAuth.jsx'
 import { NAV_ITEMS, OPEN_PALETTE_EVENT } from './nav.js'
 
 const ROLE_LABELS = {
-  admin: 'Admin', gerente: 'Gerente', recepcionista: 'Recepcionista',
+  admin: 'Admin', gerente: 'Gerente', supervisor: 'Supervisor', recepcionista: 'Recepcionista',
   mesero: 'Mesero', cocinero: 'Cocinero', cajero: 'Cajero', cliente: 'Cliente',
 }
 
@@ -49,14 +49,14 @@ export default function Sidebar({ open, onClose }) {
       className={({ isActive }) =>
         `relative flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-colors ${
           isActive
-            ? 'bg-[#A85638]/10 text-[#A85638] dark:bg-[#A85638]/25 dark:text-[#F6EEE3]'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-[#A85638]/5 dark:hover:bg-slate-800'
+            ? 'bg-[#4F46E5]/10 text-[#4F46E5] dark:bg-[#4F46E5]/25 dark:text-[#EEF2FF]'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-[#4F46E5]/5 dark:hover:bg-slate-800'
         }`
       }
     >
       {({ isActive }) => (
         <>
-          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[#C99A3C]" />}
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[#0EA5E9]" />}
           <Icon size={18} className="flex-shrink-0" />
           <span className="truncate">{label}</span>
         </>
@@ -73,21 +73,21 @@ export default function Sidebar({ open, onClose }) {
   }, {})
 
   const content = (
-    <div className="h-full w-64 flex flex-col bg-[#FFFCF5] dark:bg-slate-900 border-r border-[#E5D9C9] dark:border-slate-800">
+    <div className="h-full w-64 flex flex-col bg-[#FFFFFF] dark:bg-slate-900 border-r border-[#E2E8F0] dark:border-slate-800">
       {/* Header / marca */}
       <div className="px-4 pt-5 pb-4 flex items-start justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="boho-arch w-11 h-12 bg-gradient-to-b from-[#A85638] to-[#8F4527] text-[#F6EEE3] flex items-center justify-center font-display font-bold text-base shadow-md shrink-0">
+          <span className="brand-mark w-11 h-11 bg-gradient-to-br from-[#6366F1] to-[#4338CA] text-white flex items-center justify-center font-display font-bold text-base shrink-0">
             SF
           </span>
           <div className="min-w-0">
             <p className="font-display text-lg leading-tight text-slate-900 dark:text-slate-50 truncate">Santa Fe</p>
-            <p className="text-[10px] text-[#C99A3C] uppercase tracking-[0.22em] font-bold">Casa · Cocina</p>
+            <p className="text-[10px] text-[#0EA5E9] uppercase tracking-[0.22em] font-bold">Punto de venta</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="lg:hidden w-8 h-8 rounded-lg hover:bg-[#A85638]/5 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500"
+          className="lg:hidden w-8 h-8 rounded-lg hover:bg-[#4F46E5]/5 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500"
           aria-label="Cerrar"
         >
           <X size={16} />
@@ -95,14 +95,14 @@ export default function Sidebar({ open, onClose }) {
       </div>
 
       <div className="px-4 pb-3">
-        <div className="boho-divider text-xs select-none" aria-hidden="true">❋</div>
+        <div className="brand-divider select-none" aria-hidden="true" />
       </div>
 
       {/* Buscador rápido (⌘K) */}
       <div className="px-3 pb-2">
         <button
           onClick={abrirPaleta}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-sm text-slate-400 dark:text-slate-500 ring-1 ring-[#E5D9C9] dark:ring-slate-700 hover:ring-[#A85638]/40 hover:text-slate-600 dark:hover:text-slate-300 transition-all bg-[#FAF4EA]/60 dark:bg-slate-950/40"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-sm text-slate-400 dark:text-slate-500 ring-1 ring-[#E2E8F0] dark:ring-slate-700 hover:ring-[#4F46E5]/40 hover:text-slate-600 dark:hover:text-slate-300 transition-all bg-[#F8FAFC]/60 dark:bg-slate-950/40"
         >
           <Search size={14} className="shrink-0" />
           <span className="flex-1 text-left">Ir a…</span>
@@ -114,7 +114,7 @@ export default function Sidebar({ open, onClose }) {
       <nav className="flex-1 p-3 pt-1 space-y-4 overflow-y-auto">
         {Object.entries(groups).map(([group, items]) => (
           <div key={group}>
-            <p className="px-3 mb-1 text-[10px] uppercase tracking-[0.2em] font-bold text-[#C99A3C]">{group}</p>
+            <p className="px-3 mb-1 text-[10px] uppercase tracking-[0.2em] font-bold text-[#0EA5E9]">{group}</p>
             <div className="space-y-1">
               {items.map(it => <ItemLink key={it.to} {...it} />)}
             </div>
@@ -123,7 +123,7 @@ export default function Sidebar({ open, onClose }) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[#E5D9C9] dark:border-slate-800 space-y-2">
+      <div className="p-3 border-t border-[#E2E8F0] dark:border-slate-800 space-y-2">
         <div className="flex items-center justify-between px-2 py-1">
           <span className={`text-xs font-semibold inline-flex items-center gap-1.5 ${connected ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'}`}>
             <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-600 animate-pulse' : 'bg-slate-300'}`} />
@@ -131,15 +131,15 @@ export default function Sidebar({ open, onClose }) {
           </span>
           <button
             onClick={toggle}
-            className="w-8 h-8 rounded-lg hover:bg-[#A85638]/5 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors"
+            className="w-8 h-8 rounded-lg hover:bg-[#4F46E5]/5 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors"
             aria-label="Cambiar tema"
           >
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
         {canImpersonate && (
-          <label className="flex items-center gap-2 px-2 py-1 rounded-xl ring-1 ring-[#E5D9C9] dark:ring-slate-700 bg-[#FAF4EA]/60 dark:bg-slate-950/40">
-            <Eye size={13} className="shrink-0 text-[#C99A3C]" />
+          <label className="flex items-center gap-2 px-2 py-1 rounded-xl ring-1 ring-[#E2E8F0] dark:ring-slate-700 bg-[#F8FAFC]/60 dark:bg-slate-950/40">
+            <Eye size={13} className="shrink-0 text-[#0EA5E9]" />
             <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 shrink-0">Ver como</span>
             <select
               value={session?.role ?? 'admin'}
@@ -179,7 +179,7 @@ export default function Sidebar({ open, onClose }) {
       {/* Mobile: drawer */}
       {open && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-[#2C2118]/55 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-[#0F172A]/55 backdrop-blur-sm" onClick={onClose} />
           <div className="relative h-full animate-[slideIn_.18s_ease-out]">{content}</div>
         </div>
       )}

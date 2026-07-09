@@ -221,11 +221,11 @@ export default function AdminPlatos() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E5D9C9] dark:border-slate-800 shadow-sm sticky top-0 z-10">
+      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#E2E8F0] dark:border-slate-800 shadow-sm sticky top-[var(--sf-topbar,0px)] z-10">
         <div className="max-w-6xl mx-auto px-4 py-5 pl-16 lg:pl-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="w-11 h-11 rounded-xl bg-[#A85638] text-white flex items-center justify-center shadow-sm shrink-0">
+              <span className="w-11 h-11 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center shadow-sm shrink-0">
                 <ChefHat size={22} />
               </span>
               <div className="min-w-0">
@@ -234,7 +234,7 @@ export default function AdminPlatos() {
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <span className="px-3 py-1.5 rounded-full bg-[#7D8B6A]/10 text-[#7D8B6A] dark:text-[#AEBC97] font-bold text-sm">
+              <span className="px-3 py-1.5 rounded-full bg-[#10B981]/10 text-[#10B981] dark:text-[#6EE7B7] font-bold text-sm">
                 {stats.total} {stats.total === 1 ? 'plato' : 'platos'}
               </span>
             </div>
@@ -244,8 +244,8 @@ export default function AdminPlatos() {
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* ============ FORMULARIO ============ */}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#E5D9C9] dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+        <section className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm ring-1 ring-[#E2E8F0] dark:ring-slate-800 overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#E2E8F0] dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="font-bold text-slate-900 dark:text-slate-50 text-lg">
                 {editando ? 'Editar plato' : 'Nuevo plato'}
@@ -258,7 +258,7 @@ export default function AdminPlatos() {
               <button
                 type="button"
                 onClick={resetFormulario}
-                className="text-sm font-semibold text-slate-500 hover:text-[#A85638] dark:text-slate-400 inline-flex items-center gap-1"
+                className="text-sm font-semibold text-slate-500 hover:text-[#4F46E5] dark:text-slate-400 inline-flex items-center gap-1"
               >
                 <RotateCcw size={14} /> Cancelar edición
               </button>
@@ -271,7 +271,7 @@ export default function AdminPlatos() {
               <p className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Imagen del plato
               </p>
-              <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#F6EEE3] dark:bg-slate-800 border-2 border-dashed border-[#E5D9C9] dark:border-slate-700 flex items-center justify-center">
+              <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#EEF2FF] dark:bg-slate-800 border-2 border-dashed border-[#E2E8F0] dark:border-slate-700 flex items-center justify-center">
                 {form.imagenData ? (
                   <>
                     <img
@@ -295,7 +295,7 @@ export default function AdminPlatos() {
                   </div>
                 )}
               </div>
-              <label className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors">
+              <label className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors">
                 <Upload size={16} />
                 <span>{form.imagenData ? 'Cambiar imagen' : 'Subir imagen'}</span>
                 <input
@@ -360,11 +360,11 @@ export default function AdminPlatos() {
                   aria-pressed={form.disponible}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl ring-1 transition-all ${
                     form.disponible
-                      ? 'bg-[#7D8B6A]/10 ring-[#7D8B6A]/40 text-[#566437] dark:text-[#AEBC97]'
+                      ? 'bg-[#10B981]/10 ring-[#10B981]/40 text-[#047857] dark:text-[#6EE7B7]'
                       : 'bg-red-50 dark:bg-red-500/10 ring-red-200 dark:ring-red-500/30 text-red-700 dark:text-red-300'
                   }`}
                 >
-                  <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${form.disponible ? 'bg-[#7D8B6A] text-white' : 'bg-red-500 text-white'}`}>
+                  <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${form.disponible ? 'bg-[#10B981] text-white' : 'bg-red-500 text-white'}`}>
                     {form.disponible ? <Eye size={16} /> : <EyeOff size={16} />}
                   </span>
                   <span className="text-left min-w-0">
@@ -378,7 +378,7 @@ export default function AdminPlatos() {
                     </span>
                   </span>
                   {/* switch */}
-                  <span className={`ml-auto relative w-11 h-6 rounded-full transition-colors shrink-0 ${form.disponible ? 'bg-[#7D8B6A]' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <span className={`ml-auto relative w-11 h-6 rounded-full transition-colors shrink-0 ${form.disponible ? 'bg-[#10B981]' : 'bg-slate-300 dark:bg-slate-600'}`}>
                     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.disponible ? 'left-[22px]' : 'left-0.5'}`} />
                   </span>
                 </button>
@@ -402,7 +402,7 @@ export default function AdminPlatos() {
                   <button
                     type="button"
                     onClick={agregarIngrediente}
-                    className="px-4 py-2.5 rounded-xl bg-[#7D8B6A] text-white text-sm font-bold hover:bg-[#566437] transition-colors inline-flex items-center gap-1 shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-[#10B981] text-white text-sm font-bold hover:bg-[#047857] transition-colors inline-flex items-center gap-1 shrink-0"
                   >
                     <Plus size={16} /> <span className="hidden sm:inline">Agregar</span>
                   </button>
@@ -412,7 +412,7 @@ export default function AdminPlatos() {
                     {form.ingredientes.map((ing, i) => (
                       <li
                         key={`${ing}-${i}`}
-                        className="inline-flex items-center gap-1.5 text-xs bg-[#F6EEE3] dark:bg-slate-800 text-slate-700 dark:text-slate-200 pl-2.5 pr-1.5 py-1 rounded-full border border-[#E5D9C9] dark:border-slate-700"
+                        className="inline-flex items-center gap-1.5 text-xs bg-[#EEF2FF] dark:bg-slate-800 text-slate-700 dark:text-slate-200 pl-2.5 pr-1.5 py-1 rounded-full border border-[#E2E8F0] dark:border-slate-700"
                       >
                         {ing}
                         <button
@@ -442,7 +442,7 @@ export default function AdminPlatos() {
                 <button
                   type="submit"
                   disabled={subiendo}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#A85638] text-white text-sm font-bold hover:bg-[#8F4527] disabled:opacity-60 transition-colors shadow-sm"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#4F46E5] text-white text-sm font-bold hover:bg-[#4338CA] disabled:opacity-60 transition-colors shadow-sm"
                 >
                   {subiendo ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                   {subiendo ? 'Subiendo…' : (editando ? 'Guardar cambios' : 'Crear plato')}
@@ -450,7 +450,7 @@ export default function AdminPlatos() {
                 <button
                   type="button"
                   onClick={resetFormulario}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   Limpiar
                 </button>
@@ -471,13 +471,13 @@ export default function AdminPlatos() {
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   placeholder="Buscar plato o ingrediente"
-                  className="pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E5D9C9] dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
+                  className="pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 focus:border-[#4F46E5]"
                 />
               </div>
               <select
                 value={filtro}
                 onChange={(e) => setFiltro(e.target.value)}
-                className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E5D9C9] dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
+                className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 focus:border-[#4F46E5]"
               >
                 <option value="Todos">Todas las categorías</option>
                 {CATEGORIAS.map((c) => (
@@ -506,11 +506,11 @@ export default function AdminPlatos() {
                   key={p.id}
                   className={`bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm ring-1 transition-all flex flex-col hover:-translate-y-0.5 hover:shadow-md ${
                     editandoId === p.id
-                      ? 'ring-[#A85638] dark:ring-[#C99A3C]'
-                      : 'ring-[#E5D9C9] dark:ring-slate-800'
+                      ? 'ring-[#4F46E5] dark:ring-[#0EA5E9]'
+                      : 'ring-[#E2E8F0] dark:ring-slate-800'
                   } ${p.disponible === false ? 'opacity-70' : ''}`}
                 >
-                  <div className="relative h-44 bg-[#F6EEE3] dark:bg-slate-800 flex items-center justify-center">
+                  <div className="relative h-44 bg-[#EEF2FF] dark:bg-slate-800 flex items-center justify-center">
                     {(p.imagenUrl || p.imagenData) ? (
                       <img
                         src={p.imagenUrl || p.imagenData}
@@ -520,11 +520,11 @@ export default function AdminPlatos() {
                     ) : (
                       <ImageIcon size={44} className="text-slate-300 dark:text-slate-600" />
                     )}
-                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/95 dark:bg-slate-900/95 text-[#7D8B6A] dark:text-[#AEBC97] border border-[#E5D9C9] dark:border-slate-700">
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/95 dark:bg-slate-900/95 text-[#10B981] dark:text-[#6EE7B7] border border-[#E2E8F0] dark:border-slate-700">
                       {p.categoria}
                     </span>
                     {editandoId === p.id && (
-                      <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#A85638] text-white">
+                      <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#4F46E5] text-white">
                         Editando
                       </span>
                     )}
@@ -539,7 +539,7 @@ export default function AdminPlatos() {
                       <h3 className="font-bold text-slate-900 dark:text-slate-50 leading-tight">
                         {p.nombre}
                       </h3>
-                      <span className="text-[#A85638] dark:text-[#C99A3C] font-black text-lg whitespace-nowrap">
+                      <span className="text-[#4F46E5] dark:text-[#0EA5E9] font-black text-lg whitespace-nowrap">
                         {formatPEN(p.precio)}
                       </span>
                     </div>
@@ -547,7 +547,7 @@ export default function AdminPlatos() {
                       {(p.ingredientes || []).slice(0, 4).map((ing, j) => (
                         <li
                           key={`${p.id}-ing-${j}`}
-                          className="text-xs bg-[#F6EEE3] dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full border border-[#E5D9C9] dark:border-slate-700"
+                          className="text-xs bg-[#EEF2FF] dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full border border-[#E2E8F0] dark:border-slate-700"
                         >
                           {ing}
                         </li>
@@ -566,7 +566,7 @@ export default function AdminPlatos() {
                       title={puedeCambiarDisponibilidad ? 'Cambiar disponibilidad' : 'Sin permiso para cambiar disponibilidad'}
                       className={`mb-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         p.disponible === false
-                          ? 'bg-[#7D8B6A] text-white hover:bg-[#566437]'
+                          ? 'bg-[#10B981] text-white hover:bg-[#047857]'
                           : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20'
                       }`}
                     >
@@ -582,7 +582,7 @@ export default function AdminPlatos() {
                       <button
                         type="button"
                         onClick={() => cargarParaEditar(p)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
                         <Pencil size={14} /> Editar
                       </button>
@@ -614,7 +614,7 @@ export default function AdminPlatos() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setConfirmar(null)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 overflow-hidden">
             <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center">
@@ -633,7 +633,7 @@ export default function AdminPlatos() {
               <button
                 type="button"
                 onClick={() => setConfirmar(null)}
-                className="px-4 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancelar
               </button>
@@ -655,7 +655,7 @@ export default function AdminPlatos() {
 /* ============================ helpers de UI ============================ */
 
 const inputCls =
-  'w-full px-3 py-2.5 rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638] transition-colors'
+  'w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 focus:border-[#4F46E5] transition-colors'
 
 function Field({ label, children }) {
   return (
@@ -670,7 +670,7 @@ function Field({ label, children }) {
 
 function EmptyState({ titulo, texto }) {
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-6 py-16 text-center">
+    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-6 py-16 text-center">
       <ChefHat size={42} className="mx-auto text-slate-300 dark:text-slate-600" />
       <p className="mt-3 font-bold text-slate-700 dark:text-slate-200">{titulo}</p>
       <p className="text-sm text-slate-500 dark:text-slate-400">{texto}</p>

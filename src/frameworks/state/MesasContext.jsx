@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
+import { useRestaurante } from './RestauranteContext.jsx'
 import { db } from '../../adapters/db.js'
 
 const MesasContext = createContext(null)
@@ -35,6 +36,10 @@ function mapRow(row, prev) {
 
 export function MesasProvider({ children }) {
   const { serverState, sendMessage, connected } = useLiveSync()
+  // `restauranteId` cambia cuando el admin audita otra sede → recargar todo.
+  // `auditando` = viendo una sede distinta a la base: en ese modo NO se
+  // sincroniza por WS (contaminaría el estado de los demás clientes).
+  const { restauranteId, auditando } = useRestaurante()
   const [mesas, setMesas] = useState(defaultMesas)
   const [zonas, setZonas] = useState([])
   const prevRef = useRef([])
@@ -55,11 +60,11 @@ export function MesasProvider({ children }) {
     }
   }
 
-  // Carga inicial
+  // Carga inicial y recarga al cambiar la sede auditada
   useEffect(() => {
     cargar([])
     cargarZonas()
-  }, [cargarZonas])
+  }, [cargarZonas, restauranteId])
 
   // Polling como fallback: solo corre cuando Pusher NO está conectado.
   // Cuando Pusher está activo, los updates llegan en vivo via sync:mesas.
@@ -75,15 +80,16 @@ export function MesasProvider({ children }) {
     return () => clearInterval(id)
   }, [connected])
 
-  // WS legacy (cuentas/integrantes en tiempo real)
+  // WS legacy (cuentas/integrantes en tiempo real) — ignorado en auditoría
   useEffect(() => {
+    if (auditando) return
     if (serverState?.mesas) setMesas(serverState.mesas)
-  }, [serverState?.mesas])
+  }, [serverState?.mesas, auditando])
 
   const syncMesas = useCallback((next) => {
-    if (!connected) return
+    if (!connected || auditando) return
     sendMessage({ type: 'sync:mesas', mesas: next })
-  }, [connected, sendMessage])
+  }, [connected, sendMessage, auditando])
 
   const cambiarEstadoA = useCallback((numeroMesa, nuevoEstado) => {
     if (!ESTADOS_VALIDOS.has(nuevoEstado)) return
@@ -160,6 +166,28 @@ export function MesasProvider({ children }) {
     }
   }, [mesas])
 
+  // Edición estructural (número/nombre y capacidad). Sólo administración,
+  // gerencia o supervisión — el backend valida el rol del token.
+  const editarMesa = useCallback(async (numeroMesa, { numero, capacidad } = {}) => {
+    const mesa = mesas.find(m => m.numeroMesa === numeroMesa)
+    if (!mesa) return { ok: false, error: 'Mesa no encontrada.' }
+    const patch = {}
+    if (numero !== undefined && Number(numero) !== mesa.numeroMesa) patch.numero_mesa = Number(numero)
+    if (capacidad !== undefined && Number(capacidad) !== mesa.capacidad) patch.capacidad = Number(capacidad)
+    if (!Object.keys(patch).length) return { ok: true }
+    try {
+      const row = await db.mesas.update(mesa.id, patch)
+      lastOptimisticAtRef.current = Date.now()
+      setMesas(prev => prev
+        .map(m => m.numeroMesa === numeroMesa ? mapRow(row, m) : m)
+        .sort((a, b) => a.numeroMesa - b.numeroMesa))
+      return { ok: true, mesa: mapRow(row, mesa) }
+    } catch (e) {
+      console.error('[mesas.editar]', e.message)
+      return { ok: false, error: e.message }
+    }
+  }, [mesas])
+
   // Baja de una mesa (solo si está disponible; lo valida también el backend).
   const eliminarMesa = useCallback(async (numeroMesa) => {
     const mesa = mesas.find(m => m.numeroMesa === numeroMesa)
@@ -190,8 +218,8 @@ export function MesasProvider({ children }) {
   }, [zonas])
 
   const value = useMemo(
-    () => ({ mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa }),
-    [mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, eliminarMesa],
+    () => ({ mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, editarMesa, eliminarMesa }),
+    [mesas, zonas, cargarZonas, cambiarEstadoA, actualizarMesa, enviarACobro, asignarZona, agregarMesa, editarMesa, eliminarMesa],
   )
 
   return <MesasContext.Provider value={value}>{children}</MesasContext.Provider>

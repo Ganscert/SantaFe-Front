@@ -20,7 +20,7 @@ function fmt(n) { return `S/ ${Number(n).toFixed(2)}` }
 function TarjetaProducto({ plato, qty, onAdd, onChange }) {
   return (
     <article className={`bg-white dark:bg-slate-900 rounded-3xl border shadow-sm overflow-hidden flex flex-col transition-all ${
-      qty > 0 ? 'border-[#A85638] ring-1 ring-[#A85638]/30' : 'border-slate-200 dark:border-slate-800'
+      qty > 0 ? 'border-[#4F46E5] ring-1 ring-[#4F46E5]/30' : 'border-slate-200 dark:border-slate-800'
     }`}>
       <div className="relative">
         <img
@@ -29,7 +29,7 @@ function TarjetaProducto({ plato, qty, onAdd, onChange }) {
           className="w-full h-28 sm:h-32 object-cover"
         />
         {qty > 0 && (
-          <span className="absolute top-2 right-2 min-w-[24px] h-6 px-1.5 rounded-full bg-[#A85638] text-white text-xs font-bold flex items-center justify-center shadow-md">
+          <span className="absolute top-2 right-2 min-w-[24px] h-6 px-1.5 rounded-full bg-[#4F46E5] text-white text-xs font-bold flex items-center justify-center shadow-md">
             {qty}
           </span>
         )}
@@ -39,9 +39,9 @@ function TarjetaProducto({ plato, qty, onAdd, onChange }) {
         <div className="flex items-start justify-between gap-1">
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">{plato.nombre}</h3>
-            <p className="text-xs text-[#7D8B6A] dark:text-[#AEBC97] font-semibold mt-0.5 truncate">{plato.categoria}</p>
+            <p className="text-xs text-[#10B981] dark:text-[#6EE7B7] font-semibold mt-0.5 truncate">{plato.categoria}</p>
           </div>
-          <span className="text-sm font-black text-[#A85638] dark:text-[#C99A3C] whitespace-nowrap shrink-0">{fmt(plato.precio)}</span>
+          <span className="text-sm font-black text-[#4F46E5] dark:text-[#0EA5E9] whitespace-nowrap shrink-0">{fmt(plato.precio)}</span>
         </div>
 
         {/* CTA — mt-auto lo fija siempre al fondo de la card */}
@@ -50,19 +50,19 @@ function TarjetaProducto({ plato, qty, onAdd, onChange }) {
           <button
             onClick={() => onAdd(plato)}
             /* min-h-[44px] garantiza zona táctil cómoda para el pulgar */
-            className="w-full min-h-[44px] rounded-xl bg-[#A85638] text-white text-sm font-bold
-                       hover:bg-[#8F4527] active:scale-95 transition-all"
+            className="w-full min-h-[44px] rounded-xl bg-[#4F46E5] text-white text-sm font-bold
+                       hover:bg-[#4338CA] active:scale-95 transition-all"
           >
             + Añadir
           </button>
         ) : (
-          <div className="flex items-center justify-between gap-1 bg-[#A85638]/8 dark:bg-[#A85638]/15 rounded-xl p-1">
+          <div className="flex items-center justify-between gap-1 bg-[#4F46E5]/8 dark:bg-[#4F46E5]/15 rounded-xl p-1">
             <button
               onClick={() => onChange(plato.nombre, -1)}
               className="min-w-[40px] min-h-[40px] rounded-lg bg-white dark:bg-slate-800 shadow-sm text-slate-600 dark:text-slate-200
                          font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all"
             >−</button>
-            <span className="font-black text-[#A85638] dark:text-[#C99A3C] text-base w-6 text-center">{qty}</span>
+            <span className="font-black text-[#4F46E5] dark:text-[#0EA5E9] text-base w-6 text-center">{qty}</span>
             <button
               onClick={() => onChange(plato.nombre, +1)}
               className="min-w-[40px] min-h-[40px] rounded-lg bg-white dark:bg-slate-800 shadow-sm text-slate-600 dark:text-slate-200
@@ -91,11 +91,11 @@ function FilaCarrito({ item, onChange }) {
           className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-slate-500 dark:text-slate-200 font-bold
                      hover:text-red-500 active:scale-95 transition-all"
         >−</button>
-        <span className="w-5 text-center font-black text-[#A85638] dark:text-[#C99A3C] text-sm">{item.cantidad}</span>
+        <span className="w-5 text-center font-black text-[#4F46E5] dark:text-[#0EA5E9] text-sm">{item.cantidad}</span>
         <button
           onClick={() => onChange(item.nombre, +1)}
           className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-slate-500 dark:text-slate-200 font-bold
-                     hover:text-[#A85638] active:scale-95 transition-all"
+                     hover:text-[#4F46E5] active:scale-95 transition-all"
         >+</button>
       </div>
       {/* precio */}
@@ -111,12 +111,12 @@ function ResumenPedido({ mesas, mesaSel, onMesaChange, items, onChange, total, o
   return (
     <div className="flex flex-col gap-4">
       {cuentaActual && (
-        <div className="rounded-xl bg-[#A85638]/8 dark:bg-[#A85638]/15 ring-1 ring-[#A85638]/25 px-3 py-2.5 flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg bg-[#A85638] text-white flex items-center justify-center text-xs font-black">
+        <div className="rounded-xl bg-[#4F46E5]/8 dark:bg-[#4F46E5]/15 ring-1 ring-[#4F46E5]/25 px-3 py-2.5 flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-[#4F46E5] text-white flex items-center justify-center text-xs font-black">
             {cuentaActual.nombre.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#A85638]/80 dark:text-[#C99A3C]">Cuenta activa</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#4F46E5]/80 dark:text-[#0EA5E9]">Cuenta activa</p>
             <p className="text-sm font-bold text-slate-900 dark:text-slate-50 truncate">{cuentaActual.nombre}</p>
           </div>
         </div>
@@ -133,7 +133,7 @@ function ResumenPedido({ mesas, mesaSel, onMesaChange, items, onChange, total, o
           /* font-size 16px evita zoom en iOS */
           style={{ fontSize: '16px' }}
           className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950
-                     focus:outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10
+                     focus:outline-none focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/10
                      transition-all text-slate-700 dark:text-slate-200"
         >
           <option value="">Selecciona una mesa</option>
@@ -178,7 +178,7 @@ function ResumenPedido({ mesas, mesaSel, onMesaChange, items, onChange, total, o
           placeholder="Sin ají, término medio, alergia a maní…"
           style={{ fontSize: '16px' }}
           className="w-full resize-none px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950
-                     focus:outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10
+                     focus:outline-none focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/10
                      transition-all text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
         />
       </div>
@@ -196,7 +196,7 @@ function ResumenPedido({ mesas, mesaSel, onMesaChange, items, onChange, total, o
             confirmado
               ? 'bg-emerald-500 text-white'
               : mesaSel && cuentaActual && items.length > 0 && !enviando
-                ? 'bg-[#7D8B6A] text-white hover:bg-[#69765A] active:scale-95 shadow-md'
+                ? 'bg-[#10B981] text-white hover:bg-[#059669] active:scale-95 shadow-md'
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
           }`}
         >
@@ -312,7 +312,7 @@ export default function AgregarPedido() {
       )}
 
       {/* ── Topbar ── */}
-      <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3 pl-16 lg:pl-4">
           <div className="flex items-center gap-3">
             <button
@@ -328,7 +328,7 @@ export default function AgregarPedido() {
           {/* Mesa + cuenta activa */}
           {mesaSel && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#A85638]/10 text-[#A85638] border border-[#A85638]/20">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] border border-[#4F46E5]/20">
                 Mesa {mesaSel}
               </span>
               {cuentaActual && (
@@ -342,11 +342,11 @@ export default function AgregarPedido() {
           {/* Botón carrito en móvil */}
           <button
             onClick={() => setDrawerOpen(true)}
-            className="lg:hidden relative flex items-center gap-2 rounded-xl bg-[#7D8B6A] text-white px-3 py-2 text-sm font-bold"
+            className="lg:hidden relative flex items-center gap-2 rounded-xl bg-[#10B981] text-white px-3 py-2 text-sm font-bold"
           >
             🛒
             {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-[#A85638] text-white text-xs font-black flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-[#4F46E5] text-white text-xs font-black flex items-center justify-center">
                 {totalItems}
               </span>
             )}
@@ -363,7 +363,7 @@ export default function AgregarPedido() {
         <section className="flex-1 min-w-0">
 
           {/* Buscador + filtros — sticky en desktop */}
-          <div className="sticky top-14 z-10 bg-[#F6EEE3]/95 dark:bg-slate-950/95 backdrop-blur-sm pb-3 mb-4 border-b border-[#E5D9C9] dark:border-slate-800">
+          <div className="sticky top-14 z-10 bg-[#EEF2FF]/95 dark:bg-slate-950/95 backdrop-blur-sm pb-3 mb-4 border-b border-[#E2E8F0] dark:border-slate-800">
             <input
               type="text"
               value={busqueda}
@@ -372,8 +372,8 @@ export default function AgregarPedido() {
               autoComplete="off"
               /* 16px mínimo evita zoom en iOS */
               style={{ fontSize: '16px' }}
-              className="w-full rounded-xl border border-[#E5D9C9] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3
-                         outline-none focus:border-[#A85638] focus:ring-2 focus:ring-[#A85638]/10
+              className="w-full rounded-xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3
+                         outline-none focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/10
                          transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
             <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5 scrollbar-none">
@@ -383,7 +383,7 @@ export default function AgregarPedido() {
                   onClick={() => setCategoria(c)}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
                     categoria === c
-                      ? 'bg-[#A85638] text-white'
+                      ? 'bg-[#4F46E5] text-white'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700'
                   }`}
                 >
@@ -437,7 +437,7 @@ export default function AgregarPedido() {
           disabled={items.length === 0}
           className={`px-5 py-3 rounded-xl text-sm font-bold transition-all ${
             items.length > 0
-              ? 'bg-[#7D8B6A] text-white hover:bg-[#69765A] active:scale-95'
+              ? 'bg-[#10B981] text-white hover:bg-[#059669] active:scale-95'
               : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
           }`}
         >

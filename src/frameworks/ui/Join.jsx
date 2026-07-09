@@ -184,10 +184,10 @@ export default function Join() {
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 shadow-sm p-6 text-center">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 shadow-sm p-6 text-center">
         {status === 'checking' && (
           <>
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#A85638]/10 text-[#A85638] flex items-center justify-center mb-3">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center mb-3">
               <Loader2 size={28} className="animate-spin" />
             </div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">Procesando código…</h1>
@@ -215,7 +215,7 @@ export default function Join() {
             <button
               type="button"
               onClick={() => navigate(session?.role === ROLES.CLIENTE ? '/mi-mesa' : '/tablero-mesas')}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-sm font-bold"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-bold"
             >
               <QrCode size={14} /> Volver
             </button>

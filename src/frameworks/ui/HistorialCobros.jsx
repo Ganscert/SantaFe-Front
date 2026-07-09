@@ -132,10 +132,10 @@ export default function HistorialCobros() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4 pl-16 lg:pl-4">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-xl bg-[#A85638] text-white flex items-center justify-center">
+            <span className="w-8 h-8 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center">
               <History size={15} />
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-50 text-sm">Historial de cobros</span>
@@ -152,22 +152,22 @@ export default function HistorialCobros() {
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {/* Resumen */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-4 py-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Recaudado</p>
-            <p className="mt-1 text-xl font-black text-[#A85638] dark:text-[#C99A3C] leading-none">{formatPEN(resumen.total)}</p>
+            <p className="mt-1 text-xl font-black text-[#4F46E5] dark:text-[#0EA5E9] leading-none">{formatPEN(resumen.total)}</p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-4 py-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Cobros</p>
             <p className="mt-1 text-xl font-black text-slate-900 dark:text-slate-50 leading-none">{resumen.n}</p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 px-4 py-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Ticket prom.</p>
             <p className="mt-1 text-xl font-black text-slate-900 dark:text-slate-50 leading-none">{formatPEN(resumen.promedio)}</p>
           </div>
         </div>
 
         {/* Filtros */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 p-3 space-y-3">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 p-3 space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -176,13 +176,13 @@ export default function HistorialCobros() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por mesa o referencia"
-                className="w-full pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A85638]/30 focus:border-[#A85638]"
+                className="w-full pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/30 focus:border-[#4F46E5]"
               />
             </div>
             <select
               value={metodo}
               onChange={(e) => setMetodo(e.target.value)}
-              className="px-3 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+              className="px-3 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
             >
               <option value="todos">Todos los métodos</option>
               {metodosDisponibles.map((m) => (
@@ -197,7 +197,7 @@ export default function HistorialCobros() {
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+                className="px-2.5 py-1.5 rounded-lg text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
               />
             </label>
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -206,7 +206,7 @@ export default function HistorialCobros() {
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+                className="px-2.5 py-1.5 rounded-lg text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
               />
             </label>
             <div className="flex items-center gap-2 sm:ml-auto">
@@ -214,7 +214,7 @@ export default function HistorialCobros() {
                 <button
                   type="button"
                   onClick={limpiarFiltros}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#A85638] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#4F46E5] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X size={12} /> Limpiar
                 </button>
@@ -223,7 +223,7 @@ export default function HistorialCobros() {
                 type="button"
                 onClick={cargar}
                 title="Refrescar"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#A85638] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#4F46E5] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 <RotateCcw size={12} /> Refrescar
               </button>
@@ -231,7 +231,7 @@ export default function HistorialCobros() {
                 type="button"
                 onClick={exportarCSV}
                 disabled={filtrados.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold transition-colors disabled:opacity-50"
               >
                 <Download size={12} /> CSV
               </button>
@@ -241,7 +241,7 @@ export default function HistorialCobros() {
 
         {/* Lista */}
         {loading ? (
-          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
             <Loader2 size={24} className="mx-auto animate-spin mb-2" /> Cargando cobros…
           </div>
         ) : error ? (
@@ -251,7 +251,7 @@ export default function HistorialCobros() {
             <p className="text-xs mt-0.5">{error}</p>
           </div>
         ) : filtrados.length === 0 ? (
-          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E5D9C9] dark:ring-slate-800 p-10 text-center">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-[#E2E8F0] dark:ring-slate-800 p-10 text-center">
             <FileText size={36} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
             <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
               {hayFiltro ? 'Sin cobros para estos filtros' : 'Aún no hay cobros registrados'}
@@ -261,7 +261,7 @@ export default function HistorialCobros() {
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E5D9C9] dark:ring-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-[#E2E8F0] dark:ring-slate-800 overflow-hidden">
             {filtrados.map((p, i) => {
               const numero = mesaNumeroPorId.get(p.mesa_id)
               const meta = METODO_META[p.metodo] || { label: p.metodo, cls: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' }
@@ -270,9 +270,9 @@ export default function HistorialCobros() {
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#E5D9C9] dark:border-slate-800' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? 'border-t border-[#E2E8F0] dark:border-slate-800' : ''}`}
                 >
-                  <span className="w-9 h-9 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#C99A3C] flex items-center justify-center font-black text-sm shrink-0">
+                  <span className="w-9 h-9 rounded-xl bg-[#4F46E5]/10 dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#0EA5E9] flex items-center justify-center font-black text-sm shrink-0">
                     {numero ?? '?'}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -294,14 +294,14 @@ export default function HistorialCobros() {
                           href={ref.comprobante}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-0.5 text-[#A85638] dark:text-[#C99A3C] hover:underline font-semibold"
+                          className="inline-flex items-center gap-0.5 text-[#4F46E5] dark:text-[#0EA5E9] hover:underline font-semibold"
                         >
                           <ExternalLink size={10} /> Comprobante
                         </a>
                       )}
                     </p>
                   </div>
-                  <span className="text-base font-black text-[#A85638] dark:text-[#C99A3C] whitespace-nowrap">
+                  <span className="text-base font-black text-[#4F46E5] dark:text-[#0EA5E9] whitespace-nowrap">
                     {formatPEN(p.monto)}
                   </span>
                 </div>

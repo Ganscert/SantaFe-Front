@@ -12,14 +12,14 @@ import { defaultHomeForRole } from './RequireAuth.jsx'
 const fmtMoney = (n) => `S/ ${(Number(n) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const ROLE_LABELS = {
-  gerente: 'Gerente', recepcionista: 'Recepcionista', mesero: 'Mesero',
+  gerente: 'Gerente', supervisor: 'Supervisor', recepcionista: 'Recepcionista', mesero: 'Mesero',
   cocinero: 'Cocinero', cajero: 'Cajero', cliente: 'Cliente',
 }
 
 function KpiGlobal({ icon: Icon, label, value }) {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 flex items-center gap-3">
-      <span className="w-9 h-9 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#C99A3C] flex items-center justify-center shrink-0">
+      <span className="w-9 h-9 rounded-xl bg-[#4F46E5]/10 dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#0EA5E9] flex items-center justify-center shrink-0">
         <Icon size={16} />
       </span>
       <div className="min-w-0">
@@ -33,7 +33,7 @@ function KpiGlobal({ icon: Icon, label, value }) {
 function StatMini({ icon: Icon, label, value }) {
   return (
     <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-      <Icon size={12} className="text-[#7D8B6A]" />
+      <Icon size={12} className="text-[#10B981]" />
       <span className="font-bold text-slate-700 dark:text-slate-200">{value}</span> {label}
     </div>
   )
@@ -54,7 +54,7 @@ function SelectorRol() {
   return (
     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-1">
-        <Eye size={15} className="text-[#C99A3C]" />
+        <Eye size={15} className="text-[#0EA5E9]" />
         <h3 className="font-bold">Cambiar de vista</h3>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
@@ -65,7 +65,7 @@ function SelectorRol() {
           <button
             key={role}
             onClick={() => verComo(role)}
-            className="px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-[#E5D9C9] dark:ring-slate-700 text-slate-600 dark:text-slate-300 hover:bg-[#A85638] hover:text-white hover:ring-[#A85638] transition-colors"
+            className="px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-[#E2E8F0] dark:ring-slate-700 text-slate-600 dark:text-slate-300 hover:bg-[#4F46E5] hover:text-white hover:ring-[#4F46E5] transition-colors"
           >
             {label}
           </button>
@@ -78,7 +78,7 @@ function SelectorRol() {
 function FormCrear({ onCreado }) {
   const [abierto, setAbierto] = useState(false)
   const [nombre, setNombre] = useState('')
-  const [mesas, setMesas] = useState(8)
+  const [mesas, setMesas] = useState(10)
   const [guardando, setGuardando] = useState(false)
   const toast = useToast()
 
@@ -89,7 +89,7 @@ function FormCrear({ onCreado }) {
     try {
       const r = await db.restaurantes.create({ nombre: nombre.trim(), mesas_iniciales: mesas })
       toast.success(`Restaurante “${r.nombre}” creado.`)
-      setNombre(''); setMesas(8); setAbierto(false)
+      setNombre(''); setMesas(10); setAbierto(false)
       onCreado()
     } catch (err) {
       toast.error(err.message || 'No se pudo crear el restaurante.')
@@ -102,7 +102,7 @@ function FormCrear({ onCreado }) {
     return (
       <button
         onClick={() => setAbierto(true)}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] hover:bg-[#8F4527] text-white text-xs font-bold transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold transition-colors"
       >
         <Plus size={14} /> Nuevo restaurante
       </button>
@@ -116,7 +116,7 @@ function FormCrear({ onCreado }) {
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
         placeholder="Nombre del restaurante"
-        className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638] w-52"
+        className="px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5] w-52"
       />
       <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
         Mesas
@@ -124,13 +124,13 @@ function FormCrear({ onCreado }) {
           type="number" min={0} max={50}
           value={mesas}
           onChange={(e) => setMesas(Number(e.target.value))}
-          className="w-16 px-2 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#A85638]"
+          className="w-16 px-2 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#4F46E5]"
         />
       </label>
       <button
         type="submit"
         disabled={!nombre.trim() || guardando}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#7D8B6A] hover:bg-[#69765A] disabled:opacity-50 text-white text-xs font-bold transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-white text-xs font-bold transition-colors"
       >
         {guardando ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Crear
       </button>
@@ -188,7 +188,7 @@ function TarjetaRestaurante({ r, onRefrescar }) {
     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="boho-arch w-11 h-12 bg-gradient-to-b from-[#A85638] to-[#8F4527] text-[#F6EEE3] flex items-center justify-center shrink-0">
+          <span className="brand-mark w-11 h-12 bg-gradient-to-b from-[#4F46E5] to-[#4338CA] text-[#EEF2FF] flex items-center justify-center shrink-0">
             <Building2 size={17} />
           </span>
           <div className="min-w-0">
@@ -198,7 +198,7 @@ function TarjetaRestaurante({ r, onRefrescar }) {
                   autoFocus
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="px-2 py-1 rounded-lg text-sm font-bold bg-white dark:bg-slate-950 border border-[#A85638] text-slate-800 dark:text-slate-100 focus:outline-none w-40"
+                  className="px-2 py-1 rounded-lg text-sm font-bold bg-white dark:bg-slate-950 border border-[#4F46E5] text-slate-800 dark:text-slate-100 focus:outline-none w-40"
                 />
                 <button type="submit" disabled={ocupado} className="text-emerald-600 hover:text-emerald-700"><Check size={15} /></button>
                 <button type="button" onClick={() => { setEditando(false); setNombre(r.nombre) }} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
@@ -226,7 +226,7 @@ function TarjetaRestaurante({ r, onRefrescar }) {
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-1">
-        <span className="inline-flex items-center gap-1 text-sm font-black text-[#A85638] dark:text-[#C99A3C]">
+        <span className="inline-flex items-center gap-1 text-sm font-black text-[#4F46E5] dark:text-[#0EA5E9]">
           <TrendingUp size={13} /> {fmtMoney(r.stats.ventas30d)}
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">/ 30d</span>
         </span>
@@ -234,7 +234,7 @@ function TarjetaRestaurante({ r, onRefrescar }) {
           <button
             onClick={() => setEditando(true)}
             title="Renombrar"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#A85638] hover:bg-[#A85638]/5 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#4F46E5] hover:bg-[#4F46E5]/5 dark:hover:bg-slate-800 transition-colors"
           >
             <Pencil size={14} />
           </button>
@@ -255,7 +255,7 @@ function TarjetaRestaurante({ r, onRefrescar }) {
           ))}
           <Link
             to={`/admin/plataforma/${r.id}`}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#A85638]/10 dark:bg-[#A85638]/20 text-[#A85638] dark:text-[#F6EEE3] text-xs font-bold hover:bg-[#A85638] hover:text-white transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#4F46E5]/10 dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#EEF2FF] text-xs font-bold hover:bg-[#4F46E5] hover:text-white transition-colors"
           >
             Administrar <ArrowRight size={12} />
           </Link>
@@ -298,17 +298,17 @@ export default function AdminPlataforma() {
 
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3 pl-16 lg:pl-4">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-xl bg-[#A85638] text-white flex items-center justify-center">
+            <span className="w-8 h-8 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center">
               <Building2 size={15} />
             </span>
             <span className="font-bold text-sm">Panel de plataforma</span>
           </div>
           <button
             onClick={() => { setLoading(true); cargar() }}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#A85638] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-[#4F46E5] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             <RotateCcw size={12} /> Refrescar
           </button>
@@ -318,7 +318,7 @@ export default function AdminPlataforma() {
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#A85638] dark:text-[#C99A3C]">Administración informática</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#4F46E5] dark:text-[#0EA5E9]">Administración informática</p>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">Toda la plataforma, en un lugar</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Restaurantes, equipos y actividad de los últimos 30 días.

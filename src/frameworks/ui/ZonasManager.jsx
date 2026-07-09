@@ -59,7 +59,7 @@ export default function ZonasManager({ zonas = [], onClose, onChanged }) {
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100">
-            <MapPin size={16} className="text-[#A85638]" /> Zonas del salón
+            <MapPin size={16} className="text-[#4F46E5]" /> Zonas del salón
           </h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300" aria-label="Cerrar">✕</button>
         </div>
@@ -69,9 +69,9 @@ export default function ZonasManager({ zonas = [], onClose, onChanged }) {
             value={nombre}
             onChange={e => setNombre(e.target.value)}
             placeholder="Nueva zona (ej. Terraza, Salón, Barra)"
-            className="flex-1 px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#A85638]"
+            className="flex-1 px-3 py-2 rounded-xl text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#4F46E5]"
           />
-          <button type="submit" disabled={creando || !nombre.trim()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A85638] text-white text-sm font-bold hover:bg-[#8F4527] disabled:opacity-40 transition-colors">
+          <button type="submit" disabled={creando || !nombre.trim()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#4F46E5] text-white text-sm font-bold hover:bg-[#4338CA] disabled:opacity-40 transition-colors">
             {creando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Añadir
           </button>
         </form>
@@ -89,15 +89,15 @@ export default function ZonasManager({ zonas = [], onClose, onChanged }) {
                       value={editNombre}
                       onChange={e => setEditNombre(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && guardarNombre(z.id)}
-                      className="flex-1 px-2 py-1 rounded-lg text-sm bg-white dark:bg-slate-950 border border-[#A85638] text-slate-800 dark:text-slate-100 focus:outline-none"
+                      className="flex-1 px-2 py-1 rounded-lg text-sm bg-white dark:bg-slate-950 border border-[#4F46E5] text-slate-800 dark:text-slate-100 focus:outline-none"
                     />
                     <button onClick={() => guardarNombre(z.id)} className="text-emerald-600 hover:text-emerald-700"><Check size={16} /></button>
                     <button onClick={() => setEditId(null)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
                   </>
                 ) : (
                   <>
-                    <span className="w-6 h-6 rounded-lg bg-[#7D8B6A]/15 text-[#7D8B6A] dark:text-[#AEBC97] flex items-center justify-center shrink-0"><MapPin size={12} /></span>
-                    <button onClick={() => { setEditId(z.id); setEditNombre(z.nombre) }} className="flex-1 text-left text-sm font-bold text-slate-800 dark:text-slate-100 truncate hover:text-[#A85638]">{z.nombre}</button>
+                    <span className="w-6 h-6 rounded-lg bg-[#10B981]/15 text-[#10B981] dark:text-[#6EE7B7] flex items-center justify-center shrink-0"><MapPin size={12} /></span>
+                    <button onClick={() => { setEditId(z.id); setEditNombre(z.nombre) }} className="flex-1 text-left text-sm font-bold text-slate-800 dark:text-slate-100 truncate hover:text-[#4F46E5]">{z.nombre}</button>
                     <button onClick={() => eliminar(z.id)} title="Eliminar zona" className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={15} /></button>
                   </>
                 )}

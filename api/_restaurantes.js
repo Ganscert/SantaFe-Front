@@ -82,8 +82,11 @@ export async function detalleRestaurante(sb, id) {
   }
 }
 
-/** Crea el restaurante y, opcionalmente, sus primeras mesas (1..N). */
-export async function crearRestaurante(sb, { nombre, mesas_iniciales = 0 }) {
+// Toda instalación nueva arranca con mesas listas para operar.
+export const MESAS_INICIALES_DEFAULT = 10
+
+/** Crea el restaurante con sus primeras mesas (1..N; por defecto 10). */
+export async function crearRestaurante(sb, { nombre, mesas_iniciales = MESAS_INICIALES_DEFAULT }) {
   const { data, error } = await sb.from('restaurantes')
     .insert({ nombre: String(nombre).trim() })
     .select('id, nombre, creado_en')

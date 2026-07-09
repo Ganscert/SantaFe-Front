@@ -1,13 +1,14 @@
 import { getDB, RESTAURANTE_ID } from './_supabase.js'
-import { requireAuth, serverError } from './_auth.js'
+import { requireAuth, resolveRestaurante, serverError } from './_auth.js'
 
-const ROLES_GESTION = ['admin', 'gerente']
+const ROLES_GESTION = ['admin', 'gerente', 'supervisor']
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
     const sb = getDB()
+    const RID = resolveRestaurante(req, RESTAURANTE_ID)
     // Lectura abierta (igual que mesas); mutaciones sólo administración.
     if (req.method !== 'GET' && !requireAuth(req, res, ROLES_GESTION)) return
 
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
       const { data, error } = await sb
         .from('zonas')
         .select('id, nombre, orden, activa')
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', RID)
         .order('orden', { ascending: true })
         .order('nombre', { ascending: true })
       if (error) throw error
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
       if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre de la zona es requerido.' })
       const { data, error } = await sb
         .from('zonas')
-        .insert({ restaurante_id: RESTAURANTE_ID, nombre: String(nombre).trim(), orden: Number(orden) || 0, activa })
+        .insert({ restaurante_id: RID, nombre: String(nombre).trim(), orden: Number(orden) || 0, activa })
         .select('id, nombre, orden, activa')
         .single()
       if (error) {
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
         .from('zonas')
         .update(patch)
         .eq('id', id)
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', RID)
         .select('id, nombre, orden, activa')
         .single()
       if (error) {
@@ -62,8 +63,8 @@ export default async function handler(req, res) {
       const { id } = req.body || {}
       if (!id) return res.status(400).json({ error: 'id requerido.' })
       // Desasignar las mesas de la zona antes de borrarla (evita romper la FK).
-      await sb.from('mesas').update({ zona_id: null }).eq('zona_id', id).eq('restaurante_id', RESTAURANTE_ID)
-      const { error } = await sb.from('zonas').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
+      await sb.from('mesas').update({ zona_id: null }).eq('zona_id', id).eq('restaurante_id', RID)
+      const { error } = await sb.from('zonas').delete().eq('id', id).eq('restaurante_id', RID)
       if (error) throw error
       return res.json({ ok: true })
     }

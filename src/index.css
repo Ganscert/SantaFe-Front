@@ -3,10 +3,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ═══════════════════════════════════════════════════════════
-   SANTA FE · Sistema de diseño "Bohemio"
-   Tierra, arcilla, salvia, lino y ocre. Tipografía serif de
-   carácter (Fraunces) + humanista (Karla). Texturas suaves,
-   formas orgánicas y acentos artesanales.
+   SANTA FE · Sistema de diseño "Aurora"
+   Moderno y limpio: índigo eléctrico como primario, cielo como
+   acento, esmeralda para éxito y neutros fríos (slate reales).
+   Tipografía geométrica (Space Grotesk) + UI legible (Inter).
+   Superficies planas, bordes finos, sombras suaves y difusas.
 ═══════════════════════════════════════════════════════════ */
 
 @keyframes slideIn {
@@ -39,106 +40,87 @@
 
 @theme {
   /* ── Tipografías ── */
-  --font-sans:    'Karla', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, sans-serif;
 
-  /* ── Paleta bohemia ── */
-  --color-arcilla:         #A85638;
-  --color-arcilla-dark:    #8F4527;
-  --color-arcilla-light:   rgba(168, 86, 56, 0.12);
-  --color-salvia:          #7D8B6A;
-  --color-salvia-dark:     #69765A;
-  --color-arena:           #F6EEE3;
-  --color-ocre:            #C99A3C;
+  /* ── Paleta Aurora ── */
+  --color-primario:       #4F46E5;  /* índigo 600 */
+  --color-primario-dark:  #4338CA;  /* índigo 700 */
+  --color-primario-light: rgba(79, 70, 229, 0.10);
+  --color-acento:         #0EA5E9;  /* sky 500 */
+  --color-exito:          #10B981;  /* emerald 500 */
+  --color-exito-dark:     #059669;  /* emerald 600 */
 
   /* Alias legacy (componentes antiguos) */
-  --color-terracota:       #A85638;
-  --color-terracota-dark:  #8F4527;
-  --color-terracota-light: rgba(168, 86, 56, 0.12);
-  --color-oliva:           #7D8B6A;
-  --color-oliva-dark:      #69765A;
-  --color-crema:           #F6EEE3;
-  --color-dorado:          #C99A3C;
+  --color-arcilla:         #4F46E5;
+  --color-arcilla-dark:    #4338CA;
+  --color-arcilla-light:   rgba(79, 70, 229, 0.10);
+  --color-salvia:          #10B981;
+  --color-salvia-dark:     #059669;
+  --color-arena:           #F4F6FB;
+  --color-ocre:            #0EA5E9;
+  --color-terracota:       #4F46E5;
+  --color-terracota-dark:  #4338CA;
+  --color-terracota-light: rgba(79, 70, 229, 0.10);
+  --color-oliva:           #10B981;
+  --color-oliva-dark:      #059669;
+  --color-crema:           #F4F6FB;
+  --color-dorado:          #0EA5E9;
 
-  /* ── Remapeo cálido: slate → piedra/café ──
-     Toda la app usa slate-*; redefinirlo aquí calienta cada
-     pantalla (incluido dark mode espresso) sin tocar JSX. */
-  --color-slate-50:  #FAF4EA;
-  --color-slate-100: #F1E8D9;
-  --color-slate-200: #E5D9C9;
-  --color-slate-300: #D2C2AC;
-  --color-slate-400: #A6937D;
-  --color-slate-500: #82705C;
-  --color-slate-600: #645546;
-  --color-slate-700: #4A3E33;
-  --color-slate-800: #352B22;
-  --color-slate-900: #261E17;
-  --color-slate-950: #191309;
+  /* ── indigo → violeta (estado "por cobrar") ──
+     El primario usa índigo en hex directo; las utilidades indigo-*
+     del JSX (chips/badges "por cobrar") viran a violeta para no
+     confundirse con acciones primarias. */
+  --color-indigo-50:  #F5F3FF;
+  --color-indigo-100: #EDE9FE;
+  --color-indigo-200: #DDD6FE;
+  --color-indigo-300: #C4B5FD;
+  --color-indigo-400: #A78BFA;
+  --color-indigo-500: #8B5CF6;
+  --color-indigo-600: #7C3AED;
+  --color-indigo-700: #6D28D9;
+  --color-indigo-800: #5B21B6;
+  --color-indigo-900: #4C1D95;
+  --color-indigo-950: #2E1065;
 
-  /* indigo → ciruela polvorienta (estado "por cobrar") */
-  --color-indigo-50:  #F4EFF6;
-  --color-indigo-100: #E8DEED;
-  --color-indigo-200: #D4C2DE;
-  --color-indigo-300: #B89BC7;
-  --color-indigo-400: #9C77AD;
-  --color-indigo-500: #835D94;
-  --color-indigo-600: #6E4A7E;
-  --color-indigo-700: #5A3C67;
-  --color-indigo-800: #46304F;
-  --color-indigo-900: #33243A;
-  --color-indigo-950: #1F1523;
-
-  /* blue → verde azulado artesanal (cocina "en preparación") */
-  --color-blue-50:  #EDF4F1;
-  --color-blue-100: #D8E7E1;
-  --color-blue-200: #B3D0C5;
-  --color-blue-300: #88B3A4;
-  --color-blue-400: #639787;
-  --color-blue-500: #4D7F70;
-  --color-blue-600: #3E685C;
-  --color-blue-700: #33534A;
-  --color-blue-800: #283F39;
-  --color-blue-900: #1D2E29;
-  --color-blue-950: #121D1A;
-
-  /* ── Estados (entibiecidos) ── */
-  --color-estado-disponible:    #4F8A5B;
-  --color-estado-disponible-bg: #ECF5EC;
-  --color-estado-ocupada:       #C77F2E;
-  --color-estado-ocupada-bg:    #FBF2E2;
-  --color-estado-por-cobrar:    #835D94;
-  --color-estado-por-cobrar-bg: #F4EFF6;
-  --color-estado-listo:         #4D7F70;
-  --color-estado-listo-bg:      #EDF4F1;
-  --color-estado-cancelado:     #B3422F;
-  --color-estado-cancelado-bg:  #FBEDE9;
-  --color-estado-pendiente:     #C77F2E;
-  --color-estado-pendiente-bg:  #FBF2E2;
-  --color-estado-preparacion:   #4D7F70;
-  --color-estado-preparacion-bg:#EDF4F1;
-  --color-estado-atrasado:      #C2622E;
-  --color-estado-atrasado-bg:   #FAEEDF;
-  --color-estado-critico:       #B3422F;
-  --color-estado-critico-bg:    #FBE4DE;
+  /* ── Estados (frescos y saturados con moderación) ── */
+  --color-estado-disponible:    #059669;
+  --color-estado-disponible-bg: #ECFDF5;
+  --color-estado-ocupada:       #D97706;
+  --color-estado-ocupada-bg:    #FFFBEB;
+  --color-estado-por-cobrar:    #7C3AED;
+  --color-estado-por-cobrar-bg: #F5F3FF;
+  --color-estado-listo:         #0891B2;
+  --color-estado-listo-bg:      #ECFEFF;
+  --color-estado-cancelado:     #DC2626;
+  --color-estado-cancelado-bg:  #FEF2F2;
+  --color-estado-pendiente:     #D97706;
+  --color-estado-pendiente-bg:  #FFFBEB;
+  --color-estado-preparacion:   #0284C7;
+  --color-estado-preparacion-bg:#F0F9FF;
+  --color-estado-atrasado:      #EA580C;
+  --color-estado-atrasado-bg:   #FFF7ED;
+  --color-estado-critico:       #DC2626;
+  --color-estado-critico-bg:    #FEE2E2;
 }
 
 /* ── Base ─────────────────────────────────────────── */
 :root {
-  --text:         #5C4B3C;
-  --text-h:       #2C2118;
-  --bg:           #F6EEE3;
-  --border:       #E5D9C9;
-  --accent:       #A85638;
-  --accent-bg:    rgba(168, 86, 56, 0.12);
-  --accent-border:rgba(168, 86, 56, 0.35);
-  --shadow:       rgba(60, 42, 28, 0.10) 0 12px 24px -8px, rgba(60, 42, 28, 0.06) 0 4px 8px -4px;
+  --text:         #334155;
+  --text-h:       #0F172A;
+  --bg:           #F4F6FB;
+  --border:       #E2E8F0;
+  --accent:       #4F46E5;
+  --accent-bg:    rgba(79, 70, 229, 0.10);
+  --accent-border:rgba(79, 70, 229, 0.35);
+  --shadow:       rgba(15, 23, 42, 0.08) 0 12px 32px -12px, rgba(15, 23, 42, 0.05) 0 4px 10px -4px;
 
-  --sans:    'Karla', ui-sans-serif, system-ui, sans-serif;
-  --heading: 'Fraunces', Georgia, serif;
-  --mono:    ui-monospace, Consolas, monospace;
+  --sans:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --heading: 'Space Grotesk', 'Inter', sans-serif;
+  --mono:    ui-monospace, 'SF Mono', Consolas, monospace;
 
   font: 16px/1.55 var(--sans);
-  letter-spacing: 0.005em;
+  letter-spacing: -0.006em;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -152,15 +134,17 @@
 
 body {
   margin: 0;
-  background-color: #F6EEE3;
-  /* puntilleo artesanal sutil, visible en todas las pantallas */
-  background-image: radial-gradient(rgba(168, 86, 56, 0.05) 1px, transparent 1.5px);
-  background-size: 26px 26px;
+  background-color: #F4F6FB;
+  /* halo superior sutil: da profundidad sin ensuciar el lienzo */
+  background-image:
+    radial-gradient(1200px 400px at 50% -100px, rgba(79, 70, 229, 0.06), transparent 70%);
+  background-repeat: no-repeat;
 }
 
 .dark body {
-  background-color: #191309;
-  background-image: radial-gradient(rgba(201, 154, 60, 0.06) 1px, transparent 1.5px);
+  background-color: #0B1120;
+  background-image:
+    radial-gradient(1200px 400px at 50% -100px, rgba(99, 102, 241, 0.12), transparent 70%);
 }
 
 #root {
@@ -169,49 +153,57 @@ body {
   flex-direction: column;
 }
 
-/* Serif de carácter en todos los títulos — sello bohemio global */
+/* Display geométrico en títulos — sello del sistema Aurora */
 h1, h2, h3 {
   font-family: var(--heading);
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   color: var(--text-h);
   margin: 0;
 }
 
 :where(.dark) h1,
 :where(.dark) h2,
-:where(.dark) h3 { color: #F4EBDD; }
+:where(.dark) h3 { color: #F1F5F9; }
 
 p { margin: 0; }
 
-::selection { background: rgba(201, 154, 60, 0.35); }
+::selection { background: rgba(79, 70, 229, 0.22); }
 
-/* Scrollbar cálido */
-* { scrollbar-width: thin; scrollbar-color: #D2C2AC transparent; }
+/* Scrollbar discreto */
+* { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: #D2C2AC; border-radius: 99px; }
-:where(.dark) *::-webkit-scrollbar-thumb { background: #4A3E33; }
+*::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+:where(.dark) *::-webkit-scrollbar-thumb { background: #334155; }
 
-/* ── Adornos bohemios ─────────────────────────────── */
-.boho-divider {
+/* ── Marca y divisores ────────────────────────────── */
+/* (antes .boho-divider / .boho-arch — renombrados en el rediseño) */
+.brand-divider {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #C99A3C;
+  color: transparent;      /* sin ornamento: hairline con degradado */
+  font-size: 0;
+  height: 1px;
 }
-.boho-divider::before,
-.boho-divider::after {
+.brand-divider::before,
+.brand-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #D2C2AC);
+  background: linear-gradient(90deg, transparent, #CBD5E1);
 }
-.boho-divider::after {
-  background: linear-gradient(90deg, #D2C2AC, transparent);
+.brand-divider::after {
+  background: linear-gradient(90deg, #CBD5E1, transparent);
 }
+:where(.dark) .brand-divider::before { background: linear-gradient(90deg, transparent, #334155); }
+:where(.dark) .brand-divider::after  { background: linear-gradient(90deg, #334155, transparent); }
 
-/* Arco boho: forma orgánica para avatares/marcas */
-.boho-arch { border-radius: 999px 999px 18px 18px; }
+/* Sello de marca: cuadrado redondeado moderno (squircle aproximado) */
+.brand-mark {
+  border-radius: 30%;
+  box-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.45);
+}
 
 kbd {
   font-family: var(--sans);
@@ -221,10 +213,10 @@ kbd {
   border-radius: 6px;
   border: 1px solid var(--border);
   border-bottom-width: 2px;
-  background: #FAF4EA;
-  color: #82705C;
+  background: #F8FAFC;
+  color: #64748B;
 }
-:where(.dark) kbd { background: #352B22; border-color: #4A3E33; color: #D2C2AC; }
+:where(.dark) kbd { background: #1E293B; border-color: #334155; color: #CBD5E1; }
 
 /* ── Login / page shell ───────────────────────────── */
 .page-shell {
@@ -234,48 +226,48 @@ kbd {
   justify-content: center;
   padding: 32px 20px;
   background:
-    radial-gradient(circle at 12% 18%, rgba(168, 86, 56, 0.12), transparent 34%),
-    radial-gradient(circle at 88% 82%, rgba(125, 139, 106, 0.13), transparent 32%),
-    radial-gradient(circle at 80% 12%, rgba(201, 154, 60, 0.10), transparent 26%);
+    radial-gradient(circle at 15% 20%, rgba(79, 70, 229, 0.14), transparent 36%),
+    radial-gradient(circle at 85% 80%, rgba(14, 165, 233, 0.12), transparent 34%),
+    radial-gradient(circle at 78% 12%, rgba(16, 185, 129, 0.08), transparent 26%);
 }
 
 :where(.dark) .page-shell {
   background:
-    radial-gradient(circle at 12% 18%, rgba(168, 86, 56, 0.22), transparent 34%),
-    radial-gradient(circle at 88% 82%, rgba(201, 154, 60, 0.10), transparent 30%);
+    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.25), transparent 38%),
+    radial-gradient(circle at 85% 80%, rgba(14, 165, 233, 0.14), transparent 32%);
 }
 
 .card {
   width: min(460px, 100%);
   padding: 36px;
-  background: rgba(255, 252, 245, 0.94);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border);
-  border-radius: 26px;
+  border-radius: 22px;
   box-shadow: var(--shadow);
   text-align: left;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
 }
 
 :where(.dark) .card {
-  background: rgba(38, 30, 23, 0.88);
-  border-color: #352B22;
-  color: #F1E8D9;
+  background: rgba(15, 23, 42, 0.88);
+  border-color: #1E293B;
+  color: #E2E8F0;
 }
 
-:where(.dark) .login-title { color: #F4EBDD; }
-:where(.dark) .subtitle    { color: #A6937D; }
-:where(.dark) .form-label  { color: #E5D9C9; }
+:where(.dark) .login-title { color: #F1F5F9; }
+:where(.dark) .subtitle    { color: #94A3B8; }
+:where(.dark) .form-label  { color: #E2E8F0; }
 :where(.dark) .form-input  {
-  background: #191309;
-  border-color: #4A3E33;
-  color: #F1E8D9;
+  background: #0B1120;
+  border-color: #334155;
+  color: #E2E8F0;
 }
 :where(.dark) .form-input:focus {
-  border-color: #C99A3C;
-  box-shadow: 0 0 0 3px rgba(201, 154, 60, 0.18);
+  border-color: #818CF8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.20);
 }
-:where(.dark) .btn-ghost { color: #A6937D; }
-:where(.dark) .btn-ghost:hover { color: #F1E8D9; }
+:where(.dark) .btn-ghost { color: #94A3B8; }
+:where(.dark) .btn-ghost:hover { color: #E2E8F0; }
 
 .card-head { margin-bottom: 24px; }
 
@@ -289,22 +281,23 @@ kbd {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #A85638;
-  background: rgba(168, 86, 56, 0.09);
-  border: 1px solid rgba(168, 86, 56, 0.22);
+  color: #4F46E5;
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.22);
   margin-bottom: 14px;
 }
 
 .login-title {
   font-family: var(--heading);
   font-size: 1.9rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   margin: 0 0 8px;
   color: var(--text-h);
 }
 
 .subtitle {
-  color: #82705C;
+  color: #64748B;
   font-size: 0.9rem;
   line-height: 1.6;
 }
@@ -315,7 +308,7 @@ kbd {
 .form-label {
   display: grid;
   gap: 7px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.875rem;
   color: var(--text-h);
 }
@@ -324,17 +317,17 @@ kbd {
   width: 100%;
   padding: 12px 15px;
   border: 1.5px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   font: inherit;
   font-size: 0.95rem;
   outline: none;
-  background: #FFFCF5;
+  background: #FFFFFF;
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .form-input:focus {
-  border-color: #A85638;
-  box-shadow: 0 0 0 3px rgba(168, 86, 56, 0.12);
+  border-color: #4F46E5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }
 
 /* ── Buttons ──────────────────────────────────────── */
@@ -344,7 +337,7 @@ kbd {
   justify-content: center;
   gap: 8px;
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 12px 20px;
   font: inherit;
   font-weight: 700;
@@ -354,19 +347,19 @@ kbd {
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
-.btn:hover  { opacity: 0.92; transform: translateY(-1px); }
+.btn:hover  { opacity: 0.94; transform: translateY(-1px); }
 .btn:active { opacity: 1;    transform: translateY(0); }
 
 .btn-primary {
   width: 100%;
-  color: #FFFCF5;
-  background: linear-gradient(135deg, #A85638 0%, #BE6A45 100%);
-  box-shadow: 0 4px 14px rgba(168, 86, 56, 0.30);
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35);
 }
-.btn-primary:hover { box-shadow: 0 6px 20px rgba(168, 86, 56, 0.40); }
+.btn-primary:hover { box-shadow: 0 6px 22px rgba(79, 70, 229, 0.45); }
 
 .btn-ghost {
-  color: #82705C;
+  color: #64748B;
   background: transparent;
   font-weight: 500;
   font-size: 0.85rem;
@@ -378,11 +371,11 @@ kbd {
 
 /* ── Error ────────────────────────────────────────── */
 .error-msg {
-  color: #9C3324;
+  color: #B91C1C;
   font-size: 0.85rem;
   padding: 10px 13px;
-  background: #FBEDE9;
-  border: 1px solid #E4A18F;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
   border-radius: 11px;
 }
 

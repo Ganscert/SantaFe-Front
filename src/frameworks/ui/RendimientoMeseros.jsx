@@ -10,7 +10,7 @@ import {
 import { useRendimientoMeseros, useTiempoServicio } from '../../usecases/useServicioMetrics.js'
 import { useTheme } from '../state/ThemeContext.jsx'
 
-const PALETA = ['#A85638', '#7D8B6A', '#C99A3C', '#3b82f6', '#8b5cf6', '#ec4899']
+const PALETA = ['#4F46E5', '#10B981', '#0EA5E9', '#3b82f6', '#8b5cf6', '#ec4899']
 
 const fmtMoney = (n) =>
   `S/ ${(Number(n) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -54,7 +54,7 @@ function MeseroCard({ mesero, rank }) {
           <p className="font-bold text-slate-900 dark:text-slate-50 truncate">{mesero.nombre}</p>
           <p className="text-[11px] text-slate-400 uppercase tracking-wide">Mesero</p>
         </div>
-        <span className="text-lg font-black text-[#A85638] dark:text-[#C99A3C]">
+        <span className="text-lg font-black text-[#4F46E5] dark:text-[#0EA5E9]">
           {fmtMoney(mesero.ventasTotales)}
         </span>
       </div>
@@ -168,7 +168,7 @@ export default function RendimientoMeseros() {
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
       {/* Topbar */}
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+      <header className="sticky top-[var(--sf-topbar,0px)] z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
           <Link
             to="/admin/dashboard"
@@ -177,7 +177,7 @@ export default function RendimientoMeseros() {
             <ArrowLeft size={16} /> <span className="hidden sm:inline">Dashboard</span>
           </Link>
           <span className="hidden sm:block text-slate-300 dark:text-slate-700">|</span>
-          <span className="w-7 h-7 rounded-xl bg-[#7D8B6A] flex items-center justify-center text-white">
+          <span className="w-7 h-7 rounded-xl bg-[#10B981] flex items-center justify-center text-white">
             <Users size={14} />
           </span>
           <h1 className="text-base font-bold">Rendimiento de Meseros</h1>
@@ -187,7 +187,7 @@ export default function RendimientoMeseros() {
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#7D8B6A] dark:text-[#C99A3C]">Supervisión</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#10B981] dark:text-[#0EA5E9]">Supervisión</p>
           <h2 className="text-2xl sm:text-3xl font-black mt-1">Panel de meseros</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Métricas individuales · tiempos de servicio y ventas
@@ -202,13 +202,13 @@ export default function RendimientoMeseros() {
                 label: 'Total meseros',
                 value: meseros.length,
                 icon: Users,
-                accent: 'bg-[#7D8B6A]/10 text-[#7D8B6A] dark:text-[#AEBC97]',
+                accent: 'bg-[#10B981]/10 text-[#10B981] dark:text-[#6EE7B7]',
               },
               {
                 label: 'Top ventas',
                 value: fmtMoney(meseros[0]?.ventasTotales ?? 0),
                 icon: Trophy,
-                accent: 'bg-[#C99A3C]/10 text-[#C99A3C]',
+                accent: 'bg-[#0EA5E9]/10 text-[#0EA5E9]',
               },
               {
                 label: 'Pedidos totales',
@@ -247,7 +247,7 @@ export default function RendimientoMeseros() {
         {/* Tarjetas de meseros */}
         <section>
           <h3 className="text-base font-bold mb-3 flex items-center gap-2">
-            <Users size={16} className="text-[#7D8B6A]" /> Meseros
+            <Users size={16} className="text-[#10B981]" /> Meseros
           </h3>
           {loadingM ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -312,7 +312,7 @@ export default function RendimientoMeseros() {
                       <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-50">{m.nombre}</td>
                       <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400 font-semibold">{m.pedidosCompletados}</td>
                       <td className="px-4 py-3 text-red-500 font-semibold">{m.pedidosCancelados}</td>
-                      <td className="px-4 py-3 font-bold text-[#A85638] dark:text-[#C99A3C]">{fmtMoney(m.ventasTotales)}</td>
+                      <td className="px-4 py-3 font-bold text-[#4F46E5] dark:text-[#0EA5E9]">{fmtMoney(m.ventasTotales)}</td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtMoney(m.ticketPromedio)}</td>
                       <td className="px-4 py-3 text-amber-600 dark:text-amber-400 font-semibold">{m.tiempoPromedioLabel}</td>
                       <td className="px-4 py-3">
