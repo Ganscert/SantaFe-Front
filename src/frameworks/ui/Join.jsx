@@ -44,6 +44,10 @@ export default function Join() {
   const [message, setMessage] = useState('')
   // Contador para forzar la re-evaluación del efecto tras el timeout de espera.
   const [tick, setTick] = useState(0)
+  // Token resuelto en el SERVIDOR (persistencia cross-device): permite unirse
+  // aunque el token se haya generado en OTRO dispositivo (el del staff).
+  const [remoteToken, setRemoteToken] = useState(null)
+  const remoteTriedRef = useRef(false)
 
   // Para asegurar que sólo aplicamos el token una vez aunque tokens cambien
   const consumidoRef = useRef(false)
@@ -56,11 +60,26 @@ export default function Join() {
   // Permite reintentar sin recargar: reinicia la ventana de espera y re-evalúa.
   const reintentar = () => {
     consumidoRef.current = false
+    remoteTriedRef.current = false
     inicioRef.current = Date.now()
     setMessage('')
     setStatus('checking')
     setTick((t) => t + 1)
   }
+
+  // Resolver el código/token en el servidor (una vez). Es lo que hace que el
+  // cliente pueda unirse desde su teléfono aunque el QR se generó en la laptop
+  // del staff. Si la tabla no existe aún (migración pendiente) devuelve null y
+  // se cae al flujo local/Pusher del mismo dispositivo.
+  useEffect(() => {
+    if (!session || remoteTriedRef.current) return
+    if (!tokenStr && !codigoParam) return
+    remoteTriedRef.current = true
+    db.tokens.buscar({ token: tokenStr || undefined, codigo: codigoParam || undefined })
+      .then((r) => { if (r && r.mesa_id) setRemoteToken({ ...r, estado: 'pendiente', remoto: true }) })
+      .catch(() => {})
+      .finally(() => setTick((t) => t + 1))
+  }, [session, tokenStr, codigoParam])
 
   useEffect(() => {
     if (consumidoRef.current) return
@@ -81,9 +100,10 @@ export default function Join() {
       return
     }
 
-    const token = tokenStr ? buscarPorToken(tokenStr) : buscarPorCodigo(codigoParam)
+    // Fuente del token: local (mismo dispositivo / Pusher) o remoto (DB).
+    const token = (tokenStr ? buscarPorToken(tokenStr) : buscarPorCodigo(codigoParam)) || remoteToken
 
-    // Aún no llegó del WS y todavía hay tiempo de espera → seguir en 'checking'.
+    // Aún no llegó del WS/DB y todavía hay tiempo de espera → seguir en 'checking'.
     if (!token) {
       const transcurrido = Date.now() - inicioRef.current
       if (transcurrido < WAIT_FOR_SYNC_MS) {
@@ -132,7 +152,11 @@ export default function Join() {
         return
       }
 
-      const res = usarToken(token.token, session.id)
+      // Marcar el token como usado. Si es local, vía el store (valida estado);
+      // si es remoto (otro dispositivo), directamente en la DB.
+      const local = buscarPorToken(token.token)
+      const res = local ? usarToken(token.token, session.id) : { ok: true }
+      if (!local) db.tokens.usar(token.token, session.id).catch(() => {})
       if (!res.ok) {
         setStatus('error')
         setMessage(res.error || 'No se pudo aplicar el código.')
@@ -194,9 +218,10 @@ export default function Join() {
       navTimerRef.current = setTimeout(() => navigate(dest, { replace: true }), 900)
     })()
     // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos.
-    // `tick` fuerza la re-evaluación tras cada timeout de espera.
+    // `tick` fuerza la re-evaluación tras cada timeout y tras la búsqueda en DB;
+    // `remoteToken` cuando el servidor resuelve el código desde otro dispositivo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenStr, codigoParam, session?.id, tokens, mesas, tick])
+  }, [tokenStr, codigoParam, session?.id, tokens, mesas, tick, remoteToken])
 
   if (!session) return <Navigate to="/" replace />
 

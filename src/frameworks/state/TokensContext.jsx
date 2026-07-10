@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
+import { db } from '../../adapters/db.js'
 
 const STORAGE_KEY = 'santa-fe:qr-tokens'
 
@@ -106,6 +107,11 @@ export function TokensProvider({ children }) {
       syncTokens(next)
       return next
     })
+    // Persistir en DB para que el cliente pueda resolver el código desde OTRO
+    // dispositivo (el teléfono). Best-effort: si la tabla no existe o falla,
+    // el flujo local/Pusher sigue funcionando en el mismo dispositivo.
+    db.tokens.crear({ mesa_id: mesaId, token: nuevo.token, codigo: nuevo.codigo, generado_por: generadoPor || null })
+      .catch((e) => console.warn('[tokens.crear]', e.message))
     return nuevo
   }, [syncTokens])
 
@@ -148,6 +154,7 @@ export function TokensProvider({ children }) {
       syncTokens(next)
       return next
     })
+    db.tokens.usar(t.token, userId).catch(() => {})
     return { ok: true, token: t }
   }, [tokens, syncTokens])
 
@@ -163,6 +170,7 @@ export function TokensProvider({ children }) {
       syncTokens(next)
       return next
     })
+    db.tokens.invalidar(mesaId).catch(() => {})
   }, [syncTokens])
 
   const value = useMemo(() => ({

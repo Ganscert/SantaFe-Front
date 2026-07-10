@@ -34,6 +34,9 @@ import {
 } from './_restaurantes.js'
 import { registrarActividad, listActividad } from './_actividad.js'
 import { crearPerfilCliente } from './_perfiles.js'
+import {
+  ROLES_GEN as TOKENS_ROLES_GEN, crearToken, buscarToken, listTokens, usarTokenDB, invalidarTokensDB,
+} from './_tokens.js'
 
 const app = express()
 app.use(express.json())
@@ -228,6 +231,43 @@ app.delete('/api/zonas', async (req, res) => {
     const { error } = await db().from('zonas').delete().eq('id', id).eq('restaurante_id', RID)
     if (error) throw error
     res.json({ ok: true })
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+// ─── TOKENS DE MESA (unirse a mesa cross-device) ─────────────────────────────
+app.get('/api/tokens', async (req, res) => {
+  try {
+    const { codigo, token } = req.query || {}
+    if (codigo || token) {
+      const r = await buscarToken(db(), rid(req), { token, codigo })
+      return res.json(r?.missingTable ? null : r)
+    }
+    if (!TOKENS_ROLES_GEN.includes(req.auth?.role)) return res.status(403).json({ error: 'Sin permiso.' })
+    const r = await listTokens(db(), rid(req))
+    res.json(r.rows)
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.post('/api/tokens', async (req, res) => {
+  try {
+    if (!TOKENS_ROLES_GEN.includes(req.auth?.role)) return res.status(403).json({ error: 'Sin permiso.' })
+    const { mesa_id, token, codigo, generado_por } = req.body || {}
+    if (!mesa_id || !token) return res.status(400).json({ error: 'mesa_id y token requeridos.' })
+    res.json(await crearToken(db(), rid(req), { mesa_id, token, codigo, generado_por }))
+  } catch (e) { serverError(res, '[api dev]', e) }
+})
+
+app.patch('/api/tokens', async (req, res) => {
+  try {
+    const { token, mesa_id, accion, used_by } = req.body || {}
+    if (accion === 'usar' && token) {
+      return res.json(await usarTokenDB(db(), rid(req), { token, used_by: used_by ?? req.auth?.sub }))
+    }
+    if (accion === 'invalidar' && mesa_id) {
+      if (!TOKENS_ROLES_GEN.includes(req.auth?.role)) return res.status(403).json({ error: 'Sin permiso.' })
+      return res.json(await invalidarTokensDB(db(), rid(req), mesa_id))
+    }
+    res.status(400).json({ error: 'Acción no válida.' })
   } catch (e) { serverError(res, '[api dev]', e) }
 })
 

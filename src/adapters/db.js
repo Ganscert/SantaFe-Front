@@ -82,6 +82,19 @@ export const db = {
     },
     registrar: (eventos) => req('/actividad', 'POST', { eventos }),
   },
+  // Tokens de mesa (unirse a mesa cross-device, persistidos en DB).
+  tokens: {
+    // Lookup por código o token — cualquier sesión válida (incluye cliente).
+    buscar: ({ codigo, token }) => {
+      const qs = new URLSearchParams()
+      if (codigo) qs.set('codigo', codigo)
+      if (token) qs.set('token', token)
+      return req(`/tokens?${qs.toString()}`)
+    },
+    crear:     (data)            => reqTenant('/tokens', 'POST', data),
+    usar:      (token, used_by)  => req('/tokens', 'PATCH', { accion: 'usar', token, used_by }),
+    invalidar: (mesa_id)         => reqTenant('/tokens', 'PATCH', { accion: 'invalidar', mesa_id }),
+  },
   comensales: {
     listByMesa:    (mesa_id) => req(`/comensales?mesa_id=${mesa_id}`),
     listTiempo:    ()        => req('/comensales?tipo=tiempo'),
