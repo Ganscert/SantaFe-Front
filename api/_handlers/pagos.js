@@ -1,5 +1,5 @@
-import { getDB, RESTAURANTE_ID } from './_supabase.js'
-import { requireAuth, serverError } from './_auth.js'
+import { getDB, RESTAURANTE_ID } from '../_supabase.js'
+import { requireAuth, serverError } from '../_auth.js'
 
 const ROLES_COBROS = ['admin', 'gerente', 'cajero', 'recepcionista']
 

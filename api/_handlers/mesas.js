@@ -1,5 +1,5 @@
-import { getDB, RESTAURANTE_ID } from './_supabase.js'
-import { requireAuth, resolveRestaurante, serverError } from './_auth.js'
+import { getDB, RESTAURANTE_ID } from '../_supabase.js'
+import { requireAuth, resolveRestaurante, serverError } from '../_auth.js'
 
 // Gestión estructural de mesas (número/capacidad): administración y supervisión.
 const ROLES_GESTION_MESAS = ['admin', 'gerente', 'supervisor']

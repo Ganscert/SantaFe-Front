@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n vite,api -c cyan,green \"vite\" \"node api/server.js\"",
+    "dev": "concurrently -n vite,api -c cyan,green \"vite\" \"node api/_server.js\"",
     "dev:vite": "vite",
-    "dev:api": "node api/server.js",
+    "dev:api": "node api/_server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

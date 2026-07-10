@@ -1,6 +1,6 @@
-import { getDB, RESTAURANTE_ID } from './_supabase.js'
-import { requireAuth, serverError } from './_auth.js'
-import { dashboardRows } from './_dashboard.js'
+import { getDB, RESTAURANTE_ID } from '../_supabase.js'
+import { requireAuth, serverError } from '../_auth.js'
+import { dashboardRows } from '../_dashboard.js'
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()

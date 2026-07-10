@@ -1,9 +1,9 @@
-import { getDB, RESTAURANTE_ID } from './_supabase.js'
+import { getDB, RESTAURANTE_ID } from '../_supabase.js'
 import {
   signToken, requireAuth, hashPassword, verifyPassword,
   loginRateLimited, loginRateClear, serverError,
-} from './_auth.js'
-import { crearPerfilCliente } from './_perfiles.js'
+} from '../_auth.js'
+import { crearPerfilCliente } from '../_perfiles.js'
 
 const ROLES_ADMIN = ['admin', 'gerente']
 const ROLES_VALIDOS = ['admin', 'gerente', 'recepcionista', 'mesero', 'cocinero', 'cajero', 'cliente']

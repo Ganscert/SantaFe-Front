@@ -1,8 +1,8 @@
-import { getDB, RESTAURANTE_ID } from './_supabase.js'
-import { requireAuth, serverError } from './_auth.js'
+import { getDB, RESTAURANTE_ID } from '../_supabase.js'
+import { requireAuth, serverError } from '../_auth.js'
 import {
   azulIsLive, buildAzulRequest, verifyAzulResponse, azulSandboxApproval, azulConfig,
-} from './_azul.js'
+} from '../_azul.js'
 
 // Registra el pago en la BD (idempotente) y marca los pedidos como cobrados.
 // Reutiliza la misma lógica que /api/pagos para mantener una sola fuente de verdad.
