@@ -40,12 +40,17 @@ export function PlatosProvider({ children }) {
   // carta; en modo auditoría no se participa del sync WS (es de la sede base).
   const { restauranteId, auditando } = useRestaurante()
   const [platos, setPlatos] = useState([])
+  // Distingue "aún cargando" de "el restaurante no tiene platos": las vistas
+  // usan el catálogo estático de demo SÓLO cuando cargado && platos vacíos
+  // (evita el parpadeo del menú demo durante la carga inicial).
+  const [cargado, setCargado] = useState(false)
   const initSent = useRef(false)
 
   async function cargar() {
     try {
       const rows = await db.platos.list()
       setPlatos(rows.map(mapRow))
+      setCargado(true)
     } catch (e) {
       console.error('[platos.cargar]', e.message)
     }
@@ -72,7 +77,10 @@ export function PlatosProvider({ children }) {
 
   useEffect(() => {
     if (auditando) return
-    if (serverState?.platos) setPlatos(serverState.platos)
+    if (serverState?.platos) {
+      setPlatos(serverState.platos)
+      setCargado(true)
+    }
   }, [serverState?.platos, auditando])
 
   const agregarPlato = useCallback(async (data) => {
@@ -130,8 +138,8 @@ export function PlatosProvider({ children }) {
   }, [platos])
 
   const value = useMemo(
-    () => ({ platos, agregarPlato, actualizarPlato, eliminarPlato, setDisponible }),
-    [platos, agregarPlato, actualizarPlato, eliminarPlato, setDisponible],
+    () => ({ platos, cargado, agregarPlato, actualizarPlato, eliminarPlato, setDisponible }),
+    [platos, cargado, agregarPlato, actualizarPlato, eliminarPlato, setDisponible],
   )
 
   return <PlatosCtx.Provider value={value}>{children}</PlatosCtx.Provider>

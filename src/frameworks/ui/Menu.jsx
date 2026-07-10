@@ -35,7 +35,7 @@ function Menu() {
   const [seleccionado, setSeleccionado] = useState(null)
   const [favoritos, setFavoritos] = useState(leerFavoritos)
   const [pausandoId, setPausandoId] = useState(null)
-  const { platos: platosAdmin, setDisponible } = usePlatos()
+  const { platos: platosAdmin, setDisponible, cargado: platosCargados } = usePlatos()
   const { session } = useAuth()
   const toast = useToast()
   const esCliente = session?.role === 'cliente'
@@ -69,8 +69,10 @@ function Menu() {
   const catalogo = useMemo(() => {
     // El menú estático es sólo un FALLBACK de demo: si el restaurante ya tiene
     // su propia carta (platos en DB, con imágenes por restaurante), se usa esa.
+    // Mientras la carta aún no cargó (cargado=false) NO se muestra el demo,
+    // para evitar el parpadeo estático→real en la carga inicial.
     const hayCartaPropia = (platosAdmin || []).length > 0
-    const base = hayCartaPropia ? [] : ingredientes.map((p, i) => ({
+    const base = (hayCartaPropia || !platosCargados) ? [] : ingredientes.map((p, i) => ({
       key: `static-${i}`,
       nombre: p.nombre,
       precio: p.precio,
@@ -95,7 +97,7 @@ function Menu() {
     // El cliente nunca ve platos marcados como no disponibles.
     const combinado = [...extra, ...base]
     return esCliente ? combinado.filter((p) => p.disponible !== false) : combinado
-  }, [platosAdmin, esCliente])
+  }, [platosAdmin, platosCargados, esCliente])
 
   const filtrados = useMemo(() => {
     let lista = catalogo

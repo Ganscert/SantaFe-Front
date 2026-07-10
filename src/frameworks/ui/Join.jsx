@@ -49,6 +49,9 @@ export default function Join() {
   const consumidoRef = useRef(false)
   // Timestamp de cuándo empezamos a esperar — para no fallar antes del timeout
   const inicioRef = useRef(Date.now())
+  // Timer de navegación tras el éxito — se limpia al desmontar.
+  const navTimerRef = useRef(null)
+  useEffect(() => () => { if (navTimerRef.current) clearTimeout(navTimerRef.current) }, [])
 
   // Permite reintentar sin recargar: reinicia la ventana de espera y re-evalúa.
   const reintentar = () => {
@@ -188,7 +191,7 @@ export default function Join() {
       setMessage(`Te uniste a la Mesa ${mesa.numeroMesa}`)
 
       const dest = session.role === ROLES.CLIENTE ? '/mi-mesa' : `/mesa/${mesa.numeroMesa}`
-      setTimeout(() => navigate(dest, { replace: true }), 900)
+      navTimerRef.current = setTimeout(() => navigate(dest, { replace: true }), 900)
     })()
     // tokens y mesas como deps: cuando lleguen del WS, re-evaluamos.
     // `tick` fuerza la re-evaluación tras cada timeout de espera.

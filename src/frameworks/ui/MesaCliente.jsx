@@ -75,7 +75,7 @@ export default function MesaCliente() {
   const { pedidos, agregarPedido, cancelarPedido } = usePedidos()
   const [cancelandoId, setCancelandoId] = useState(null)
   const [cancelError, setCancelError]   = useState('')
-  const { platos: platosAdmin } = usePlatos()
+  const { platos: platosAdmin, cargado: platosCargados } = usePlatos()
   useTokens() // mantiene el contexto activo para sincronización
   const { serverState, sendMessage } = useLiveSync()
   const toast = useToast()
@@ -182,8 +182,11 @@ export default function MesaCliente() {
   const catalogo = useMemo(() => {
     // Menú estático = fallback de demo. Si el restaurante tiene su carta propia
     // (platos en DB con imágenes), se muestra ésa en lugar del catálogo genérico.
-    const hayCartaPropia = (platosAdmin || []).some((p) => p.disponible !== false)
-    const base = hayCartaPropia ? [] : ingredientes.map((p, i) => ({
+    // Misma semántica que Menu.jsx (length > 0): si la carta existe pero está
+    // toda pausada, el cliente ve el menú vacío — NUNCA platos demo que no
+    // existen en la DB. Y mientras carga (cargado=false) tampoco hay demo.
+    const hayCartaPropia = (platosAdmin || []).length > 0
+    const base = (hayCartaPropia || !platosCargados) ? [] : ingredientes.map((p, i) => ({
       key: `static-${i}`,
       nombre: p.nombre,
       precio: p.precio,
@@ -204,7 +207,7 @@ export default function MesaCliente() {
         ingredientes: p.ingredientes,
       }))
     return [...extra, ...base]
-  }, [platosAdmin])
+  }, [platosAdmin, platosCargados])
 
   const filtrados = categoria === 'Todos' ? catalogo : catalogo.filter((p) => p.categoria === categoria)
 
