@@ -1,5 +1,5 @@
 import { getDB, RESTAURANTE_ID } from '../_supabase.js'
-import { requireAuth, serverError } from '../_auth.js'
+import { requireAuth, resolveRestaurante, serverError } from '../_auth.js'
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
@@ -8,6 +8,9 @@ export default async function handler(req, res) {
     const sb = getDB()
     // Staff y clientes logueados (unirse por QR también requiere sesión)
     if (!requireAuth(req, res)) return
+    // Multi-tenant: operar sobre la sede del caller (o la auditada por un admin),
+    // no sobre el RESTAURANTE_ID por defecto fijo.
+    const RID = resolveRestaurante(req, RESTAURANTE_ID)
     if (req.method === 'GET') {
       const { mesa_id, tipo } = req.query
 
@@ -17,7 +20,7 @@ export default async function handler(req, res) {
       const staleIso = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
       await sb.from('comensales')
         .update({ activo: false })
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', RID)
         .eq('activo', true)
         .lt('creado_en', staleIso)
 
@@ -25,7 +28,7 @@ export default async function handler(req, res) {
         const { data, error } = await sb
           .from('comensales')
           .select('id, username, creado_en, mesas (numero_mesa)')
-          .eq('restaurante_id', RESTAURANTE_ID)
+          .eq('restaurante_id', RID)
           .eq('activo', true)
         if (error) throw error
         const now = Date.now()
@@ -51,13 +54,13 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { numero_mesa, mesa_id: directMesaId, username } = req.body
+      const { numero_mesa, mesa_id: directMesaId, username, user_id = null } = req.body
       let mesa_id = directMesaId
       if (!mesa_id && numero_mesa) {
         const { data: mesa } = await sb
           .from('mesas')
           .select('id')
-          .eq('restaurante_id', RESTAURANTE_ID)
+          .eq('restaurante_id', RID)
           .eq('numero_mesa', numero_mesa)
           .maybeSingle()
         if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada' })
@@ -66,7 +69,10 @@ export default async function handler(req, res) {
       const { data, error } = await sb
         .from('comensales')
         .upsert(
-          { mesa_id, restaurante_id: RESTAURANTE_ID, username, activo: true },
+          // Persistimos user_id (identidad estable) además del username visible.
+          // Al reactivar un comensal que vuelve, limpiamos pagado_en para no
+          // heredar el "pagado" de una visita anterior.
+          { mesa_id, restaurante_id: RID, username, user_id, activo: true, pagado_en: null },
           { onConflict: 'mesa_id,username' }
         )
         .select('id, mesa_id, username, total_cuenta, activo')
@@ -78,12 +84,18 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH') {
       const { mesa_id, activo, pagado, username } = req.body
       if (pagado === true) {
-        const { error } = await sb
+        // Marca pagado SÓLO al comensal que paga (username/user_id), no a toda
+        // la mesa. Antes, un pago marcaba pagados a todos los activos → otros
+        // comensales podían salir sin pagar su consumo.
+        let pq = sb
           .from('comensales')
           .update({ pagado_en: new Date().toISOString() })
           .eq('mesa_id', mesa_id)
-          .eq('restaurante_id', RESTAURANTE_ID)
+          .eq('restaurante_id', RID)
           .eq('activo', true)
+        if (req.body.user_id) pq = pq.eq('user_id', req.body.user_id)
+        else if (username) pq = pq.eq('username', username)
+        const { error } = await pq
         if (error) throw error
         return res.json({ ok: true })
       }
@@ -92,7 +104,7 @@ export default async function handler(req, res) {
         .from('comensales')
         .update({ activo })
         .eq('mesa_id', mesa_id)
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', RID)
       if (username) q = q.eq('username', username)
       const { error } = await q
       if (error) throw error

@@ -463,7 +463,9 @@ export default function MesaCliente() {
     setPagoModalOpen(false)
     setReseteando(true)
     try { sendMessage?.({ type: 'sync:pago', mesa_id: mesa.id, at: Date.now() }) } catch {}
-    db.comensales.marcarPagado(mesa.id).catch(() => {})
+    // Marca pagado SÓLO a este comensal (no a toda la mesa): antes, un pago
+    // marcaba pagados a todos y los demás podían salir sin pagar su consumo.
+    db.comensales.marcarPagado(mesa.id, { username: session.name, user_id: session.id }).catch(() => {})
 
     const nuevoJoinedAt = Date.now()
     try {

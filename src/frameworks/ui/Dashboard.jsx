@@ -471,7 +471,7 @@ export default function Dashboard() {
                   <Timer size={15} className="text-amber-500" /> Tiempo de servicio por plato
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Promedio en_preparacion → entregado · top 10
+                  Promedio en preparación → entregado · top 10
                 </p>
               </div>
               <Link

@@ -13,6 +13,9 @@ export default async function handler(req, res) {
     // (o el auditado, si un admin manda restaurante_id explícito).
     const RID = resolveRestaurante(req, RESTAURANTE_ID)
     if (req.method === 'GET') {
+      // Requiere sesión (cualquier rol). Antes el listado de mesas — y sus ids —
+      // se podían enumerar sin autenticar.
+      if (!requireAuth(req, res)) return
       const { data, error } = await sb
         .from('mesas')
         .select('id, numero_mesa, estado, capacidad, zona_id, zona:zonas(id, nombre)')
@@ -54,6 +57,17 @@ export default async function handler(req, res) {
       const cambiaEstructura = req.body.numero_mesa !== undefined || req.body.capacidad !== undefined
       if (cambiaEstructura && !ROLES_GESTION_MESAS.includes(auth.role)) {
         return res.status(403).json({ error: 'Solo administración o supervisión pueden editar nombre/número y capacidad de las mesas.' })
+      }
+      // Un 'cliente' auto-registrado sólo puede OCUPAR su mesa al unirse. NO
+      // puede enviarla a cobro / liberarla (eso fuerza la entrega de todos los
+      // pedidos, saltándose cocina) ni tocar su zona/estructura. Antes cualquier
+      // sesión válida podía cambiar el estado de CUALQUIER mesa.
+      if (auth.role === 'cliente' && (cambiaZona || cambiaEstructura || (estado !== undefined && estado !== 'ocupada'))) {
+        return res.status(403).json({ error: 'Un comensal solo puede ocupar su mesa.' })
+      }
+      // Whitelist de estados válidos.
+      if (estado !== undefined && !['disponible', 'ocupada', 'por_cobrar'].includes(estado)) {
+        return res.status(400).json({ error: 'Estado de mesa no válido.' })
       }
       // Cerrar TODOS los pedidos no entregados de la mesa antes de pasar a
       // por_cobrar / disponible. No dependemos de la RPC porque su filtro

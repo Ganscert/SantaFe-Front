@@ -4,6 +4,7 @@ import { Copy, QrCode, RotateCcw, X, Check, Wifi, WifiOff } from 'lucide-react'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
+import { db } from '../../adapters/db.js'
 
 /**
  * Modal de generación de QR para unirse a una mesa.
@@ -27,6 +28,21 @@ export default function GenerarQR({ mesa, onClose }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesa.id])
+
+  // Asegura que el token MOSTRADO exista en la DB como 'pendiente', incluso
+  // cuando se reusa uno cacheado en localStorage (tokenActivoParaMesa) que
+  // nunca se persistió. Sin esto, el cliente en otro dispositivo hacía el
+  // lookup contra la DB y recibía null → "El código no es válido o ya fue
+  // revocado". Es idempotente (upsert por token en el backend).
+  useEffect(() => {
+    if (!token?.token) return
+    db.tokens.crear({
+      mesa_id: mesa.id,
+      token: token.token,
+      codigo: token.codigo,
+      generado_por: session?.id || null,
+    }).catch((e) => console.warn('[qr.asegurarToken]', e.message))
+  }, [token?.token, token?.codigo, mesa.id, session?.id])
 
   const [copiado, setCopiado] = useState(false)
 

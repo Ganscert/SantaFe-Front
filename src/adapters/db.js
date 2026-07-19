@@ -67,6 +67,12 @@ export const db = {
     update: (id, patch) => reqTenant('/zonas', 'PATCH', { id, ...patch }),
     remove: (id)        => reqTenant('/zonas', 'DELETE', { id }),
   },
+  reservas: {
+    list:   ()          => reqTenant('/reservas'),
+    insert: (data)      => reqTenant('/reservas', 'POST', data),
+    update: (id, patch) => reqTenant('/reservas', 'PATCH', { id, ...patch }),
+    remove: (id)        => reqTenant('/reservas', 'DELETE', { id }),
+  },
   platos: {
     list:   ()           => reqTenant('/platos'),
     insert: (data)       => reqTenant('/platos', 'POST', data),
@@ -101,7 +107,8 @@ export const db = {
     upsert:        (data)    => req('/comensales', 'POST', data),
     deactivate:    (mesa_id) => req('/comensales', 'PATCH', { mesa_id, activo: false }),
     deactivateOne: (mesa_id, username) => req('/comensales', 'PATCH', { mesa_id, username, activo: false }),
-    marcarPagado:  (mesa_id) => req('/comensales', 'PATCH', { mesa_id, pagado: true }),
+    // Marca pagado SÓLO al comensal indicado (username/user_id), no a toda la mesa.
+    marcarPagado:  (mesa_id, ident = {}) => req('/comensales', 'PATCH', { mesa_id, pagado: true, username: ident.username ?? null, user_id: ident.user_id ?? null }),
   },
   pagos: {
     list:   (mesa_id) => req(`/pagos${mesa_id ? `?mesa_id=${encodeURIComponent(mesa_id)}` : ''}`),

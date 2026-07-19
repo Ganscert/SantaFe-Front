@@ -37,6 +37,7 @@ import { crearPerfilCliente } from './_perfiles.js'
 import {
   ROLES_GEN as TOKENS_ROLES_GEN, crearToken, buscarToken, listTokens, usarTokenDB, invalidarTokensDB,
 } from './_tokens.js'
+import reservasHandler from './_handlers/reservas.js'
 
 const app = express()
 app.use(express.json())
@@ -68,6 +69,7 @@ app.use('/api', (req, res, next) => {
   else if (path === '/zonas' && method !== 'GET') roles = ROLES_SUPERVISION
   else if (path === '/pagos' && method === 'GET') roles = ROLES_COBROS
   else if (path === '/pedidos' && method === 'GET' && esDashboard) roles = ROLES_ADMIN
+  else if (path === '/reservas') roles = ['admin', 'gerente', 'supervisor', 'recepcionista', 'mesero']
 
   const user = requireAuth(req, res, roles)
   if (!user) return
@@ -233,6 +235,11 @@ app.delete('/api/zonas', async (req, res) => {
     res.json({ ok: true })
   } catch (e) { serverError(res, '[api dev]', e) }
 })
+
+// ─── RESERVAS ────────────────────────────────────────────────────────────────
+// Delega en el mismo handler que usa Vercel (api/_handlers/reservas.js): req/res
+// de Express son compatibles (method, query, body, headers, res.status().json()).
+app.all('/api/reservas', (req, res) => reservasHandler(req, res))
 
 // ─── TOKENS DE MESA (unirse a mesa cross-device) ─────────────────────────────
 app.get('/api/tokens', async (req, res) => {

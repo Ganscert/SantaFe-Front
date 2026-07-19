@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
 import { useRestaurante } from './RestauranteContext.jsx'
-import { db } from '../../adapters/db.js'
+import { db, authToken } from '../../adapters/db.js'
 
 const MesasContext = createContext(null)
 const ESTADOS_VALIDOS = new Set(['disponible', 'ocupada', 'por_cobrar'])
@@ -46,12 +46,14 @@ export function MesasProvider({ children }) {
   const lastOptimisticAtRef = useRef(0)
 
   const cargarZonas = useCallback(async () => {
+    if (!authToken()) return  // sin sesión (p.ej. login) no se consulta la API
     try { setZonas(await db.zonas.list()) }
     catch (e) { console.error('[zonas.cargar]', e.message) }
   }, [])
 
   // Carga desde Supabase vía API
   async function cargar(prev) {
+    if (!authToken()) return  // sin sesión no se consulta la API
     try {
       const rows = await db.mesas.list()
       setMesas(rows.map(r => mapRow(r, prev.find(m => m.numeroMesa === r.numero_mesa))))
@@ -62,6 +64,7 @@ export function MesasProvider({ children }) {
 
   // Carga inicial y recarga al cambiar la sede auditada
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch inicial desde la DB; el setState ocurre tras el await, no en el cuerpo del effect
     cargar([])
     cargarZonas()
   }, [cargarZonas, restauranteId])
@@ -80,11 +83,39 @@ export function MesasProvider({ children }) {
     return () => clearInterval(id)
   }, [connected])
 
-  // WS legacy (cuentas/integrantes en tiempo real) — ignorado en auditoría
+  // WS legacy (estado/cuentas/integrantes en tiempo real) — ignorado en auditoría.
+  // Se SUPERPONE sobre el tablero cargado desde la DB (merge por numeroMesa):
+  // nunca reemplaza la lista completa ni la vacía. Un snapshot vacío o parcial
+  // de otro cliente/dispositivo en frío borraba el tablero y obligaba a refrescar.
   useEffect(() => {
     if (auditando) return
-    if (serverState?.mesas) setMesas(serverState.mesas)
+    const incoming = serverState?.mesas
+    if (!Array.isArray(incoming) || incoming.length === 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync de estado externo (Pusher) hacia React; mismo patrón tolerado en los demás contexts
+    setMesas(current => {
+      if (current.length === 0) return incoming
+      const byNum = new Map(incoming.map(m => [m.numeroMesa, m]))
+      const merged = current.map(m => {
+        const live = byNum.get(m.numeroMesa)
+        return live ? { ...m, ...live } : m
+      })
+      // Mesas presentes en el broadcast pero aún no en el tablero (alta reciente).
+      const numsActuales = new Set(current.map(m => m.numeroMesa))
+      const nuevas = incoming.filter(m => !numsActuales.has(m.numeroMesa))
+      return nuevas.length
+        ? [...merged, ...nuevas].sort((a, b) => a.numeroMesa - b.numeroMesa)
+        : merged
+    })
   }, [serverState?.mesas, auditando])
+
+  // Al (re)conectar Pusher, resincroniza el tablero desde la DB. Pusher no
+  // reproduce eventos previos: sin esto, un cliente que entra podría quedarse
+  // con un tablero vacío/viejo hasta refrescar a mano.
+  useEffect(() => {
+    if (!connected || auditando) return
+    setMesas(prev => { prevRef.current = prev; return prev })
+    cargar(prevRef.current)
+  }, [connected, auditando])
 
   const syncMesas = useCallback((next) => {
     if (!connected || auditando) return

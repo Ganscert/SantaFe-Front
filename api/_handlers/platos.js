@@ -13,6 +13,9 @@ export default async function handler(req, res) {
     const RID = resolveRestaurante(req, RESTAURANTE_ID)
     // Mutaciones de la carta: sólo administración
     if (req.method !== 'GET' && !requireAuth(req, res, ROLES_GESTION)) return
+    // Lectura: requiere sesión (cualquier rol). El /menu del cliente ya está
+    // tras login; antes el GET respondía sin token.
+    if (req.method === 'GET' && !requireAuth(req, res)) return
     if (req.method === 'GET') {
       const { data, error } = await sb
         .from('platos')

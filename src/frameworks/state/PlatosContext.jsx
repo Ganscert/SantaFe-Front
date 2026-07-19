@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveSync } from './LiveSyncContext.jsx'
 import { useRestaurante } from './RestauranteContext.jsx'
-import { db } from '../../adapters/db.js'
+import { db, authToken } from '../../adapters/db.js'
 
 // La carta cambia poco; 30s de refresco es suficiente como respaldo del
 // sync en vivo (sync:platos) y evita martillar la API con cada usuario.
@@ -47,6 +47,7 @@ export function PlatosProvider({ children }) {
   const initSent = useRef(false)
 
   async function cargar() {
+    if (!authToken()) return  // sin sesión (login) no se consulta la API
     try {
       const rows = await db.platos.list()
       setPlatos(rows.map(mapRow))

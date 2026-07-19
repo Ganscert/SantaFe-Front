@@ -274,7 +274,7 @@ export default function RendimientoMeseros() {
                 <Clock size={16} className="text-amber-500" /> Tiempo de servicio por plato
               </h3>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                Promedio desde en_preparacion → entregado · top 10 más lentos
+                Promedio desde en preparación → entregado · top 10 más lentos
               </p>
             </div>
           </div>

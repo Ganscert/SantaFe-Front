@@ -16,7 +16,11 @@ export const ROLES = {
   CLIENTE:       'cliente',
 }
 
-const DEMO_USERS = [
+// Cuentas demo SÓLO en desarrollo: en el bundle de producción el array queda
+// vacío para no embarcar credenciales débiles ('demo1234'). Los botones de
+// acceso rápido de Login.jsx ya son dev-only; esto cierra el mismo hueco a
+// nivel de datos.
+const DEMO_USERS = import.meta.env.DEV ? [
   { id: 'demo-admin',    name: 'Admin Demo',     email: 'admin@santafe.pe',     password: 'demo1234', role: ROLES.ADMIN },
   { id: 'demo-gerente',  name: 'Gerente Demo',   email: 'gerente@santafe.pe',   password: 'demo1234', role: ROLES.GERENTE },
   { id: 'demo-recep',    name: 'Recepción Demo', email: 'recepcion@santafe.pe', password: 'demo1234', role: ROLES.RECEPCIONISTA },
@@ -24,7 +28,7 @@ const DEMO_USERS = [
   { id: 'demo-cocinero', name: 'Cocinero Demo',  email: 'cocinero@santafe.pe',  password: 'demo1234', role: ROLES.COCINERO },
   { id: 'demo-cajero',   name: 'Cajero Demo',    email: 'cajero@santafe.pe',    password: 'demo1234', role: ROLES.CAJERO },
   { id: 'demo-cli',      name: 'Cliente Demo',   email: 'cliente@santafe.pe',   password: 'demo1234', role: ROLES.CLIENTE },
-]
+] : []
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

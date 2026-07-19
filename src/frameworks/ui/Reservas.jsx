@@ -40,6 +40,17 @@ function FormReserva({ mesas, onCrear, conflictoDe }) {
     e.preventDefault()
     if (!form.nombre.trim()) return setError('Ingresa el nombre del cliente.')
     if (!form.fecha || !form.hora) return setError('Indica fecha y hora.')
+    // La fecha/hora debe ser futura (el min del input date es sólo una pista
+    // del navegador y el input time no tiene min).
+    const cuando = new Date(`${form.fecha}T${form.hora}`)
+    if (Number.isNaN(cuando.getTime()) || cuando.getTime() < Date.now()) {
+      return setError('La fecha y hora de la reserva deben ser futuras.')
+    }
+    // Teléfono: único contacto de la reserva → obligatorio y con formato mínimo.
+    const tel = form.telefono.replace(/\D/g, '')
+    if (tel.length < 6 || tel.length > 15) {
+      return setError('Ingresa un teléfono válido (6 a 15 dígitos).')
+    }
     setError('')
     onCrear(form)
     setForm({ ...vacio, fecha: form.fecha })

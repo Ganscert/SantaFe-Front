@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useMesas }   from '../state/MesasContext.jsx'
 import { usePedidos } from '../state/PedidosContext.jsx'
+import { usePlatos }  from '../state/PlatosContext.jsx'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ingredientes from '../assets/data/ingredientes.js'
 
@@ -9,8 +10,28 @@ const CATEGORIAS = ['Todos', 'Entrada', 'Plato Principal', 'Postre', 'Bebida']
 function NuevoPedido() {
   const { mesas }        = useMesas()
   const { agregarPedido } = usePedidos()
+  const { platos: platosAdmin, cargado: platosCargados } = usePlatos()
   const navigate         = useNavigate()
   const [params]         = useSearchParams()
+
+  // Catálogo REAL (mismo criterio que Menu.jsx): si el restaurante tiene su
+  // propia carta en DB se usa ésa (sólo platos disponibles); el menú estático
+  // es sólo fallback de demo mientras no haya carta propia. Antes NuevoPedido
+  // usaba SIEMPRE el estático → no se podían pedir los platos de Gestionar menú.
+  const catalogo = useMemo(() => {
+    const hayCartaPropia = (platosAdmin || []).length > 0
+    const base = (hayCartaPropia || !platosCargados) ? [] : ingredientes.map((p, i) => ({
+      id: `static-${i}`, nombre: p.nombre, precio: p.precio,
+      categoria: p.categoria, imagen: p.imagen, ingredientes: p.ingredientes,
+    }))
+    const extra = (platosAdmin || [])
+      .filter((p) => p.disponible !== false)
+      .map((p) => ({
+        id: p.id, nombre: p.nombre, precio: p.precio,
+        categoria: p.categoria, imagen: p.imagenData || null, ingredientes: p.ingredientes,
+      }))
+    return [...extra, ...base]
+  }, [platosAdmin, platosCargados])
 
   const [mesaSeleccionada, setMesaSeleccionada] = useState(params.get('mesa') ?? '')
   const [itemsPedido, setItemsPedido]           = useState([])
@@ -23,11 +44,11 @@ function NuevoPedido() {
     if (params.get('mesa')) setMesaSeleccionada(params.get('mesa'))
   }, [params])
 
-  const platosFiltrados = useMemo(() => ingredientes.filter(p => {
+  const platosFiltrados = useMemo(() => catalogo.filter(p => {
     const okCat = categoria === 'Todos' || p.categoria === categoria
     const okBus = !busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase())
     return okCat && okBus
-  }), [busqueda, categoria])
+  }), [catalogo, busqueda, categoria])
 
   const cantidadEnCarrito = nombre => itemsPedido.find(i => i.nombre === nombre)?.cantidad ?? 0
 

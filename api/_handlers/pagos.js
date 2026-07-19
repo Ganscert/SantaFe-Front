@@ -24,7 +24,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      if (!requireAuth(req, res)) return
+      // Sólo caja/gestión registra cobros. Antes cualquier sesión válida
+      // (incluido un 'cliente' auto-registrado) podía auto-registrar pagos.
+      const auth = requireAuth(req, res, ROLES_COBROS)
+      if (!auth) return
       const { mesa_id, monto, metodo, referencia = null } = req.body
       if (!mesa_id || !(Number(monto) > 0) || !metodo) {
         return res.status(400).json({ error: 'mesa_id, monto (>0) y metodo son requeridos.' })
@@ -62,7 +65,7 @@ export default async function handler(req, res) {
 
       const { data, error } = await sb
         .from('pagos')
-        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia })
+        .insert({ restaurante_id: RESTAURANTE_ID, mesa_id, monto, metodo, referencia, recibido_por: auth.sub })
         .select('id, mesa_id, monto, metodo, referencia, creado_en')
         .single()
       if (error) throw error

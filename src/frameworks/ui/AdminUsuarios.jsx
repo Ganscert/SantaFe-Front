@@ -9,6 +9,10 @@ import { db } from '../../adapters/db.js'
 
 const FORM_VACIO = { name: '', email: '', roleId: '', password: '' }
 
+// Fallback capitalizado para roles que no están en la lista configurable
+// (p.ej. 'cliente', 'recepcionista') y antes se mostraban en minúscula.
+const capRol = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function initials(name = '') {
@@ -346,7 +350,7 @@ export default function AdminUsuarios() {
                         }}
                       >
                         <ShieldCheck size={11} />
-                        {role?.label || u.roleId}
+                        {role?.label || capRol(u.roleId)}
                       </span>
                       <div className="flex items-center gap-1 shrink-0">
                         <button

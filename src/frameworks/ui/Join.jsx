@@ -15,7 +15,9 @@ async function registrarComensal(mesa, session) {
   const username = (session?.name || session?.id || '').trim()
   if (!username) return { ok: false, error: 'Sesión sin nombre de usuario.' }
   try {
-    await db.comensales.upsert({ numero_mesa: mesa.numeroMesa, username })
+    // user_id = identidad estable (evita colisión entre homónimos y permite
+    // que marcarPagado/deactivate apunten al comensal correcto).
+    await db.comensales.upsert({ numero_mesa: mesa.numeroMesa, username, user_id: session.id })
     return { ok: true }
   } catch (e) {
     return { ok: false, error: e.message }
@@ -173,7 +175,10 @@ export default function Join() {
         }))
       } catch {}
 
-      if (mesa.estado === 'disponible' || mesa.estado === 'por_cobrar') {
+      // Sólo reabrir desde 'disponible'. Si la mesa está 'por_cobrar' (cajero
+      // cobrando), NO la regresamos a 'ocupada': sacaría la mesa del flujo de
+      // cobro. Un comensal rezagado se une sin alterar el estado de cobro.
+      if (mesa.estado === 'disponible') {
         cambiarEstadoA?.(mesa.numeroMesa, 'ocupada')
       }
 

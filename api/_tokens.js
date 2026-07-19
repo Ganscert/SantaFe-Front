@@ -12,12 +12,21 @@ const esTablaFaltante = (e) =>
   e?.code === 'PGRST205' ||
   (/mesa_tokens/.test(e?.message || '') && /schema cache|does not exist/i.test(e?.message || ''))
 
-// Crea un token para una mesa, rotando (expirando) los pendientes previos.
+// Crea (o re-afirma) un token para una mesa, rotando los OTROS pendientes.
+// Idempotente por `token` (upsert): si el QR mostrado reusa un token cacheado
+// en localStorage que nunca se persistió (o quedó expirado), esta llamada lo
+// (re)asienta como 'pendiente' en la DB — necesario para que el cliente se una
+// desde otro dispositivo. Antes se hacía `.insert` y, al reusar, el token no
+// llegaba a la DB y el lookup cross-device devolvía null ("código no válido").
 export async function crearToken(sb, RID, { mesa_id, token, codigo, generado_por }) {
   await sb.from('mesa_tokens').update({ estado: 'expirado' })
     .eq('restaurante_id', RID).eq('mesa_id', mesa_id).eq('estado', 'pendiente')
+    .neq('token', token)
   const { data, error } = await sb.from('mesa_tokens')
-    .insert({ restaurante_id: RID, mesa_id, token, codigo: codigo ?? null, generado_por: generado_por ?? null })
+    .upsert(
+      { restaurante_id: RID, mesa_id, token, codigo: codigo ?? null, generado_por: generado_por ?? null, estado: 'pendiente' },
+      { onConflict: 'token' }
+    )
     .select('id, token, codigo, mesa_id, estado').single()
   if (error) { if (esTablaFaltante(error)) return { missingTable: true }; throw error }
   return data

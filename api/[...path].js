@@ -13,6 +13,7 @@ import pagosAzul    from './_handlers/pagos-azul.js'
 import pagos        from './_handlers/pagos.js'
 import pedidos      from './_handlers/pedidos.js'
 import platos       from './_handlers/platos.js'
+import reservas     from './_handlers/reservas.js'
 import restaurantes from './_handlers/restaurantes.js'
 import sync         from './_handlers/sync.js'
 import tokens       from './_handlers/tokens.js'
@@ -20,7 +21,7 @@ import usuarios     from './_handlers/usuarios.js'
 import zonas        from './_handlers/zonas.js'
 
 const HANDLERS = {
-  actividad, comensales, mesas, pagos, pedidos, platos,
+  actividad, comensales, mesas, pagos, pedidos, platos, reservas,
   restaurantes, sync, tokens, usuarios, zonas,
   'pagos-azul': pagosAzul,
 }

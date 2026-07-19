@@ -105,6 +105,11 @@ export default async function handler(req, res) {
         if (!auth) return
         if (!nombre || !email) return res.json({ ok: false, error: 'Nombre y correo son requeridos.' })
         if (role && !ROLES_VALIDOS.includes(role)) return res.json({ ok: false, error: 'Rol no válido.' })
+        // Sólo un admin puede crear otro admin. Antes un 'gerente' podía crear
+        // una cuenta 'admin' y escalar a control total.
+        if (role === 'admin' && auth.role !== 'admin') {
+          return res.status(403).json({ error: 'Solo un administrador puede crear cuentas de administrador.' })
+        }
         const cleanEmail = String(email).trim().toLowerCase()
 
         // Restaurante destino: el admin lo elige explícitamente; el gerente
@@ -136,10 +141,19 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      if (!requireAuth(req, res, ROLES_ADMIN)) return
+      const auth = requireAuth(req, res, ROLES_ADMIN)
+      if (!auth) return
       const { id, nombre, email, role, password } = req.body || {}
       if (!id) return res.status(400).json({ error: 'id requerido.' })
       if (role !== undefined && !ROLES_VALIDOS.includes(role)) return res.json({ ok: false, error: 'Rol no válido.' })
+      // Opera sobre la sede del caller (no el env fijo).
+      const rid = await resolverRestauranteCaller(sb, auth)
+      // Sólo un admin puede asignar el rol admin o editar una cuenta admin.
+      if (auth.role !== 'admin') {
+        if (role === 'admin') return res.status(403).json({ error: 'Solo un administrador puede asignar el rol de administrador.' })
+        const { data: target } = await sb.from('usuarios').select('role').eq('id', id).eq('restaurante_id', rid).maybeSingle()
+        if (target?.role === 'admin') return res.status(403).json({ error: 'Solo un administrador puede editar cuentas de administrador.' })
+      }
       const patch = { actualizado_en: new Date().toISOString() }
       if (nombre !== undefined) patch.nombre = String(nombre).trim()
       if (email !== undefined) patch.email = String(email).trim().toLowerCase()
@@ -149,7 +163,7 @@ export default async function handler(req, res) {
         .from('usuarios')
         .update(patch)
         .eq('id', id)
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', rid)
         .select('id, nombre, email, role, activo')
         .single()
       if (error) {
@@ -167,11 +181,17 @@ export default async function handler(req, res) {
       const { id } = req.body || {}
       if (!id) return res.status(400).json({ error: 'id requerido.' })
       if (id === auth.sub) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' })
+      const rid = await resolverRestauranteCaller(sb, auth)
+      // Un no-admin no puede eliminar una cuenta admin.
+      if (auth.role !== 'admin') {
+        const { data: target } = await sb.from('usuarios').select('role').eq('id', id).eq('restaurante_id', rid).maybeSingle()
+        if (target?.role === 'admin') return res.status(403).json({ error: 'Solo un administrador puede eliminar cuentas de administrador.' })
+      }
       const { error } = await sb
         .from('usuarios')
         .delete()
         .eq('id', id)
-        .eq('restaurante_id', RESTAURANTE_ID)
+        .eq('restaurante_id', rid)
       if (error) throw error
       return res.json({ ok: true })
     }

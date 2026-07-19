@@ -9,8 +9,9 @@ export default async function handler(req, res) {
   try {
     const sb = getDB()
     const RID = resolveRestaurante(req, RESTAURANTE_ID)
-    // Lectura abierta (igual que mesas); mutaciones sólo administración.
+    // Mutaciones sólo administración; lectura requiere sesión (cualquier rol).
     if (req.method !== 'GET' && !requireAuth(req, res, ROLES_GESTION)) return
+    if (req.method === 'GET' && !requireAuth(req, res)) return
 
     if (req.method === 'GET') {
       const { data, error } = await sb
