@@ -28,7 +28,7 @@ async function registrarComensal(mesa, session) {
 // Necesario para escenarios cross-device: el teléfono del cliente no tiene
 // los tokens en localStorage, así que hay que darle un momento al WS para
 // sincronizar el estado desde el dispositivo que generó el QR.
-const WAIT_FOR_SYNC_MS = 4000
+const WAIT_FOR_SYNC_MS = 6000
 
 export default function Join() {
   const [params] = useSearchParams()
@@ -49,7 +49,6 @@ export default function Join() {
   // Token resuelto en el SERVIDOR (persistencia cross-device): permite unirse
   // aunque el token se haya generado en OTRO dispositivo (el del staff).
   const [remoteToken, setRemoteToken] = useState(null)
-  const remoteTriedRef = useRef(false)
 
   // Para asegurar que sólo aplicamos el token una vez aunque tokens cambien
   const consumidoRef = useRef(false)
@@ -62,26 +61,47 @@ export default function Join() {
   // Permite reintentar sin recargar: reinicia la ventana de espera y re-evalúa.
   const reintentar = () => {
     consumidoRef.current = false
-    remoteTriedRef.current = false
+    setRemoteToken(null) // re-dispara el sondeo remoto
     inicioRef.current = Date.now()
     setMessage('')
     setStatus('checking')
     setTick((t) => t + 1)
   }
 
-  // Resolver el código/token en el servidor (una vez). Es lo que hace que el
-  // cliente pueda unirse desde su teléfono aunque el QR se generó en la laptop
-  // del staff. Si la tabla no existe aún (migración pendiente) devuelve null y
-  // se cae al flujo local/Pusher del mismo dispositivo.
+  // Resolver el código/token en el servidor. Es lo que hace que el cliente
+  // pueda unirse desde su teléfono aunque el QR se generó en la laptop del
+  // staff. Se SONDEA con reintentos (no un solo intento): así se tolera que la
+  // persistencia del token en el otro dispositivo aterrice con retraso, o un
+  // fallo transitorio de red. Si la tabla no existe (migración pendiente)
+  // devuelve null y se cae al flujo local/Pusher del mismo dispositivo.
   useEffect(() => {
-    if (!session || remoteTriedRef.current) return
+    if (!session) return
     if (!tokenStr && !codigoParam) return
-    remoteTriedRef.current = true
-    db.tokens.buscar({ token: tokenStr || undefined, codigo: codigoParam || undefined })
-      .then((r) => { if (r && r.mesa_id) setRemoteToken({ ...r, estado: 'pendiente', remoto: true }) })
-      .catch(() => {})
-      .finally(() => setTick((t) => t + 1))
-  }, [session, tokenStr, codigoParam])
+    if (remoteToken) return
+    let cancelado = false
+    let timer = null
+    let intentos = 0
+    const MAX_INTENTOS = 6
+    const intentar = async () => {
+      intentos += 1
+      try {
+        const r = await db.tokens.buscar({ token: tokenStr || undefined, codigo: codigoParam || undefined })
+        if (!cancelado && r && r.mesa_id) {
+          setRemoteToken({ ...r, estado: 'pendiente', remoto: true })
+          return
+        }
+      } catch { /* transitorio → reintenta */ }
+      if (cancelado) return
+      if (intentos < MAX_INTENTOS) {
+        timer = setTimeout(intentar, 800)
+      } else {
+        // Agotados los intentos: fuerza al efecto principal a decidir (error).
+        setTick((t) => t + 1)
+      }
+    }
+    intentar()
+    return () => { cancelado = true; if (timer) clearTimeout(timer) }
+  }, [session?.id, tokenStr, codigoParam, remoteToken])
 
   useEffect(() => {
     if (consumidoRef.current) return

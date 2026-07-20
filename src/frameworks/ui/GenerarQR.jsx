@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Copy, QrCode, RotateCcw, X, Check, Wifi, WifiOff } from 'lucide-react'
+import { AlertTriangle, Copy, Loader2, QrCode, RotateCcw, X, Check, Wifi, WifiOff } from 'lucide-react'
 import { useTokens } from '../state/TokensContext.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
 import { useLiveSync } from '../state/LiveSyncContext.jsx'
@@ -31,18 +31,50 @@ export default function GenerarQR({ mesa, onClose }) {
 
   // Asegura que el token MOSTRADO exista en la DB como 'pendiente', incluso
   // cuando se reusa uno cacheado en localStorage (tokenActivoParaMesa) que
-  // nunca se persistió. Sin esto, el cliente en otro dispositivo hacía el
-  // lookup contra la DB y recibía null → "El código no es válido o ya fue
+  // nunca se persistió. Sin esto, el cliente en otro dispositivo hace el
+  // lookup contra la DB y recibe null → "El código no es válido o ya fue
   // revocado". Es idempotente (upsert por token en el backend).
-  useEffect(() => {
+  //
+  // Antes esta llamada era best-effort con `.catch()` silenciado: si el POST
+  // fallaba (rol sin permiso, mesa.id inválido, red), el QR se mostraba igual
+  // en verde como "válido" y el cliente NO podía unirse. Ahora confirmamos la
+  // persistencia (con reintentos) y el banner refleja el estado REAL.
+  const [persistState, setPersistState] = useState('saving') // saving | ok | error
+  // Guard de carrera: al regenerar cambia el token; ignoramos respuestas viejas.
+  const persistAttemptRef = useRef(0)
+
+  async function asegurarToken() {
     if (!token?.token) return
-    db.tokens.crear({
-      mesa_id: mesa.id,
-      token: token.token,
-      codigo: token.codigo,
-      generado_por: session?.id || null,
-    }).catch((e) => console.warn('[qr.asegurarToken]', e.message))
-  }, [token?.token, token?.codigo, mesa.id, session?.id])
+    if (!mesa?.id) { setPersistState('error'); return }
+    const intento = ++persistAttemptRef.current
+    setPersistState('saving')
+    for (let i = 0; i < 3; i++) {
+      try {
+        const r = await db.tokens.crear({
+          mesa_id: mesa.id,
+          token: token.token,
+          codigo: token.codigo,
+          generado_por: session?.id || null,
+        })
+        if (persistAttemptRef.current !== intento) return // token cambió
+        // La tabla no existe (migración pendiente): el cross-device no
+        // funcionará, hay que avisar en vez de mentir con el verde.
+        if (r?.missingTable) { setPersistState('error'); return }
+        setPersistState('ok')
+        return
+      } catch (e) {
+        if (persistAttemptRef.current !== intento) return
+        if (i === 2) { console.warn('[qr.asegurarToken]', e.message); setPersistState('error'); return }
+        await new Promise((res) => setTimeout(res, 600 * (i + 1)))
+        if (persistAttemptRef.current !== intento) return
+      }
+    }
+  }
+
+  useEffect(() => {
+    asegurarToken()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token?.token, token?.codigo, mesa?.id, session?.id])
 
   const [copiado, setCopiado] = useState(false)
 
@@ -116,15 +148,39 @@ export default function GenerarQR({ mesa, onClose }) {
             </div>
           </div>
 
-          {/* Estado del sync (importante para multi-dispositivo) */}
-          <div className={`flex items-center justify-center gap-2 text-xs font-bold mb-4 ${
-            connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
-          }`}>
-            {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
-            {connected
-              ? 'Código sincronizado · válido hasta liberar la mesa'
-              : 'Sin sincronización — el QR sólo funciona en este dispositivo'}
-          </div>
+          {/* Estado de persistencia en la DB — es lo que habilita que el cliente
+              se una desde OTRO dispositivo (su teléfono). Refleja el guardado
+              REAL, no sólo la conexión Pusher (que antes daba falsos "válido"). */}
+          {persistState === 'ok' && (
+            <div className="flex items-center justify-center gap-2 text-xs font-bold mb-4 text-emerald-600 dark:text-emerald-400">
+              <Wifi size={13} /> Código sincronizado · válido hasta liberar la mesa
+            </div>
+          )}
+          {persistState === 'saving' && (
+            <div className="flex items-center justify-center gap-2 text-xs font-bold mb-4 text-amber-600 dark:text-amber-400">
+              <Loader2 size={13} className="animate-spin" /> Sincronizando código con el servidor…
+            </div>
+          )}
+          {persistState === 'error' && (
+            <div className="flex flex-col items-center gap-1.5 mb-4">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-red-600 dark:text-red-400 text-center">
+                <AlertTriangle size={13} className="shrink-0" />
+                No se pudo sincronizar — el cliente no podrá unirse desde su teléfono
+              </div>
+              <button
+                type="button"
+                onClick={asegurarToken}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-500/20 transition-colors"
+              >
+                <RotateCcw size={12} /> Reintentar sincronización
+              </button>
+            </div>
+          )}
+          {!connected && persistState === 'ok' && (
+            <div className="flex items-center justify-center gap-2 text-[11px] font-semibold mb-4 -mt-2 text-amber-600 dark:text-amber-400">
+              <WifiOff size={12} /> Tiempo real desconectado (el código igual funciona)
+            </div>
+          )}
 
           {/* URL */}
           <div className="rounded-xl bg-[#EEF2FF] dark:bg-slate-800 px-3 py-2 flex items-center gap-2 mb-3">
